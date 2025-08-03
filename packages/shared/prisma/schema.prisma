@@ -1,0 +1,314 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Company {
+  company_id     String     @id @default(uuid())
+  name           String     @db.VarChar(100)
+  siret          String     @unique @db.VarChar(14)
+  tva_intra      String?    @db.VarChar(13)
+  tva_applicable Boolean
+  RCS_number     String     @db.VarChar(100)
+  RCS_city       String     @db.VarChar(100)
+  capital        Decimal?   @db.Decimal(10, 2)
+  siren          String     @unique @db.VarChar(9)
+  legal_form     LegalForm
+  address        String     @db.VarChar(255)
+  postal_code    String     @db.VarChar(10)
+  city           String     @db.VarChar(100)
+  country        String     @default("France") @db.VarChar(100)
+  email          String?    @db.VarChar(100)
+  phone          String?    @db.VarChar(20)
+  website        String?    @db.VarChar(255)
+  createdAt      DateTime   @default(now()) @map("createdAt")
+  updatedAt      DateTime   @updatedAt @map("updatedAt")
+  customers      Customer[]
+  invoices       Invoice[]
+  products       Product[]
+  quotes         Quote[]
+  users          User[]
+}
+
+model Customer {
+  customer_id String              @id @default(uuid())
+  user_id     String
+  company_id  String
+  type        CustomerType        @default(individual)
+  email       String?             @db.VarChar(100)
+  phone       String?             @db.VarChar(20)
+  address     String?             @db.VarChar(100)
+  city        String?             @db.VarChar(50)
+  postal_code String?             @db.VarChar(20)
+  country     String              @default("France") @db.VarChar(50)
+  createdAt   DateTime            @default(now()) @map("createdAt")
+  updatedAt   DateTime            @updatedAt @map("updatedAt")
+  business    BusinessCustomer?
+  company     Company             @relation(fields: [company_id], references: [company_id], onDelete: Cascade)
+  user        User                @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  individual  IndividualCustomer?
+  invoices    Invoice[]
+  quotes      Quote[]
+}
+
+model BusinessCustomer {
+  customer_id    String   @id @unique
+  name           String   @db.VarChar(100)
+  siret          String   @db.VarChar(14)
+  siren          String   @db.VarChar(9)
+  tva_intra      String?  @db.VarChar(13)
+  tva_applicable Boolean
+  customer       Customer @relation(fields: [customer_id], references: [customer_id], onDelete: Cascade)
+}
+
+model IndividualCustomer {
+  customer_id String   @id @unique
+  first_name  String   @db.VarChar(50)
+  last_name   String   @db.VarChar(50)
+  customer    Customer @relation(fields: [customer_id], references: [customer_id], onDelete: Cascade)
+}
+
+model Product {
+  product_id          String        @id @default(uuid())
+  company_id          String
+  name                String        @db.VarChar(100)
+  description         String?
+  price_excluding_tax Decimal       @db.Decimal(10, 2)
+  vat_rate            VatRate       @default(ZERO)
+  unit                ProductUnit   @default(unite)
+  createdAt           DateTime      @default(now()) @map("createdAt")
+  updatedAt           DateTime      @updatedAt @map("updatedAt")
+  invoice_items       InvoiceItem[]
+  company             Company       @relation(fields: [company_id], references: [company_id], onDelete: Cascade)
+  quote_items         QuoteItem[]
+}
+
+model Invoice {
+  invoice_id           String        @id @default(uuid())
+  customer_id          String
+  user_id              String
+  company_id           String?
+  invoice_number       String        @unique @db.VarChar(50)
+  invoice_date         DateTime      @db.Date
+  due_date             DateTime      @db.Date
+  amount_excluding_tax Decimal       @db.Decimal(10, 2)
+  tax                  Decimal       @db.Decimal(10, 2)
+  amount_including_tax Decimal       @db.Decimal(10, 2)
+  status               InvoiceStatus
+  conditions           String?       @db.VarChar(1000)
+  late_payment_penalty String?
+  createdAt            DateTime      @default(now()) @map("createdAt")
+  updatedAt            DateTime      @updatedAt @map("updatedAt")
+  company              Company?      @relation(fields: [company_id], references: [company_id], onDelete: Cascade)
+  customer             Customer      @relation(fields: [customer_id], references: [customer_id], onDelete: Cascade)
+  user                 User          @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  items                InvoiceItem[]
+  payments             Payment[]
+}
+
+model InvoiceItem {
+  item_id                  String      @id @default(uuid())
+  invoice_id               String
+  product_id               String?
+  name                     String?     @db.VarChar(100)
+  description              String?
+  quantity                 Decimal     @db.Decimal(10, 2)
+  unit                     ProductUnit @default(unite)
+  unit_price_excluding_tax Decimal     @db.Decimal(10, 2)
+  vat_rate                 VatRate     @default(ZERO)
+  invoice                  Invoice     @relation(fields: [invoice_id], references: [invoice_id], onDelete: Cascade)
+  product                  Product?    @relation(fields: [product_id], references: [product_id])
+}
+
+model Payment {
+  payment_id     String        @id @default(uuid())
+  invoice_id     String
+  payment_date   DateTime
+  amount         Decimal       @db.Decimal(10, 2)
+  payment_method PaymentMethod
+  description    String?       @db.VarChar(500)
+  reference      String?       @db.VarChar(100)
+  createdAt      DateTime      @default(now()) @map("createdAt")
+  updatedAt      DateTime      @updatedAt @map("updatedAt")
+  invoice        Invoice       @relation(fields: [invoice_id], references: [invoice_id], onDelete: Cascade)
+}
+
+model Quote {
+  quote_id             String      @id @default(uuid())
+  customer_id          String
+  user_id              String
+  company_id           String?
+  quote_number         String      @unique @db.VarChar(50)
+  quote_date           DateTime    @db.Date
+  validity_date        DateTime    @db.Date
+  amount_excluding_tax Decimal     @db.Decimal(10, 2)
+  tax                  Decimal     @db.Decimal(10, 2)
+  amount_including_tax Decimal     @db.Decimal(10, 2)
+  status               QuoteStatus
+  conditions           String?     @db.VarChar(1000)
+  notes                String?
+  createdAt            DateTime    @default(now()) @map("createdAt")
+  updatedAt            DateTime    @updatedAt @map("updatedAt")
+  company              Company?    @relation(fields: [company_id], references: [company_id], onDelete: Cascade)
+  customer             Customer    @relation(fields: [customer_id], references: [customer_id], onDelete: Cascade)
+  user                 User        @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  items                QuoteItem[]
+}
+
+model QuoteItem {
+  item_id                  String      @id @default(uuid())
+  quote_id                 String
+  product_id               String?
+  name                     String?     @db.VarChar(100)
+  description              String?
+  quantity                 Decimal     @db.Decimal(10, 2)
+  unit                     ProductUnit @default(unite)
+  unit_price_excluding_tax Decimal     @db.Decimal(10, 2)
+  vat_rate                 VatRate     @default(ZERO)
+  product                  Product?    @relation(fields: [product_id], references: [product_id])
+  quote                    Quote       @relation(fields: [quote_id], references: [quote_id], onDelete: Cascade)
+}
+
+model Session {
+  id        String   @id
+  expiresAt DateTime
+  token     String   @unique
+  createdAt DateTime
+  updatedAt DateTime
+  ipAddress String?
+  userAgent String?
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("session")
+}
+
+model Account {
+  id                    String    @id
+  accountId             String
+  providerId            String
+  userId                String
+  accessToken           String?
+  refreshToken          String?
+  idToken               String?
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?
+  password              String?
+  createdAt             DateTime
+  updatedAt             DateTime
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("account")
+}
+
+model Verification {
+  id         String    @id
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime?
+  updatedAt  DateTime?
+
+  @@map("verification")
+}
+
+model User {
+  id                   String         @id
+  name                 String
+  email                String         @unique
+  emailVerified        Boolean
+  image                String?
+  createdAt            DateTime
+  updatedAt            DateTime
+  companyCompany_id    String?
+  first_name           String         @db.VarChar(50)
+  last_name            String         @db.VarChar(50)
+  company_id           String?
+  onboarding_completed Boolean        @default(false)
+  onboarding_step      OnboardingStep @default(CHOOSING_COMPANY)
+  stripe_account_id    String?
+  stripe_onboarded     Boolean        @default(false)
+  Customer             Customer[]
+  Invoice              Invoice[]
+  Quote                Quote[]
+  accounts             Account[]
+  sessions             Session[]
+  Company              Company?       @relation(fields: [companyCompany_id], references: [company_id])
+
+  @@map("user")
+}
+
+enum OnboardingStep {
+  CHOOSING_COMPANY
+  STRIPE_SETUP
+  FINISH
+}
+
+enum LegalForm {
+  SAS
+  SARL
+  SA
+  SASU
+  EURL
+  SNC
+  SOCIETE_CIVILE
+  ENTREPRISE_INDIVIDUELLE
+}
+
+enum CustomerType {
+  individual
+  company
+}
+
+enum InvoiceStatus {
+  pending
+  sent
+  paid
+  cancelled
+  late
+}
+
+enum QuoteStatus {
+  draft
+  sent
+  accepted
+  rejected
+  expired
+}
+
+enum PaymentMethod {
+  cash
+  credit_card
+  bank_transfer
+  stripe
+}
+
+enum ProductUnit {
+  unite @map("unité")
+  kg
+  g
+  l
+  ml
+  m
+  cm
+  m2    @map("m²")
+  cm2   @map("cm²")
+  m3    @map("m³")
+  h
+  jour
+  mois
+  annee @map("année")
+}
+
+enum VatRate {
+  ZERO      @map("0.00")
+  REDUCED_1 @map("2.10")
+  REDUCED_2 @map("5.50")
+  REDUCED_3 @map("10.00")
+  STANDARD  @map("20.00")
+}

@@ -37,6 +37,8 @@ router.put(
 
 router.delete("/:id", authMiddleware, QuoteController.deleteQuote);
 
+router.get("/:id/pdf", authMiddleware, QuoteController.downloadQuotePdf);
+
 // router.post(
 //     "/:id/send",
 //     authMiddleware,

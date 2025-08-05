@@ -55,6 +55,6 @@ router.post("/:id/send", authMiddleware, InvoiceController.sendInvoiceByEmail);
 //     InvoiceController.sendInvoiceByEmailWithPaymentLink
 // );
 
-router.get("/:id/pdf", authMiddleware, InvoiceController.downloadInvoicePdf);
+router.get("/:id/pdf", authMiddleware, InvoiceController.generateInvoicePdf);
 
 export default router;

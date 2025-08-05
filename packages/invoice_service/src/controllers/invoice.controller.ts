@@ -261,7 +261,7 @@ export class InvoiceController {
         }
     }
 
-    public static async downloadInvoicePdf(req: AuthRequest, res: Response) {
+    public static async generateInvoicePdf(req: AuthRequest, res: Response) {
         try {
             logger.info({ req: req.params }, "Downloading invoice PDF");
             const invoiceId = req.params.id;
@@ -342,7 +342,7 @@ export class InvoiceController {
 
     public static async sendInvoiceByEmail(req: AuthRequest, res: Response) {
         try {
-            logger.info({ req: req.params }, "Sending invoice by email");
+            logger.info({ req: req.params }, "Envoi de facture par email");
             if (!req.user?.company_id) {
                 return ApiResponse.error(
                     res,
@@ -356,7 +356,7 @@ export class InvoiceController {
                 req.user.company_id
             );
 
-            const attachment = await this.downloadInvoicePdf(req, res);
+            const attachment = this.generateInvoicePdf(req, res);
 
             await axios.post(
                 `${process.env.EMAIL_SERVICE_URL}/api/email/send-with-attachment`,
@@ -378,7 +378,7 @@ export class InvoiceController {
                 }
             );
 
-            logger.info("Invoice sent by email");
+            logger.info("Facture envoyée par email avec succès");
             return ApiResponse.success(
                 res,
                 200,
@@ -386,11 +386,17 @@ export class InvoiceController {
             );
         } catch (error) {
             console.log(error);
-            logger.error({ error }, "Error sending invoice by email");
+            logger.error(
+                { error },
+                "Erreur lors de l'envoi de la facture par email"
+            );
             if (error instanceof CustomError) {
                 return ApiResponse.error(res, error.statusCode, error.message);
             }
-            logger.error({ error }, "Error sending invoice by email");
+            logger.error(
+                { error },
+                "Erreur lors de l'envoi de la facture par email"
+            );
             return ApiResponse.error(res, 500, "Erreur interne du serveur");
         }
     }

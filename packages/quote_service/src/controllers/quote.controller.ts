@@ -232,27 +232,11 @@ export class QuoteController {
                 );
             }
 
-            const company = await axios.get(
-                `${process.env.COMPANY_SERVICE_URL}/api/company`,
-                {
-                    headers: {
-                        ...req.headers,
-                    },
-                }
-            );
-
-            if (!company.data) {
-                throw new CustomError(
-                    "Impossible de récupérer les informations de l'entreprise",
-                    500
-                );
-            }
-
             const pdf = await axios.post(
                 `${process.env.PDF_SERVICE_URL}/api/pdf/quote`,
                 {
                     quote: quote,
-                    company: company.data.data,
+                    company: quote.company,
                 },
                 {
                     responseType: "arraybuffer",

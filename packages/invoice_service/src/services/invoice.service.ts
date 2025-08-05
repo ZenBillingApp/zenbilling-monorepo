@@ -238,7 +238,7 @@ export class InvoiceService {
                         "Facture créée avec succès"
                     );
 
-                    return updatedInvoice;
+                    return updatedInvoice as IInvoice;
                 }
             );
         } catch (error) {
@@ -306,7 +306,7 @@ export class InvoiceService {
                         },
                     });
 
-                    return updatedInvoice;
+                    return updatedInvoice as IInvoice;
                 }
             );
         } catch (error) {
@@ -342,6 +342,8 @@ export class InvoiceService {
                         individual: true,
                     },
                 },
+                user: true,
+                company: true,
             },
         });
 
@@ -702,36 +704,9 @@ export class InvoiceService {
                 throw new CustomError("Utilisateur non trouvé", 404);
             }
 
-            const company = await axios.get(
-                `${process.env.COMPANY_SERVICE_URL}/api/company`
-            );
+            // const pdf = await this.downloadInvoicePdf(invoiceId, companyId);
 
-            if (!company.data.data) {
-                throw new CustomError("Entreprise non trouvée", 404);
-            }
-            // Générer le PDF
-            const pdf = await axios.post(
-                `${process.env.PDF_SERVICE_URL}/api/pdf/invoice`,
-                {
-                    invoice: invoice,
-                    company: company.data.data,
-                },
-                {
-                    responseType: "arraybuffer",
-                    headers: {
-                        "Content-Type": "application/json",
-                    },
-                }
-            );
-
-            if (!pdf.data || pdf.data.byteLength === 0) {
-                throw new CustomError(
-                    "Erreur lors de la génération du PDF",
-                    500
-                );
-            }
-
-            const pdfBuffer = Buffer.from(pdf.data);
+            // const pdfBuffer = Buffer.from(pdf.data);
 
             // Préparer le contenu de l'email
             const customerName = invoice.customer?.business
@@ -752,7 +727,7 @@ export class InvoiceService {
                     to: invoice.customer?.email,
                     subject: `Facture ${invoice.invoice_number}`,
                     html: htmlContent,
-                    attachment: pdfBuffer,
+                    // attachment: pdfBuffer,
                 },
                 {
                     headers: {
@@ -779,6 +754,7 @@ export class InvoiceService {
                 "Facture envoyée par email avec succès"
             );
         } catch (error) {
+            console.log(error);
             logger.error(
                 {
                     error,

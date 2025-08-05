@@ -288,27 +288,11 @@ export class InvoiceController {
                 );
             }
 
-            const company = await axios.get(
-                `${process.env.COMPANY_SERVICE_URL}/api/company`,
-                {
-                    headers: {
-                        ...req.headers,
-                    },
-                }
-            );
-
-            if (!company.data) {
-                throw new CustomError(
-                    "Impossible de récupérer les informations de l'entreprise",
-                    500
-                );
-            }
-
             const pdf = await axios.post(
                 `${process.env.PDF_SERVICE_URL}/api/pdf/invoice`,
                 {
                     invoice: invoice,
-                    company: company.data.data,
+                    company: invoice.company,
                 },
                 {
                     responseType: "arraybuffer",
@@ -367,11 +351,33 @@ export class InvoiceController {
                 );
             }
 
-            await InvoiceService.sendInvoiceByEmail(
+            const invoice = await InvoiceService.getInvoiceWithDetails(
                 req.params.id,
-                req.user.company_id,
-                req.user.id
+                req.user.company_id
             );
+
+            const attachment = await this.downloadInvoicePdf(req, res);
+
+            await axios.post(
+                `${process.env.EMAIL_SERVICE_URL}/api/email/send-with-attachment`,
+                {
+                    to: invoice.customer?.email,
+                    subject: `Facture ${invoice.invoice_number}`,
+                    html: `
+                    <p>Bonjour ${invoice.customer?.business?.name},</p>
+                    <p>Veuillez trouver ci-joint votre facture n° ${invoice.invoice_number}.</p>
+                    <p>Cordialement,</p>
+                    <p>${invoice.user?.first_name} ${invoice.user?.last_name}</p>
+                    `,
+                    attachment: attachment,
+                },
+                {
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
+                }
+            );
+
             logger.info("Invoice sent by email");
             return ApiResponse.success(
                 res,
@@ -379,6 +385,7 @@ export class InvoiceController {
                 "Facture envoyée par email avec succès"
             );
         } catch (error) {
+            console.log(error);
             logger.error({ error }, "Error sending invoice by email");
             if (error instanceof CustomError) {
                 return ApiResponse.error(res, error.statusCode, error.message);

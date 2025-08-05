@@ -1,5 +1,7 @@
 import { ICustomer } from "./Customer.interface";
 import { IQuoteItem } from "./QuoteItem.interface";
+import { IUser } from "./User.interface";
+import { ICompany } from "./Company.interface";
 import { Decimal } from "@prisma/client/runtime/library";
 
 export type QuoteStatus =
@@ -26,6 +28,8 @@ export interface IQuote {
 
     // Relations
     customer?: ICustomer;
+    user?: IUser;
+    company?: ICompany;
     items?: IQuoteItem[];
     createdAt: Date;
     updatedAt: Date;

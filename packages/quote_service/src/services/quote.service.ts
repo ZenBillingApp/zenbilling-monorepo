@@ -234,7 +234,7 @@ export class QuoteService {
                         "Devis créé avec succès"
                     );
 
-                    return updatedQuote;
+                    return updatedQuote as IQuote;
                 }
             );
         } catch (error) {
@@ -310,7 +310,7 @@ export class QuoteService {
                         { quoteId, companyId },
                         "Devis mis à jour avec succès"
                     );
-                    return updatedQuote;
+                    return updatedQuote as IQuote;
                 }
             );
         } catch (error) {
@@ -349,6 +349,8 @@ export class QuoteService {
                         individual: true,
                     },
                 },
+                company: true,
+                user: true,
             },
         });
 
@@ -356,7 +358,7 @@ export class QuoteService {
             throw new CustomError("Devis non trouvé", 404);
         }
 
-        return quote;
+        return quote as IQuote;
     }
 
     public static async deleteQuote(
@@ -535,6 +537,7 @@ export class QuoteService {
                         },
                     },
                     company: true,
+                    user: true,
                 },
                 orderBy: {
                     [sortBy]: sortOrder.toLowerCase(),
@@ -592,7 +595,7 @@ export class QuoteService {
         ]);
 
         return {
-            quotes,
+            quotes: quotes as IQuote[],
             total,
             totalPages,
             statusCounts: {

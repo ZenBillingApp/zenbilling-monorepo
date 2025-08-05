@@ -1,6 +1,8 @@
 import { ICustomer } from "./Customer.interface";
 import { IInvoiceItem } from "./InvoiceItem.interface";
 import { IPayment } from "./Payment.interface";
+import { ICompany } from "./Company.interface";
+import { IUser } from "./User.interface";
 import { Decimal } from "@prisma/client/runtime/library";
 
 export type InvoiceStatus = "pending" | "sent" | "paid" | "cancelled" | "late";
@@ -22,6 +24,8 @@ export interface IInvoice {
 
     // Relations
     customer?: ICustomer;
+    user?: IUser;
+    company?: ICompany;
     items?: IInvoiceItem[];
     payments?: IPayment[];
     createdAt: Date;

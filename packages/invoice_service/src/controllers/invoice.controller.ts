@@ -356,37 +356,37 @@ export class InvoiceController {
         }
     }
 
-    // public static async sendInvoiceByEmail(req: AuthRequest, res: Response) {
-    //     try {
-    //         logger.info({ req: req.params }, "Sending invoice by email");
-    //         if (!req.user?.company_id) {
-    //             return ApiResponse.error(
-    //                 res,
-    //                 401,
-    //                 "Aucune entreprise associée à l'utilisateur"
-    //             );
-    //         }
+    public static async sendInvoiceByEmail(req: AuthRequest, res: Response) {
+        try {
+            logger.info({ req: req.params }, "Sending invoice by email");
+            if (!req.user?.company_id) {
+                return ApiResponse.error(
+                    res,
+                    401,
+                    "Aucune entreprise associée à l'utilisateur"
+                );
+            }
 
-    //         await InvoiceService.sendInvoiceByEmail(
-    //             req.params.id,
-    //             req.user.company_id,
-    //             req.user.id
-    //         );
-    //         logger.info("Invoice sent by email");
-    //         return ApiResponse.success(
-    //             res,
-    //             200,
-    //             "Facture envoyée par email avec succès"
-    //         );
-    //     } catch (error) {
-    //         logger.error({ error }, "Error sending invoice by email");
-    //         if (error instanceof CustomError) {
-    //             return ApiResponse.error(res, error.statusCode, error.message);
-    //         }
-    //         logger.error({ error }, "Error sending invoice by email");
-    //         return ApiResponse.error(res, 500, "Erreur interne du serveur");
-    //     }
-    // }
+            await InvoiceService.sendInvoiceByEmail(
+                req.params.id,
+                req.user.company_id,
+                req.user.id
+            );
+            logger.info("Invoice sent by email");
+            return ApiResponse.success(
+                res,
+                200,
+                "Facture envoyée par email avec succès"
+            );
+        } catch (error) {
+            logger.error({ error }, "Error sending invoice by email");
+            if (error instanceof CustomError) {
+                return ApiResponse.error(res, error.statusCode, error.message);
+            }
+            logger.error({ error }, "Error sending invoice by email");
+            return ApiResponse.error(res, 500, "Erreur interne du serveur");
+        }
+    }
 
     // /**
     //  * Envoie une facture par email avec un lien de paiement optionnel

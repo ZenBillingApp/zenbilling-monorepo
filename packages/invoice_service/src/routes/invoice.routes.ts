@@ -46,7 +46,7 @@ router.post(
     InvoiceController.createPayment
 );
 
-// router.post("/:id/send", authMiddleware, InvoiceController.sendInvoiceByEmail);
+router.post("/:id/send", authMiddleware, InvoiceController.sendInvoiceByEmail);
 
 // router.post(
 //     "/:id/send-with-payment-link",

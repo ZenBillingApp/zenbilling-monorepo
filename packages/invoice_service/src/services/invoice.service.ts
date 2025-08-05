@@ -7,9 +7,6 @@ import {
 } from "@zenbilling/shared/src/interfaces/Invoice.request.interface";
 import { IInvoice } from "@zenbilling/shared/src/interfaces/Invoice.interface";
 import { CustomError } from "@zenbilling/shared/src/utils/customError";
-// import { PdfService } from "./pdf.service";
-// import emailService from "./email.service";
-// import stripeService from "./stripe.service";
 import logger from "@zenbilling/shared/src/utils/logger";
 import prisma from "@zenbilling/shared/src/libs/prisma";
 import {
@@ -23,6 +20,7 @@ import {
     PrismaClient,
     Decimal,
 } from "@zenbilling/shared/src/libs/prisma";
+import axios from "axios";
 
 export class InvoiceService {
     private static generateInvoiceNumber(
@@ -677,97 +675,128 @@ export class InvoiceService {
         }
     }
 
-    // public static async sendInvoiceByEmail(
-    //     invoiceId: string,
-    //     companyId: string,
-    //     userId: string
-    // ): Promise<void> {
-    //     logger.info(
-    //         { invoiceId, companyId, userId },
-    //         "Début d'envoi de facture par email"
-    //     );
-    //     try {
-    //         // Récupérer la facture avec tous les détails
-    //         const invoice = await this.getInvoiceWithDetails(
-    //             invoiceId,
-    //             companyId
-    //         );
-    //         if (!invoice.customer?.email) {
-    //             throw new CustomError("Le client n'a pas d'adresse email", 400);
-    //         }
+    public static async sendInvoiceByEmail(
+        invoiceId: string,
+        companyId: string,
+        userId: string
+    ): Promise<void> {
+        logger.info(
+            { invoiceId, companyId, userId },
+            "Début d'envoi de facture par email"
+        );
+        try {
+            // Récupérer la facture avec tous les détails
+            const invoice = await this.getInvoiceWithDetails(
+                invoiceId,
+                companyId
+            );
+            if (!invoice.customer?.email) {
+                throw new CustomError("Le client n'a pas d'adresse email", 400);
+            }
 
-    //         // Récupérer l'utilisateur qui envoie l'email
-    //         const user = await prisma.user.findUnique({
-    //             where: { id: userId },
-    //         });
-    //         if (!user) {
-    //             throw new CustomError("Utilisateur non trouvé", 404);
-    //         }
+            // Récupérer l'utilisateur qui envoie l'email
+            const user = await prisma.user.findUnique({
+                where: { id: userId },
+            });
+            if (!user) {
+                throw new CustomError("Utilisateur non trouvé", 404);
+            }
 
-    //         // Générer le PDF
-    //         const pdfBuffer = await PdfService.generateInvoicePdf(invoiceId);
+            const company = await axios.get(
+                `${process.env.COMPANY_SERVICE_URL}/api/company`
+            );
 
-    //         // Préparer le contenu de l'email
-    //         const customerName = invoice.customer?.business
-    //             ? invoice.customer?.business?.name
-    //             : `${invoice.customer?.individual?.first_name} ${invoice.customer?.individual?.last_name}`;
+            if (!company.data.data) {
+                throw new CustomError("Entreprise non trouvée", 404);
+            }
+            // Générer le PDF
+            const pdf = await axios.post(
+                `${process.env.PDF_SERVICE_URL}/api/pdf/invoice`,
+                {
+                    invoice: invoice,
+                    company: company.data.data,
+                },
+                {
+                    responseType: "arraybuffer",
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
+                }
+            );
 
-    //         const htmlContent = `
-    //     <p>Bonjour ${customerName},</p>
-    //     <p>Veuillez trouver ci-joint votre facture n° ${invoice.invoice_number}.</p>
-    //     <p>Cordialement,</p>
-    //     <p>${user.first_name} ${user.last_name}</p>
-    //   `;
+            if (!pdf.data || pdf.data.byteLength === 0) {
+                throw new CustomError(
+                    "Erreur lors de la génération du PDF",
+                    500
+                );
+            }
 
-    //         // Envoyer l'email avec la facture en pièce jointe
-    //         await emailService.sendEmailWithAttachment(
-    //             [invoice.customer?.email],
-    //             `Facture ${invoice.invoice_number}`,
-    //             htmlContent,
-    //             pdfBuffer,
-    //             `facture-${invoice.invoice_number}.pdf`,
-    //             {
-    //                 name: `${user.first_name} ${user.last_name}`,
-    //                 email: user.email || "noreply@zenbilling.fr",
-    //             }
-    //         );
+            const pdfBuffer = Buffer.from(pdf.data);
 
-    //         // Mettre à jour le statut de la facture
-    //         if (invoice.status === "pending") {
-    //             await prisma.invoice.update({
-    //                 where: { invoice_id: invoiceId },
-    //                 data: { status: "sent" },
-    //             });
-    //         }
+            // Préparer le contenu de l'email
+            const customerName = invoice.customer?.business
+                ? invoice.customer?.business?.name
+                : `${invoice.customer?.individual?.first_name} ${invoice.customer?.individual?.last_name}`;
 
-    //         logger.info(
-    //             {
-    //                 invoiceId,
-    //                 companyId,
-    //                 userId,
-    //                 customerEmail: invoice.customer?.email,
-    //             },
-    //             "Facture envoyée par email avec succès"
-    //         );
-    //     } catch (error) {
-    //         logger.error(
-    //             {
-    //                 error,
-    //                 invoiceId,
-    //                 companyId,
-    //                 userId,
-    //             },
-    //             "Erreur lors de l'envoi de la facture par email"
-    //         );
-    //         if (error instanceof CustomError) {
-    //             throw error;
-    //         }
-    //         throw new CustomError(
-    //             "Erreur lors de l'envoi de la facture par email",
-    //             500
-    //         );
-    //     }
-    // }
+            const htmlContent = `
+        <p>Bonjour ${customerName},</p>
+        <p>Veuillez trouver ci-joint votre facture n° ${invoice.invoice_number}.</p>
+        <p>Cordialement,</p>
+        <p>${user.first_name} ${user.last_name}</p>
+      `;
+
+            // Envoyer l'email avec la facture en pièce jointe
+            await axios.post(
+                `${process.env.EMAIL_SERVICE_URL}/api/email/send-with-attachment`,
+                {
+                    to: invoice.customer?.email,
+                    subject: `Facture ${invoice.invoice_number}`,
+                    html: htmlContent,
+                    attachment: pdfBuffer,
+                },
+                {
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
+                }
+            );
+
+            // Mettre à jour le statut de la facture
+            if (invoice.status === "pending") {
+                await prisma.invoice.update({
+                    where: { invoice_id: invoiceId },
+                    data: { status: "sent" },
+                });
+            }
+
+            logger.info(
+                {
+                    invoiceId,
+                    companyId,
+                    userId,
+                    customerEmail: invoice.customer?.email,
+                },
+                "Facture envoyée par email avec succès"
+            );
+        } catch (error) {
+            logger.error(
+                {
+                    error,
+                    invoiceId,
+                    companyId,
+                    userId,
+                },
+                "Erreur lors de l'envoi de la facture par email"
+            );
+            if (error instanceof CustomError) {
+                throw error;
+            }
+            throw new CustomError(
+                "Erreur lors de l'envoi de la facture par email",
+                500
+            );
+        }
+    }
 
     // /**
     //  * Envoie une facture par email avec un lien de paiement optionnel

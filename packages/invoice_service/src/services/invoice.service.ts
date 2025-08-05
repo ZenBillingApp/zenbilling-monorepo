@@ -344,7 +344,6 @@ export class InvoiceService {
                         individual: true,
                     },
                 },
-                company: true,
             },
         });
 

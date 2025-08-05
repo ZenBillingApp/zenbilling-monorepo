@@ -6,7 +6,7 @@ import { Decimal } from "@prisma/client/runtime/library";
 export type InvoiceStatus = "pending" | "sent" | "paid" | "cancelled" | "late";
 
 export interface IInvoice {
-    invoice_id?: string;
+    invoice_id: string;
     customer_id: string;
     user_id: string;
     company_id: string | null;

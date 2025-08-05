@@ -9,6 +9,7 @@ import {
     ISendInvoiceWithPaymentLinkRequest,
 } from "@zenbilling/shared/src/interfaces/Invoice.request.interface";
 import logger from "@zenbilling/shared/src/utils/logger";
+import axios from "axios";
 
 export class InvoiceController {
     public static async createInvoice(req: AuthRequest, res: Response) {
@@ -260,56 +261,100 @@ export class InvoiceController {
         }
     }
 
-    // public static async downloadInvoicePdf(req: AuthRequest, res: Response) {
-    //     try {
-    //         logger.info({ req: req.params }, "Downloading invoice PDF");
-    //         const invoiceId = req.params.id;
+    public static async downloadInvoicePdf(req: AuthRequest, res: Response) {
+        try {
+            logger.info({ req: req.params }, "Downloading invoice PDF");
+            const invoiceId = req.params.id;
 
-    //         if (!req.user?.company_id) {
-    //             return ApiResponse.error(
-    //                 res,
-    //                 401,
-    //                 "Aucune société associée à l'utilisateur"
-    //             );
-    //         }
+            if (!req.user?.company_id) {
+                return ApiResponse.error(
+                    res,
+                    401,
+                    "Aucune société associée à l'utilisateur"
+                );
+            }
 
-    //         const invoice = await InvoiceService.getInvoiceWithDetails(
-    //             invoiceId,
-    //             req.user.company_id
-    //         );
+            const invoice = await InvoiceService.getInvoiceWithDetails(
+                invoiceId,
+                req.user.company_id
+            );
 
-    //         // Vérifier que l'utilisateur a accès à cette facture
-    //         if (invoice.company_id !== req.user?.company_id) {
-    //             return ApiResponse.error(
-    //                 res,
-    //                 403,
-    //                 "Accès non autorisé à cette facture"
-    //             );
-    //         }
+            // Vérifier que l'utilisateur a accès à cette facture
+            if (invoice.company_id !== req.user?.company_id) {
+                return ApiResponse.error(
+                    res,
+                    403,
+                    "Accès non autorisé à cette facture"
+                );
+            }
 
-    //         const pdf = await PdfService.generateInvoicePdf(invoiceId);
+            const company = await axios.get(
+                `${process.env.COMPANY_SERVICE_URL}/api/company`,
+                {
+                    headers: {
+                        ...req.headers,
+                    },
+                }
+            );
 
-    //         // Configurer les en-têtes pour le téléchargement
-    //         res.setHeader("Content-Type", "application/pdf");
-    //         res.setHeader(
-    //             "Content-Disposition",
-    //             `attachment; filename=facture-${invoice.invoice_number}.pdf`
-    //         );
+            if (!company.data) {
+                throw new CustomError(
+                    "Impossible de récupérer les informations de l'entreprise",
+                    500
+                );
+            }
 
-    //         return res.send(pdf);
-    //     } catch (error) {
-    //         logger.error({ error }, "Error downloading invoice PDF");
-    //         if (error instanceof CustomError) {
-    //             return ApiResponse.error(res, error.statusCode, error.message);
-    //         }
-    //         if (error instanceof Error) {
-    //             logger.error({ error }, "Error downloading invoice PDF");
-    //             return ApiResponse.error(res, 400, error.message);
-    //         }
-    //         logger.error({ error }, "Error downloading invoice PDF");
-    //         return ApiResponse.error(res, 500, "Erreur interne du serveur");
-    //     }
-    // }
+            const pdf = await axios.post(
+                `${process.env.PDF_SERVICE_URL}/api/pdf/invoice`,
+                {
+                    invoice: invoice,
+                    company: company.data.data,
+                },
+                {
+                    responseType: "arraybuffer",
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
+                }
+            );
+
+            // Vérifier que la réponse contient des données
+            if (!pdf.data || pdf.data.byteLength === 0) {
+                throw new CustomError(
+                    "Erreur lors de la génération du PDF",
+                    500
+                );
+            }
+
+            const pdfBuffer = Buffer.from(pdf.data);
+
+            // Configurer les en-têtes pour le téléchargement
+            res.setHeader("Content-Type", "application/pdf");
+            res.setHeader(
+                "Content-Disposition",
+                `attachment; filename=facture-${invoice.invoice_number}.pdf`
+            );
+            res.setHeader("Content-Length", pdfBuffer.length.toString());
+
+            logger.info(
+                { invoice_id: invoiceId, buffer_size: pdfBuffer.length },
+                "PDF généré et envoyé avec succès"
+            );
+
+            return res.send(pdfBuffer);
+        } catch (error) {
+            logger.error({ error }, "Error downloading invoice PDF");
+            if (error instanceof CustomError) {
+                return ApiResponse.error(res, error.statusCode, error.message);
+            }
+            if (error instanceof Error) {
+                logger.error({ error }, "Error downloading invoice PDF");
+                return ApiResponse.error(res, 400, error.message);
+            }
+            logger.error({ error }, "Error downloading invoice PDF");
+            return ApiResponse.error(res, 500, "Erreur interne du serveur");
+        }
+    }
 
     // public static async sendInvoiceByEmail(req: AuthRequest, res: Response) {
     //     try {

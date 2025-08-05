@@ -6,6 +6,8 @@ import { ApiResponse } from "@zenbilling/shared/src/utils/apiResponse";
 import { CustomError } from "@zenbilling/shared/src/utils/customError";
 import { IQuoteQueryParams } from "@zenbilling/shared/src/interfaces/Quote.request.interface";
 import logger from "@zenbilling/shared/src/utils/logger";
+import axios from "axios";
+
 export class QuoteController {
     public static async createQuote(req: AuthRequest, res: Response) {
         try {
@@ -202,51 +204,80 @@ export class QuoteController {
         }
     }
 
-    // public static async downloadQuotePdf(req: AuthRequest, res: Response) {
-    //     try {
-    //         logger.info({ req: req.params }, "Downloading quote pdf");
-    //         const quoteId = req.params.id;
+    public static async downloadQuotePdf(req: AuthRequest, res: Response) {
+        try {
+            logger.info({ req: req.params }, "Downloading quote pdf");
+            const quoteId = req.params.id;
 
-    //         if (!req.user?.company_id) {
-    //             return ApiResponse.error(
-    //                 res,
-    //                 401,
-    //                 "Aucune entreprise associée à l'utilisateur"
-    //             );
-    //         }
+            if (!req.user?.company_id) {
+                return ApiResponse.error(
+                    res,
+                    401,
+                    "Aucune entreprise associée à l'utilisateur"
+                );
+            }
 
-    //         const quote = await QuoteService.getQuoteWithDetails(
-    //             quoteId,
-    //             req.user.company_id
-    //         );
-    //         logger.info({ quote }, "Quote retrieved");
-    //         // Vérifier que l'utilisateur a accès à ce devis
-    //         if (quote.company_id !== req.user?.company_id) {
-    //             return ApiResponse.error(
-    //                 res,
-    //                 403,
-    //                 "Accès non autorisé à ce devis"
-    //             );
-    //         }
+            const quote = await QuoteService.getQuoteWithDetails(
+                quoteId,
+                req.user.company_id
+            );
+            logger.info({ quote }, "Quote retrieved");
 
-    //         const pdf = await PdfService.generateQuotePdf(quoteId);
+            // Vérifier que l'utilisateur a accès à ce devis
+            if (quote.company_id !== req.user?.company_id) {
+                return ApiResponse.error(
+                    res,
+                    403,
+                    "Accès non autorisé à ce devis"
+                );
+            }
 
-    //         // Configurer les en-têtes pour le téléchargement
-    //         res.setHeader("Content-Type", "application/pdf");
-    //         res.setHeader(
-    //             "Content-Disposition",
-    //             `attachment; filename=devis-${quote.quote_number}.pdf`
-    //         );
+            const company = await axios.get(
+                `${process.env.COMPANY_SERVICE_URL}/api/company`,
+                {
+                    headers: {
+                        ...req.headers,
+                    },
+                }
+            );
 
-    //         return res.send(pdf);
-    //     } catch (error) {
-    //         logger.error({ error }, "Error downloading quote pdf");
-    //         if (error instanceof CustomError) {
-    //             return ApiResponse.error(res, error.statusCode, error.message);
-    //         }
-    //         return ApiResponse.error(res, 500, "Erreur interne du serveur");
-    //     }
-    // }
+            if (!company.data) {
+                throw new CustomError(
+                    "Impossible de récupérer les informations de l'entreprise",
+                    500
+                );
+            }
+
+            const pdf = await axios.post(
+                `${process.env.PDF_SERVICE_URL}/api/pdf/quote`,
+                {
+                    quote: quote,
+                    company: company.data.data,
+                },
+                {
+                    responseType: "arraybuffer",
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
+                }
+            );
+
+            // Configurer les en-têtes pour le téléchargement
+            res.setHeader("Content-Type", "application/pdf");
+            res.setHeader(
+                "Content-Disposition",
+                `attachment; filename=devis-${quote.quote_number}.pdf`
+            );
+
+            return res.send(pdf.data);
+        } catch (error) {
+            logger.error({ error }, "Error downloading quote pdf");
+            if (error instanceof CustomError) {
+                return ApiResponse.error(res, error.statusCode, error.message);
+            }
+            return ApiResponse.error(res, 500, "Erreur interne du serveur");
+        }
+    }
 
     // public static async sendQuoteByEmail(req: AuthRequest, res: Response) {
     //     try {

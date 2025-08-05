@@ -349,7 +349,6 @@ export class QuoteService {
                         individual: true,
                     },
                 },
-                company: true,
             },
         });
 

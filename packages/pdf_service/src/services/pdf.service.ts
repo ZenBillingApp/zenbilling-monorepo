@@ -146,8 +146,6 @@ export class PdfService {
             throw new Error("Facture non trouvée");
         }
 
-        console.log("pdf Company", company);
-
         logger.debug(
             { invoice_id: invoice.invoice_id },
             "Préparation des données pour le template"

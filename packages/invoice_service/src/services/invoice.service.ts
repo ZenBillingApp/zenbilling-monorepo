@@ -704,35 +704,73 @@ export class InvoiceService {
                 throw new CustomError("Utilisateur non trouvé", 404);
             }
 
-            // const pdf = await this.downloadInvoicePdf(invoiceId, companyId);
+            // Générer le PDF de la facture
+            const pdfResponse = await axios.post(
+                `${process.env.PDF_SERVICE_URL}/api/pdf/invoice`,
+                {
+                    invoice: invoice,
+                    company: invoice.company,
+                },
+                {
+                    responseType: "arraybuffer",
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
+                }
+            );
 
-            // const pdfBuffer = Buffer.from(pdf.data);
+            if (!pdfResponse.data || pdfResponse.data.byteLength === 0) {
+                throw new CustomError(
+                    "Erreur lors de la génération du PDF",
+                    500
+                );
+            }
 
-            // Préparer le contenu de l'email
+            const pdfBuffer = Buffer.from(pdfResponse.data);
+
+            // Préparer le nom du client
             const customerName = invoice.customer?.business
                 ? invoice.customer?.business?.name
                 : `${invoice.customer?.individual?.first_name} ${invoice.customer?.individual?.last_name}`;
 
+            // Préparer le contenu HTML de l'email
             const htmlContent = `
-        <p>Bonjour ${customerName},</p>
-        <p>Veuillez trouver ci-joint votre facture n° ${invoice.invoice_number}.</p>
-        <p>Cordialement,</p>
-        <p>${user.first_name} ${user.last_name}</p>
-      `;
+                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+                    <div style="text-align: center; margin-bottom: 30px;">
+                        <h1 style="color: #333; margin-bottom: 10px;">Facture</h1>
+                        <p style="color: #666; font-size: 16px;">Facture n° ${invoice.invoice_number}</p>
+                    </div>
+
+                    <div style="background-color: #f8f9fa; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
+                        <p style="margin: 0 0 10px 0;"><strong>Bonjour ${customerName},</strong></p>
+                        <p style="margin: 0 0 15px 0;">Veuillez trouver ci-joint votre facture n° ${invoice.invoice_number} d'un montant de <strong>${Number(invoice.amount_including_tax).toFixed(2)} €</strong>.</p>
+                        <p style="margin: 0 0 10px 0;"><strong>Date d'échéance :</strong> ${new Date(invoice.due_date).toLocaleDateString("fr-FR")}</p>
+                    </div>
+
+                    <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #ddd;">
+                        <p style="margin: 0 0 5px 0;">Cordialement,</p>
+                        <p style="margin: 0; font-weight: bold;">${user.first_name} ${user.last_name}</p>
+                        <p style="margin: 5px 0 0 0; color: #666;">${invoice.company?.name}</p>
+                    </div>
+                </div>
+            `;
 
             // Envoyer l'email avec la facture en pièce jointe
             await axios.post(
                 `${process.env.EMAIL_SERVICE_URL}/api/email/send-with-attachment`,
                 {
-                    to: invoice.customer?.email,
+                    to: [invoice.customer.email],
                     subject: `Facture ${invoice.invoice_number}`,
                     html: htmlContent,
-                    // attachment: pdfBuffer,
+                    attachment: pdfBuffer.toString('base64'),
+                    filename: `facture-${invoice.invoice_number}.pdf`
                 },
                 {
                     headers: {
                         "Content-Type": "application/json",
                     },
+                    maxBodyLength: Infinity,
+                    maxContentLength: Infinity
                 }
             );
 
@@ -754,7 +792,6 @@ export class InvoiceService {
                 "Facture envoyée par email avec succès"
             );
         } catch (error) {
-            console.log(error);
             logger.error(
                 {
                     error,

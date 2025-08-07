@@ -18,6 +18,7 @@ import {
     Decimal,
 } from "@zenbilling/shared/src/libs/prisma";
 import prisma from "@zenbilling/shared/src/libs/prisma";
+import axios from "axios";
 
 export class QuoteService {
     private static generateQuoteNumber(companyId: string, date: Date): string {
@@ -609,94 +610,128 @@ export class QuoteService {
         };
     }
 
-    // public static async sendQuoteByEmail(
-    //     quoteId: string,
-    //     companyId: string,
-    //     userId: string
-    // ): Promise<void> {
-    //     logger.info(
-    //         { quoteId, companyId, userId },
-    //         "Début d'envoi de devis par email"
-    //     );
-    //     try {
-    //         // Récupérer le devis avec tous les détails
-    //         const quote = await this.getQuoteWithDetails(quoteId, companyId);
-    //         if (!quote.customer?.email) {
-    //             throw new CustomError("Le client n'a pas d'adresse email", 400);
-    //         }
+    public static async sendQuoteByEmail(
+        quoteId: string,
+        companyId: string,
+        user: any
+    ): Promise<void> {
+        logger.info(
+            { quoteId, companyId, userId: user.id },
+            "Début d'envoi de devis par email"
+        );
+        try {
+            // Récupérer le devis avec tous les détails
+            const quote = await this.getQuoteWithDetails(quoteId, companyId);
+            if (!quote.customer?.email) {
+                throw new CustomError("Le client n'a pas d'adresse email", 400);
+            }
 
-    //         // Récupérer l'utilisateur qui envoie l'email
-    //         const user = await prisma.user.findUnique({
-    //             where: { id: userId },
-    //         });
-    //         if (!user) {
-    //             throw new CustomError("Utilisateur non trouvé", 404);
-    //         }
+            // Générer le PDF du devis
+            const pdfResponse = await axios.post(
+                `${process.env.PDF_SERVICE_URL}/api/pdf/quote`,
+                {
+                    quote: quote,
+                    company: quote.company,
+                },
+                {
+                    responseType: "arraybuffer",
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
+                }
+            );
 
-    //         // Générer le PDF
-    //         const pdfBuffer = await PdfService.generateQuotePdf(quoteId);
+            if (!pdfResponse.data || pdfResponse.data.byteLength === 0) {
+                throw new CustomError(
+                    "Erreur lors de la génération du PDF",
+                    500
+                );
+            }
 
-    //         // Préparer le contenu de l'email
-    //         const customerName = quote.customer?.business
-    //             ? quote.customer.business.name
-    //             : `${quote.customer?.individual?.first_name} ${quote.customer?.individual?.last_name}`;
+            const pdfBuffer = Buffer.from(pdfResponse.data);
 
-    //         const htmlContent = `
-    //     <p>Bonjour ${customerName},</p>
-    //     <p>Veuillez trouver ci-joint votre devis n° ${quote.quote_number}.</p>
-    //     <p>Cordialement,</p>
-    //     <p>${user.first_name} ${user.last_name}</p>
-    //   `;
+            // Préparer le nom du client
+            const customerName = quote.customer?.business
+                ? quote.customer?.business?.name
+                : `${quote.customer?.individual?.first_name} ${quote.customer?.individual?.last_name}`;
 
-    //         // Envoyer l'email avec le devis en pièce jointe
-    //         await emailService.sendEmailWithAttachment(
-    //             [quote.customer?.email],
-    //             `Devis ${quote.quote_number}`,
-    //             htmlContent,
-    //             pdfBuffer,
-    //             `devis-${quote.quote_number}.pdf`,
-    //             {
-    //                 name: `${user.first_name} ${user.last_name}`,
-    //                 email: user.email || "noreply@zenbilling.com",
-    //             }
-    //         );
+            // Préparer le contenu HTML de l'email
+            const htmlContent = `
+                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+                    <div style="text-align: center; margin-bottom: 30px;">
+                        <h1 style="color: #333; margin-bottom: 10px;">Devis</h1>
+                        <p style="color: #666; font-size: 16px;">Devis n° ${quote.quote_number}</p>
+                    </div>
 
-    //         // Mettre à jour le statut du devis
-    //         if (quote.status === "draft") {
-    //             await prisma.quote.update({
-    //                 where: { quote_id: quoteId },
-    //                 data: { status: "sent" },
-    //             });
-    //         }
+                    <div style="background-color: #f8f9fa; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
+                        <p style="margin: 0 0 10px 0;"><strong>Bonjour ${customerName},</strong></p>
+                        <p style="margin: 0 0 15px 0;">Veuillez trouver ci-joint votre devis n° ${quote.quote_number} d'un montant de <strong>${Number(quote.amount_including_tax).toFixed(2)} €</strong>.</p>
+                        <p style="margin: 0 0 10px 0;"><strong>Date de validité :</strong> ${new Date(quote.validity_date).toLocaleDateString("fr-FR")}</p>
+                    </div>
 
-    //         logger.info(
-    //             {
-    //                 quoteId,
-    //                 companyId,
-    //                 userId,
-    //                 customerEmail: quote.customer?.email,
-    //             },
-    //             "Devis envoyé par email avec succès"
-    //         );
-    //     } catch (error) {
-    //         logger.error(
-    //             {
-    //                 error,
-    //                 quoteId,
-    //                 companyId,
-    //                 userId,
-    //             },
-    //             "Erreur lors de l'envoi du devis par email"
-    //         );
-    //         if (error instanceof CustomError) {
-    //             throw error;
-    //         }
-    //         throw new CustomError(
-    //             "Erreur lors de l'envoi du devis par email",
-    //             500
-    //         );
-    //     }
-    // }
+                    <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #ddd;">
+                        <p style="margin: 0 0 5px 0;">Cordialement,</p>
+                        <p style="margin: 0; font-weight: bold;">${user.first_name} ${user.last_name}</p>
+                        <p style="margin: 5px 0 0 0; color: #666;">${quote.company?.name}</p>
+                    </div>
+                </div>
+            `;
+
+            // Envoyer l'email avec le devis en pièce jointe
+            await axios.post(
+                `${process.env.EMAIL_SERVICE_URL}/api/email/send-with-attachment`,
+                {
+                    to: [quote.customer.email],
+                    subject: `Devis ${quote.quote_number}`,
+                    html: htmlContent,
+                    attachment: pdfBuffer.toString('base64'),
+                    filename: `devis-${quote.quote_number}.pdf`
+                },
+                {
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
+                    maxBodyLength: Infinity,
+                    maxContentLength: Infinity
+                }
+            );
+
+            // Mettre à jour le statut du devis
+            if (quote.status === "draft") {
+                await prisma.quote.update({
+                    where: { quote_id: quoteId },
+                    data: { status: "sent" },
+                });
+            }
+
+            logger.info(
+                {
+                    quoteId,
+                    companyId,
+                    userId: user.id,
+                    customerEmail: quote.customer?.email,
+                },
+                "Devis envoyé par email avec succès"
+            );
+        } catch (error) {
+            logger.error(
+                {
+                    error,
+                    quoteId,
+                    companyId,
+                    userId: user.id,
+                },
+                "Erreur lors de l'envoi du devis par email"
+            );
+            if (error instanceof CustomError) {
+                throw error;
+            }
+            throw new CustomError(
+                "Erreur lors de l'envoi du devis par email",
+                500
+            );
+        }
+    }
 
     public static async updateExpiredQuotes(): Promise<void> {
         logger.info("Début de la mise à jour des devis expirés");

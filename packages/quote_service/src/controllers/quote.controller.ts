@@ -262,36 +262,50 @@ export class QuoteController {
         }
     }
 
-    // public static async sendQuoteByEmail(req: AuthRequest, res: Response) {
-    //     try {
-    //         logger.info({ req: req.params }, "Sending quote by email");
-    //         if (!req.user?.company_id) {
-    //             return ApiResponse.error(
-    //                 res,
-    //                 401,
-    //                 "Aucune entreprise associée à l'utilisateur"
-    //             );
-    //         }
+    public static async sendQuoteByEmail(req: AuthRequest, res: Response) {
+        try {
+            logger.info({ req: req.params }, "Envoi de devis par email");
+            if (!req.user?.company_id) {
+                return ApiResponse.error(
+                    res,
+                    401,
+                    "Aucune entreprise associée à l'utilisateur"
+                );
+            }
 
-    //         await QuoteService.sendQuoteByEmail(
-    //             req.params.id,
-    //             req.user.company_id,
-    //             req.user.id
-    //         );
-    //         logger.info("Quote sent by email");
-    //         return ApiResponse.success(
-    //             res,
-    //             200,
-    //             "Devis envoyé par email avec succès"
-    //         );
-    //     } catch (error) {
-    //         logger.error({ error }, "Error sending quote by email");
-    //         if (error instanceof CustomError) {
-    //             return ApiResponse.error(res, error.statusCode, error.message);
-    //         }
-    //         return ApiResponse.error(res, 500, "Erreur interne du serveur");
-    //     }
-    // }
+            await QuoteService.sendQuoteByEmail(
+                req.params.id,
+                req.user.company_id,
+                req.user
+            );
+
+            logger.info(
+                {
+                    quoteId: req.params.id,
+                    userId: req.user.id,
+                },
+                "Devis envoyé par email avec succès"
+            );
+            
+            return ApiResponse.success(
+                res,
+                200,
+                "Devis envoyé par email avec succès"
+            );
+        } catch (error) {
+            logger.error(
+                { error, quoteId: req.params.id },
+                "Erreur lors de l'envoi du devis par email"
+            );
+            if (error instanceof CustomError) {
+                return ApiResponse.error(res, error.statusCode, error.message);
+            }
+            if (error instanceof Error) {
+                return ApiResponse.error(res, 400, error.message);
+            }
+            return ApiResponse.error(res, 500, "Erreur interne du serveur");
+        }
+    }
 
     public static async getCustomerQuotes(req: AuthRequest, res: Response) {
         try {

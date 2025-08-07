@@ -351,52 +351,36 @@ export class InvoiceController {
                 );
             }
 
-            const invoice = await InvoiceService.getInvoiceWithDetails(
+            await InvoiceService.sendInvoiceByEmail(
                 req.params.id,
-                req.user.company_id
+                req.user.company_id,
+                req.user.id
             );
 
-            const attachment = this.generateInvoicePdf(req, res);
-
-            await axios.post(
-                `${process.env.EMAIL_SERVICE_URL}/api/email/send-with-attachment`,
+            logger.info(
                 {
-                    to: invoice.customer?.email,
-                    subject: `Facture ${invoice.invoice_number}`,
-                    html: `
-                    <p>Bonjour ${invoice.customer?.business?.name},</p>
-                    <p>Veuillez trouver ci-joint votre facture n° ${invoice.invoice_number}.</p>
-                    <p>Cordialement,</p>
-                    <p>${invoice.user?.first_name} ${invoice.user?.last_name}</p>
-                    `,
-                    attachment: attachment,
+                    invoiceId: req.params.id,
+                    userId: req.user.id,
                 },
-                {
-                    headers: {
-                        "Content-Type": "application/json",
-                    },
-                }
+                "Facture envoyée par email avec succès"
             );
-
-            logger.info("Facture envoyée par email avec succès");
+            
             return ApiResponse.success(
                 res,
                 200,
                 "Facture envoyée par email avec succès"
             );
         } catch (error) {
-            console.log(error);
             logger.error(
-                { error },
+                { error, invoiceId: req.params.id },
                 "Erreur lors de l'envoi de la facture par email"
             );
             if (error instanceof CustomError) {
                 return ApiResponse.error(res, error.statusCode, error.message);
             }
-            logger.error(
-                { error },
-                "Erreur lors de l'envoi de la facture par email"
-            );
+            if (error instanceof Error) {
+                return ApiResponse.error(res, 400, error.message);
+            }
             return ApiResponse.error(res, 500, "Erreur interne du serveur");
         }
     }

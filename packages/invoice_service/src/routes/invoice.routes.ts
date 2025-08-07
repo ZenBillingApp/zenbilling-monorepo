@@ -48,12 +48,12 @@ router.post(
 
 router.post("/:id/send", authMiddleware, InvoiceController.sendInvoiceByEmail);
 
-// router.post(
-//     "/:id/send-with-payment-link",
-//     authMiddleware,
-//     validateRequest(sendInvoiceWithPaymentLinkSchema),
-//     InvoiceController.sendInvoiceByEmailWithPaymentLink
-// );
+router.post(
+    "/:id/send-with-payment-link",
+    authMiddleware,
+    validateRequest(sendInvoiceWithPaymentLinkSchema),
+    InvoiceController.sendInvoiceWithPaymentLink
+);
 
 router.get("/:id/pdf", authMiddleware, InvoiceController.generateInvoicePdf);
 

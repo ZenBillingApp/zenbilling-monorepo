@@ -260,6 +260,61 @@ export const createPayment = async (req: AuthRequest, res: Response) => {
     }
 };
 
+export const createCheckoutSession = async (req: AuthRequest, res: Response) => {
+    try {
+        const {
+            amount,
+            currency = "eur",
+            description,
+            connectedAccountId,
+            applicationFeeAmount,
+            invoiceId,
+            customerEmail,
+            successUrl,
+            cancelUrl
+        } = req.body;
+
+        // Vérifier que tous les champs nécessaires sont présents
+        if (!amount || !description || !connectedAccountId || !invoiceId || !customerEmail || !successUrl || !cancelUrl) {
+            return ApiResponse.error(
+                res,
+                400,
+                "Tous les champs sont requis (amount, description, connectedAccountId, invoiceId, customerEmail, successUrl, cancelUrl)"
+            );
+        }
+
+        // Créer la session de paiement Stripe
+        const session = await stripeService.createCheckoutSession(
+            amount,
+            currency,
+            description,
+            connectedAccountId,
+            applicationFeeAmount || Math.round(amount * 0.029), // 2.9% par défaut
+            invoiceId,
+            customerEmail,
+            successUrl,
+            cancelUrl
+        );
+
+        return ApiResponse.success(
+            res,
+            200,
+            "Session de paiement créée avec succès",
+            {
+                sessionId: session.id,
+                url: session.url
+            }
+        );
+    } catch (error) {
+        logger.error("Erreur lors de la création de la session de paiement:", error);
+        return ApiResponse.error(
+            res,
+            500,
+            "Erreur lors de la création de la session de paiement"
+        );
+    }
+};
+
 // export const createPaymentWithEmailLink = async (
 //     req: AuthRequest,
 //     res: Response

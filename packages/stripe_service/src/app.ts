@@ -17,6 +17,18 @@ app.use(
     })
 );
 
+// Route pour Stripe Webhook - doit être avant bodyParser
+app.post(
+    "/api/stripe/webhook",
+    express.raw({ type: "application/json" }),
+    (req, res) => {
+        const {
+            handleWebhook,
+        } = require("./controllers/stripe-webhook.controller");
+        handleWebhook(req, res);
+    }
+);
+
 // Parse JSON bodies
 app.use(express.json());
 

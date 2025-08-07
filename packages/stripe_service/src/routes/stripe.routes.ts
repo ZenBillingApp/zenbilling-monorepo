@@ -49,6 +49,13 @@ router.get(
  */
 router.post("/create-payment", authMiddleware, stripeController.createPayment);
 
+/**
+ * @route POST /api/stripe/create-checkout-session
+ * @desc Créer une session de paiement Stripe Checkout
+ * @access Private
+ */
+router.post("/create-checkout-session", stripeController.createCheckoutSession);
+
 // /**
 //  * @route POST /api/stripe/create-payment-with-email
 //  * @desc Créer un paiement pour une facture et envoyer un e-mail avec le lien de paiement
@@ -61,15 +68,15 @@ router.post("/create-payment", authMiddleware, stripeController.createPayment);
 // );
 
 /**
- * @route POST /api/stripe/webhook
- * @desc Webhook pour les événements Stripe
- * @access Public
- */
-router.post(
-    "/webhook",
-    express.raw({ type: "application/json" }),
-    handleWebhook
-);
+//  * @route POST /api/stripe/webhook
+//  * @desc Webhook pour les événements Stripe
+//  * @access Public
+//  */
+// router.post(
+//     "/webhook",
+//     express.raw({ type: "application/json" }),
+//     handleWebhook
+// );
 
 /**
  * @route GET /api/stripe/dashboard-link

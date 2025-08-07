@@ -217,35 +217,15 @@ export const createPaymentSchema = Joi.object({
 });
 
 export const sendInvoiceWithPaymentLinkSchema = Joi.object({
-    includePaymentLink: Joi.boolean().default(false).messages({
-        "boolean.base": "includePaymentLink doit être un booléen",
+    successUrl: Joi.string().uri().messages({
+        "string.empty": "L'URL de succès est requise",
+        "string.uri": "L'URL de succès doit être une URL valide",
+        "any.required": "L'URL de succès est requise",
     }),
-    successUrl: Joi.string()
-        .uri()
-        .when("includePaymentLink", {
-            is: true,
-            then: Joi.required(),
-            otherwise: Joi.optional(),
-        })
-        .messages({
-            "string.empty":
-                "L'URL de succès est requise si includePaymentLink est true",
-            "string.uri": "L'URL de succès doit être une URL valide",
-            "any.required":
-                "L'URL de succès est requise si includePaymentLink est true",
-        }),
-    cancelUrl: Joi.string()
-        .uri()
-        .when("includePaymentLink", {
-            is: true,
-            then: Joi.required(),
-            otherwise: Joi.optional(),
-        })
-        .messages({
-            "string.empty":
-                "L'URL d'annulation est requise si includePaymentLink est true",
-            "string.uri": "L'URL d'annulation doit être une URL valide",
-            "any.required":
-                "L'URL d'annulation est requise si includePaymentLink est true",
-        }),
+    cancelUrl: Joi.string().uri().messages({
+        "string.empty": "L'URL d'annulation est requise",
+        "string.uri": "L'URL d'annulation doit être une URL valide",
+        "any.required":
+            "L'URL d'annulation est requise si includePaymentLink est true",
+    }),
 });

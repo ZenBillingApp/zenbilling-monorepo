@@ -364,7 +364,7 @@ export class InvoiceController {
                 },
                 "Facture envoyée par email avec succès"
             );
-            
+
             return ApiResponse.success(
                 res,
                 200,
@@ -374,6 +374,81 @@ export class InvoiceController {
             logger.error(
                 { error, invoiceId: req.params.id },
                 "Erreur lors de l'envoi de la facture par email"
+            );
+            if (error instanceof CustomError) {
+                return ApiResponse.error(res, error.statusCode, error.message);
+            }
+            if (error instanceof Error) {
+                return ApiResponse.error(res, 400, error.message);
+            }
+            return ApiResponse.error(res, 500, "Erreur interne du serveur");
+        }
+    }
+
+    public static async sendInvoiceWithPaymentLink(
+        req: AuthRequest,
+        res: Response
+    ) {
+        try {
+            logger.info(
+                { req: req.params },
+                "Envoi de facture par email avec lien de paiement"
+            );
+            if (!req.user?.company_id) {
+                return ApiResponse.error(
+                    res,
+                    401,
+                    "Aucune entreprise associée à l'utilisateur"
+                );
+            }
+
+            const { successUrl, cancelUrl } = req.body;
+
+            // Validation des URLs si lien de paiement demandé
+
+            if (!successUrl || !cancelUrl) {
+                return ApiResponse.error(
+                    res,
+                    400,
+                    "Les URLs de succès et d'annulation sont requises pour inclure un lien de paiement"
+                );
+            }
+
+            // Validation basique des URLs
+            try {
+                new URL(successUrl);
+                new URL(cancelUrl);
+            } catch {
+                return ApiResponse.error(
+                    res,
+                    400,
+                    "Les URLs fournies ne sont pas valides"
+                );
+            }
+
+            await InvoiceService.sendInvoiceWithPaymentLink(
+                req.params.id,
+                req.user.company_id,
+                req.user,
+                { successUrl, cancelUrl }
+            );
+
+            const message =
+                "Facture envoyée par email avec lien de paiement avec succès";
+
+            logger.info(
+                {
+                    invoiceId: req.params.id,
+                    userId: req.user.id,
+                },
+                message
+            );
+
+            return ApiResponse.success(res, 200, message);
+        } catch (error) {
+            logger.error(
+                { error, invoiceId: req.params.id },
+                "Erreur lors de l'envoi de la facture par email avec lien de paiement"
             );
             if (error instanceof CustomError) {
                 return ApiResponse.error(res, error.statusCode, error.message);

@@ -26,9 +26,10 @@ router.get(
     InvoiceController.getCustomerInvoices
 );
 
-router.get("/:id", authMiddleware, InvoiceController.getInvoice);
+// More specific routes must come before general ones
+router.get("/:id/pdf", authMiddleware, InvoiceController.generateInvoicePdf);
 
-// router.get("/:id/pdf", authMiddleware, InvoiceController.downloadInvoicePdf);
+router.get("/:id", authMiddleware, InvoiceController.getInvoice);
 
 router.put(
     "/:id",
@@ -54,7 +55,5 @@ router.post(
     validateRequest(sendInvoiceWithPaymentLinkSchema),
     InvoiceController.sendInvoiceWithPaymentLink
 );
-
-router.get("/:id/pdf", authMiddleware, InvoiceController.generateInvoicePdf);
 
 export default router;

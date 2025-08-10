@@ -3,15 +3,15 @@ import { ProductService } from "../services/product.service";
 import { AuthRequest } from "@zenbilling/shared/src/interfaces/Auth.interface";
 import { ApiResponse } from "@zenbilling/shared/src/utils/apiResponse";
 import { CustomError } from "@zenbilling/shared/src/utils/customError";
-// import {
-//     IGenerateDescriptionRequest,
-//     IGenerateDescriptionSuggestionsRequest,
-//     IGenerateDescriptionResponse,
-//     IGenerateDescriptionSuggestionsResponse,
-// } from "@zenbilling/shared/src/interfaces/AI.interface";
+import { AIProductService } from "../services/ai-product.service";
+import {
+    GenerateDescriptionRequest,
+    GenerateDescriptionSuggestionsRequest,
+} from "@zenbilling/shared/src/interfaces/AI.interface";
 import logger from "@zenbilling/shared/src/utils/logger";
 
 export class ProductController {
+    private static aiProductService = new AIProductService();
     public static getAvailableUnits(_req: AuthRequest, res: Response) {
         try {
             logger.info("Getting available units");
@@ -269,120 +269,310 @@ export class ProductController {
         }
     }
 
-    // /**
-    //  * Génère une description IA pour un produit
-    //  */
-    // public static async generateProductDescription(
-    //     req: AuthRequest,
-    //     res: Response
-    // ) {
-    //     try {
-    //         logger.info(
-    //             { req: req.body },
-    //             "Génération de description IA pour produit"
-    //         );
+    /**
+     * Génère une description IA pour un produit
+     */
+    public static async generateProductDescription(
+        req: AuthRequest,
+        res: Response
+    ) {
+        try {
+            logger.info(
+                { req: req.body },
+                "Génération de description IA pour produit"
+            );
 
-    //         const requestData: IGenerateDescriptionRequest = req.body;
+            const requestData: GenerateDescriptionRequest = req.body;
 
-    //         const description = await AIService.generateProductDescription(
-    //             requestData.productName,
-    //             requestData.category,
-    //             requestData.additionalInfo
-    //         );
+            // Validation basique
+            if (
+                !requestData.productName ||
+                requestData.productName.trim().length === 0
+            ) {
+                return ApiResponse.error(
+                    res,
+                    400,
+                    "Le nom du produit est requis"
+                );
+            }
 
-    //         const response: IGenerateDescriptionResponse = {
-    //             description,
-    //             generatedAt: new Date(),
-    //             productName: requestData.productName,
-    //         };
+            const response =
+                await ProductController.aiProductService.generateProductDescription(
+                    requestData
+                );
 
-    //         logger.info(
-    //             {
-    //                 productName: requestData.productName,
-    //                 descriptionLength: description.length,
-    //             },
-    //             "Description IA générée avec succès"
-    //         );
+            logger.info(
+                {
+                    productName: requestData.productName,
+                    descriptionLength: response.description.length,
+                },
+                "Description IA générée avec succès"
+            );
 
-    //         return ApiResponse.success(
-    //             res,
-    //             200,
-    //             "Description générée avec succès",
-    //             response
-    //         );
-    //     } catch (error) {
-    //         logger.error(
-    //             { error },
-    //             "Erreur lors de la génération de description IA"
-    //         );
-    //         if (error instanceof CustomError) {
-    //             return ApiResponse.error(res, error.statusCode, error.message);
-    //         }
-    //         logger.error(
-    //             { error },
-    //             "Erreur lors de la génération de description IA"
-    //         );
-    //         return ApiResponse.error(res, 500, "Erreur interne du serveur");
-    //     }
-    // }
+            return ApiResponse.success(
+                res,
+                200,
+                "Description générée avec succès",
+                response
+            );
+        } catch (error) {
+            logger.error(
+                { error },
+                "Erreur lors de la génération de description IA"
+            );
+            if (error instanceof CustomError) {
+                return ApiResponse.error(res, error.statusCode, error.message);
+            }
+            if (error instanceof Error) {
+                return ApiResponse.error(res, 500, error.message);
+            }
+            return ApiResponse.error(res, 500, "Erreur interne du serveur");
+        }
+    }
 
-    // /**
-    //  * Génère plusieurs suggestions de descriptions IA pour un produit
-    //  */
-    // public static async generateProductDescriptionSuggestions(
-    //     req: AuthRequest,
-    //     res: Response
-    // ) {
-    //     try {
-    //         logger.info(
-    //             { req: req.body },
-    //             "Génération de suggestions de descriptions IA"
-    //         );
+    /**
+     * Génère plusieurs suggestions de descriptions IA pour un produit
+     */
+    public static async generateProductDescriptionSuggestions(
+        req: AuthRequest,
+        res: Response
+    ) {
+        try {
+            logger.info(
+                { req: req.body },
+                "Génération de suggestions de descriptions IA"
+            );
 
-    //         const requestData: IGenerateDescriptionSuggestionsRequest =
-    //             req.body;
+            const requestData: GenerateDescriptionSuggestionsRequest = req.body;
 
-    //         const suggestions =
-    //             await AIService.generateProductDescriptionSuggestions(
-    //                 requestData.productName,
-    //                 requestData.category,
-    //                 requestData.count || 3
-    //             );
+            // Validation basique
+            if (
+                !requestData.productName ||
+                requestData.productName.trim().length === 0
+            ) {
+                return ApiResponse.error(
+                    res,
+                    400,
+                    "Le nom du produit est requis"
+                );
+            }
 
-    //         const response: IGenerateDescriptionSuggestionsResponse = {
-    //             suggestions,
-    //             generatedAt: new Date(),
-    //             productName: requestData.productName,
-    //             count: suggestions.length,
-    //         };
+            if (
+                requestData.count &&
+                (requestData.count < 1 || requestData.count > 5)
+            ) {
+                return ApiResponse.error(
+                    res,
+                    400,
+                    "Le nombre de suggestions doit être entre 1 et 5"
+                );
+            }
 
-    //         logger.info(
-    //             {
-    //                 productName: requestData.productName,
-    //                 suggestionsCount: suggestions.length,
-    //             },
-    //             "Suggestions de descriptions IA générées avec succès"
-    //         );
+            const response =
+                await ProductController.aiProductService.generateProductDescriptionSuggestions(
+                    requestData
+                );
 
-    //         return ApiResponse.success(
-    //             res,
-    //             200,
-    //             "Suggestions générées avec succès",
-    //             response
-    //         );
-    //     } catch (error) {
-    //         logger.error(
-    //             { error },
-    //             "Erreur lors de la génération de suggestions IA"
-    //         );
-    //         if (error instanceof CustomError) {
-    //             return ApiResponse.error(res, error.statusCode, error.message);
-    //         }
-    //         logger.error(
-    //             { error },
-    //             "Erreur lors de la génération de suggestions IA"
-    //         );
-    //         return ApiResponse.error(res, 500, "Erreur interne du serveur");
-    //     }
-    // }
+            logger.info(
+                {
+                    productName: requestData.productName,
+                    suggestionsCount: response.suggestions.length,
+                },
+                "Suggestions de descriptions IA générées avec succès"
+            );
+
+            return ApiResponse.success(
+                res,
+                200,
+                "Suggestions générées avec succès",
+                response
+            );
+        } catch (error) {
+            logger.error(
+                { error },
+                "Erreur lors de la génération de suggestions IA"
+            );
+            if (error instanceof CustomError) {
+                return ApiResponse.error(res, error.statusCode, error.message);
+            }
+            if (error instanceof Error) {
+                return ApiResponse.error(res, 500, error.message);
+            }
+            return ApiResponse.error(res, 500, "Erreur interne du serveur");
+        }
+    }
+
+    /**
+     * Améliore une description de produit existante
+     */
+    public static async improveProductDescription(
+        req: AuthRequest,
+        res: Response
+    ) {
+        try {
+            logger.info(
+                { req: req.body },
+                "Amélioration de description IA pour produit"
+            );
+
+            const { productName, currentDescription, improvements } = req.body;
+
+            // Validation basique
+            if (!productName || productName.trim().length === 0) {
+                return ApiResponse.error(
+                    res,
+                    400,
+                    "Le nom du produit est requis"
+                );
+            }
+
+            if (!currentDescription || currentDescription.trim().length === 0) {
+                return ApiResponse.error(
+                    res,
+                    400,
+                    "La description actuelle est requise"
+                );
+            }
+
+            const improvedDescription =
+                await ProductController.aiProductService.improveProductDescription(
+                    productName,
+                    currentDescription,
+                    improvements
+                );
+
+            const response = {
+                productName,
+                originalDescription: currentDescription,
+                improvedDescription,
+                improvedAt: new Date(),
+            };
+
+            logger.info(
+                {
+                    productName,
+                    originalLength: currentDescription.length,
+                    improvedLength: improvedDescription.length,
+                },
+                "Description IA améliorée avec succès"
+            );
+
+            return ApiResponse.success(
+                res,
+                200,
+                "Description améliorée avec succès",
+                response
+            );
+        } catch (error) {
+            logger.error(
+                { error },
+                "Erreur lors de l'amélioration de description IA"
+            );
+            if (error instanceof CustomError) {
+                return ApiResponse.error(res, error.statusCode, error.message);
+            }
+            if (error instanceof Error) {
+                return ApiResponse.error(res, 500, error.message);
+            }
+            return ApiResponse.error(res, 500, "Erreur interne du serveur");
+        }
+    }
+
+    /**
+     * Génère des mots-clés pour un produit
+     */
+    public static async generateProductKeywords(
+        req: AuthRequest,
+        res: Response
+    ) {
+        try {
+            logger.info(
+                { req: req.body },
+                "Génération de mots-clés IA pour produit"
+            );
+
+            const { productName, description } = req.body;
+
+            // Validation basique
+            if (!productName || productName.trim().length === 0) {
+                return ApiResponse.error(
+                    res,
+                    400,
+                    "Le nom du produit est requis"
+                );
+            }
+
+            const keywords =
+                await ProductController.aiProductService.generateProductKeywords(
+                    productName,
+                    description
+                );
+
+            const response = {
+                productName,
+                keywords,
+                generatedAt: new Date(),
+            };
+
+            logger.info(
+                {
+                    productName,
+                    keywordsCount: keywords.length,
+                },
+                "Mots-clés IA générés avec succès"
+            );
+
+            return ApiResponse.success(
+                res,
+                200,
+                "Mots-clés générés avec succès",
+                response
+            );
+        } catch (error) {
+            logger.error(
+                { error },
+                "Erreur lors de la génération de mots-clés IA"
+            );
+            if (error instanceof CustomError) {
+                return ApiResponse.error(res, error.statusCode, error.message);
+            }
+            if (error instanceof Error) {
+                return ApiResponse.error(res, 500, error.message);
+            }
+            return ApiResponse.error(res, 500, "Erreur interne du serveur");
+        }
+    }
+
+    /**
+     * Vérifie la disponibilité du service AI
+     */
+    public static async checkAIService(_req: AuthRequest, res: Response) {
+        try {
+            const isAvailable =
+                await ProductController.aiProductService.isAIServiceAvailable();
+
+            const response = {
+                aiServiceAvailable: isAvailable,
+                checkedAt: new Date(),
+                status: isAvailable ? "available" : "unavailable",
+            };
+
+            return ApiResponse.success(
+                res,
+                200,
+                `Service AI ${isAvailable ? "disponible" : "non disponible"}`,
+                response
+            );
+        } catch (error) {
+            logger.error(
+                { error },
+                "Erreur lors de la vérification du service AI"
+            );
+            return ApiResponse.error(
+                res,
+                500,
+                "Erreur lors de la vérification du service AI"
+            );
+        }
+    }
 }

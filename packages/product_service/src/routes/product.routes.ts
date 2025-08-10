@@ -6,10 +6,6 @@ import {
     createProductSchema,
     updateProductSchema,
 } from "@zenbilling/shared/src/validations/product.validation";
-// import {
-//     generateDescriptionSchema,
-//     generateDescriptionSuggestionsSchema,
-// } from "@zenbilling/shared/src/validations/ai.validation";
 
 const router = Router();
 
@@ -36,20 +32,5 @@ router.put(
 );
 
 router.delete("/:id", authMiddleware, ProductController.deleteProduct);
-
-// // Routes IA pour génération de descriptions
-// router.post(
-//     "/generate-description",
-//     authMiddleware,
-//     validateRequest(generateDescriptionSchema),
-//     ProductController.generateProductDescription
-// );
-
-// router.post(
-//     "/generate-description-suggestions",
-//     authMiddleware,
-//     validateRequest(generateDescriptionSuggestionsSchema),
-//     ProductController.generateProductDescriptionSuggestions
-// );
 
 export default router;

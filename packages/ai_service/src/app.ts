@@ -72,15 +72,6 @@ app.use(
     }
 );
 
-// Middleware pour les routes non trouvées
-app.use("*splat", (req, res) => {
-    res.status(404).json({
-        success: false,
-        message: "Route non trouvée",
-        path: req.originalUrl,
-    });
-});
-
 app.listen(port, () => {
     logger.info(`🤖 Service AI démarré sur le port ${port}`);
 });

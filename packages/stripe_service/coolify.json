@@ -1,0 +1,38 @@
+{
+  "name": "zenbilling-stripe-service",
+  "description": "Service de paiement Stripe Zenbilling",
+  "image": "ghcr.io/your-username/zenbilling-stripe-service:latest",
+  "port": 3003,
+  "environment": [
+    {
+      "key": "NODE_ENV",
+      "value": "production"
+    },
+    {
+      "key": "PORT",
+      "value": "3003"
+    },
+    {
+      "key": "DATABASE_URL",
+      "value": "${DATABASE_URL}"
+    },
+    {
+      "key": "STRIPE_SECRET_KEY",
+      "value": "${STRIPE_SECRET_KEY}"
+    },
+    {
+      "key": "STRIPE_WEBHOOK_SECRET",
+      "value": "${STRIPE_WEBHOOK_SECRET}"
+    }
+  ],
+  "healthcheck": {
+    "enabled": true,
+    "path": "/health",
+    "interval": 30,
+    "timeout": 10,
+    "retries": 3
+  },
+  "volumes": [],
+  "networks": ["zenbilling-network"],
+  "restart": "unless-stopped"
+}

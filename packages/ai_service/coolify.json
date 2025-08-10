@@ -1,0 +1,34 @@
+{
+  "name": "zenbilling-ai-service",
+  "description": "Service IA Zenbilling",
+  "image": "ghcr.io/your-username/zenbilling-ai-service:latest",
+  "port": 3011,
+  "environment": [
+    {
+      "key": "NODE_ENV",
+      "value": "production"
+    },
+    {
+      "key": "PORT",
+      "value": "3011"
+    },
+    {
+      "key": "DATABASE_URL",
+      "value": "${DATABASE_URL}"
+    },
+    {
+      "key": "OPENAI_API_KEY",
+      "value": "${OPENAI_API_KEY}"
+    }
+  ],
+  "healthcheck": {
+    "enabled": true,
+    "path": "/health",
+    "interval": 30,
+    "timeout": 10,
+    "retries": 3
+  },
+  "volumes": [],
+  "networks": ["zenbilling-network"],
+  "restart": "unless-stopped"
+}

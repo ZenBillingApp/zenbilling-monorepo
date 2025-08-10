@@ -1,0 +1,30 @@
+{
+  "name": "zenbilling-pdf-service",
+  "description": "Service de génération de PDF Zenbilling",
+  "image": "ghcr.io/your-username/zenbilling-pdf-service:latest",
+  "port": 3010,
+  "environment": [
+    {
+      "key": "NODE_ENV",
+      "value": "production"
+    },
+    {
+      "key": "PORT",
+      "value": "3010"
+    },
+    {
+      "key": "DATABASE_URL",
+      "value": "${DATABASE_URL}"
+    }
+  ],
+  "healthcheck": {
+    "enabled": true,
+    "path": "/health",
+    "interval": 30,
+    "timeout": 10,
+    "retries": 3
+  },
+  "volumes": [],
+  "networks": ["zenbilling-network"],
+  "restart": "unless-stopped"
+}

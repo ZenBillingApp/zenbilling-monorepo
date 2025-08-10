@@ -1,0 +1,30 @@
+{
+  "name": "zenbilling-product-service",
+  "description": "Service de gestion des produits Zenbilling",
+  "image": "ghcr.io/your-username/zenbilling-product-service:latest",
+  "port": 3008,
+  "environment": [
+    {
+      "key": "NODE_ENV",
+      "value": "production"
+    },
+    {
+      "key": "PORT",
+      "value": "3008"
+    },
+    {
+      "key": "DATABASE_URL",
+      "value": "${DATABASE_URL}"
+    }
+  ],
+  "healthcheck": {
+    "enabled": true,
+    "path": "/health",
+    "interval": 30,
+    "timeout": 10,
+    "retries": 3
+  },
+  "volumes": [],
+  "networks": ["zenbilling-network"],
+  "restart": "unless-stopped"
+}

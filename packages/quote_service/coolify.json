@@ -1,0 +1,30 @@
+{
+  "name": "zenbilling-quote-service",
+  "description": "Service de gestion des devis Zenbilling",
+  "image": "ghcr.io/your-username/zenbilling-quote-service:latest",
+  "port": 3006,
+  "environment": [
+    {
+      "key": "NODE_ENV",
+      "value": "production"
+    },
+    {
+      "key": "PORT",
+      "value": "3006"
+    },
+    {
+      "key": "DATABASE_URL",
+      "value": "${DATABASE_URL}"
+    }
+  ],
+  "healthcheck": {
+    "enabled": true,
+    "path": "/health",
+    "interval": 30,
+    "timeout": 10,
+    "retries": 3
+  },
+  "volumes": [],
+  "networks": ["zenbilling-network"],
+  "restart": "unless-stopped"
+}

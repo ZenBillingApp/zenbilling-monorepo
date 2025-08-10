@@ -2,10 +2,6 @@ FROM node:18-alpine AS builder
 
 WORKDIR /app
 
-# Copier les fichiers de configuration du monorepo
-COPY package*.json ./
-COPY tsconfig.json ./
-
 # Copier le package shared pour la compilation
 COPY packages/shared/ ./packages/shared/
 

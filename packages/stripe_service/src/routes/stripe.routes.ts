@@ -1,8 +1,6 @@
 import { Router } from "express";
 import * as stripeController from "../controllers/stripe.controller";
-import { handleWebhook } from "../controllers/stripe-webhook.controller";
 import { authMiddleware } from "@zenbilling/shared/src/middlewares/auth.middleware";
-import express from "express";
 
 const router = Router();
 

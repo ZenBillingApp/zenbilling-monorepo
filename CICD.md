@@ -31,18 +31,24 @@
 - Push sur `main` → Déploiement en production
 - Push sur `develop` → Déploiement en staging  
 - Changements dans `packages/` uniquement
+- Détection automatique des services modifiés
 
-**Déploiement manuel :**
-```bash
-# Via l'interface GitHub Actions
-Actions → Deploy to Coolify → Run workflow
-```
+### 2. Déploiement manuel (`deploy-manual.yml`)
+
+**Déclenchement :**
+- Via l'interface GitHub Actions uniquement
 
 **Options disponibles :**
 - **Services** : Spécifier quels services déployer (ou "all")
 - **Environment** : Choisir staging ou production
 
-### 2. Release de production (`release.yml`)
+**Utilisation :**
+```bash
+# Via l'interface GitHub Actions
+Actions → Manual Deploy → Run workflow
+```
+
+### 3. Release de production (`release.yml`)
 
 **Déclenchement :**
 - Création d'un tag git commençant par `v` (ex: v1.0.0)

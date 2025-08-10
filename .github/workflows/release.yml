@@ -74,7 +74,6 @@ jobs:
   deploy-production:
     needs: build-and-push
     runs-on: ubuntu-latest
-    environment: production
     strategy:
       matrix:
         service: [

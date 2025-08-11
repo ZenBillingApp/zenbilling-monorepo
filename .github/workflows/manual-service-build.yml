@@ -47,7 +47,9 @@ jobs:
         with:
           node-version: '18'
           cache: 'npm'
-          cache-dependency-path: 'packages/shared/package-lock.json'
+          cache-dependency-path: |
+            package-lock.json
+            packages/*/package-lock.json
 
       - name: Install and build shared package
         run: |

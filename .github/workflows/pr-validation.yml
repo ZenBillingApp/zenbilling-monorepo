@@ -25,7 +25,7 @@ jobs:
       - name: Detect changed services
         id: changes
         run: |
-          SERVICES=(
+          ALL_SERVICES=(
             "api_gateway"
             "auth_service" 
             "company_service"
@@ -50,10 +50,10 @@ jobs:
           if echo "$CHANGED_FILES" | grep -q "packages/shared/"; then
             SHARED_CHANGED=true
             # Si shared change, vérifier tous les services
-            CHANGED_SERVICES="${SERVICES[@]}"
+            CHANGED_SERVICES=("${ALL_SERVICES[@]}")
           else
             # Vérifier les changements par service
-            for service in "${SERVICES[@]}"; do
+            for service in "${ALL_SERVICES[@]}"; do
               if echo "$CHANGED_FILES" | grep -q "packages/$service/"; then
                 CHANGED_SERVICES+=("$service")
               fi
@@ -62,14 +62,30 @@ jobs:
           
           echo "shared=$SHARED_CHANGED" >> $GITHUB_OUTPUT
           
+          # Debug
+          echo "Services détectés comme modifiés:"
+          for service in "${CHANGED_SERVICES[@]}"; do
+            echo "  - $service"
+          done
+          
+          # Convertir en JSON pour la matrice
           if [[ ${#CHANGED_SERVICES[@]} -eq 0 ]]; then
             echo "services=[]" >> $GITHUB_OUTPUT
           else
-            SERVICES_JSON=$(printf '%s\n' "${CHANGED_SERVICES[@]}" | jq -R . | jq -s .)
-            echo "services=$SERVICES_JSON" >> $GITHUB_OUTPUT
+            # Créer le JSON manuellement pour éviter les problèmes de formatage
+            json_services="["
+            for i in "${!CHANGED_SERVICES[@]}"; do
+              if [[ $i -gt 0 ]]; then
+                json_services+=","
+              fi
+              json_services+="\"${CHANGED_SERVICES[i]}\""
+            done
+            json_services+="]"
+            
+            echo "services=$json_services" >> $GITHUB_OUTPUT
           fi
           
-          echo "Services détectés: ${CHANGED_SERVICES[@]}"
+          echo "JSON output: $json_services"
 
   validate-shared:
     runs-on: ubuntu-latest

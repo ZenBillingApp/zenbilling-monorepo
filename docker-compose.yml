@@ -35,7 +35,7 @@ services:
     api_gateway:
         build:
             context: ./packages/api_gateway
-            dockerfile: packages/api_gateway/Dockerfile
+            dockerfile: Dockerfile
         ports:
             - "8080:8080"
         environment:
@@ -62,7 +62,7 @@ services:
     auth_service:
         build:
             context: ./packages/auth_service
-            dockerfile: packages/auth_service/Dockerfile
+            dockerfile: Dockerfile
         ports:
             - "3001:3001"
         environment:
@@ -94,7 +94,7 @@ services:
     company_service:
         build:
             context: ./packages/company_service
-            dockerfile: packages/company_service/Dockerfile
+            dockerfile: Dockerfile
         ports:
             - "3002:3002"
         environment:
@@ -122,7 +122,7 @@ services:
     stripe_service:
         build:
             context: ./packages/stripe_service
-            dockerfile: packages/stripe_service/Dockerfile
+            dockerfile: Dockerfile
         ports:
             - "3003:3003"
         environment:
@@ -152,7 +152,7 @@ services:
     dashboard_service:
         build:
             context: ./packages/dashboard_service
-            dockerfile: packages/dashboard_service/Dockerfile
+            dockerfile: Dockerfile
         ports:
             - "3004:3004"
         environment:
@@ -180,7 +180,7 @@ services:
     invoice_service:
         build:
             context: ./packages/invoice_service
-            dockerfile: packages/invoice_service/Dockerfile
+            dockerfile: Dockerfile
         ports:
             - "3005:3005"
         environment:
@@ -208,7 +208,7 @@ services:
     quote_service:
         build:
             context: ./packages/quote_service
-            dockerfile: packages/quote_service/Dockerfile
+            dockerfile: Dockerfile
         ports:
             - "3006:3006"
         environment:
@@ -236,7 +236,7 @@ services:
     email_service:
         build:
             context: ./packages/email_service
-            dockerfile: packages/email_service/Dockerfile
+            dockerfile: Dockerfile
         ports:
             - "3007:3007"
         environment:
@@ -268,7 +268,7 @@ services:
     product_service:
         build:
             context: ./packages/product_service
-            dockerfile: packages/product_service/Dockerfile
+            dockerfile: Dockerfile
         ports:
             - "3008:3008"
         environment:
@@ -296,7 +296,7 @@ services:
     customer_service:
         build:
             context: ./packages/customer_service
-            dockerfile: packages/customer_service/Dockerfile
+            dockerfile: Dockerfile
         ports:
             - "3009:3009"
         environment:
@@ -324,7 +324,7 @@ services:
     pdf_service:
         build:
             context: ./packages/pdf_service
-            dockerfile: packages/pdf_service/Dockerfile
+            dockerfile: Dockerfile
         ports:
             - "3010:3010"
         environment:
@@ -352,7 +352,7 @@ services:
     ai_service:
         build:
             context: ./packages/ai_service
-            dockerfile: packages/ai_service/Dockerfile
+            dockerfile: Dockerfile
         ports:
             - "3011:3011"
         environment:

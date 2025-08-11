@@ -1,7 +1,7 @@
 {
   "name": "zenbilling-quote-service",
   "description": "Service de gestion des devis Zenbilling",
-  "image": "ghcr.io/your-username/zenbilling-quote-service:latest",
+  "image": "ghcr.io/Hassan-JERRAR/zenbilling-quote-service:latest",
   "port": 3006,
   "environment": [
     {

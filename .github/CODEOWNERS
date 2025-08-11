@@ -1,0 +1,37 @@
+# CODEOWNERS pour Zenbilling Monorepo
+# Documentation: https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
+
+# Propriétaire global du repository
+* @Hassan-JERRAR
+
+# Configuration et infrastructure
+/.github/ @Hassan-JERRAR
+/docker-compose.yml @Hassan-JERRAR
+/lerna.json @Hassan-JERRAR
+/package.json @Hassan-JERRAR
+/CLAUDE.md @Hassan-JERRAR
+/DEPLOY.md @Hassan-JERRAR
+
+# Package partagé - critique pour tous les services
+/packages/shared/ @Hassan-JERRAR
+
+# Services critiques
+/packages/auth_service/ @Hassan-JERRAR
+/packages/api_gateway/ @Hassan-JERRAR
+
+# Services métier
+/packages/company_service/ @Hassan-JERRAR
+/packages/customer_service/ @Hassan-JERRAR
+/packages/invoice_service/ @Hassan-JERRAR
+/packages/quote_service/ @Hassan-JERRAR
+/packages/product_service/ @Hassan-JERRAR
+/packages/stripe_service/ @Hassan-JERRAR
+/packages/dashboard_service/ @Hassan-JERRAR
+/packages/email_service/ @Hassan-JERRAR
+/packages/pdf_service/ @Hassan-JERRAR
+/packages/ai_service/ @Hassan-JERRAR
+
+# Fichiers de configuration sensibles
+**/coolify.json @Hassan-JERRAR
+**/Dockerfile @Hassan-JERRAR
+**/.env* @Hassan-JERRAR

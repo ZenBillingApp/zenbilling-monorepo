@@ -1,0 +1,118 @@
+name: Manual Service Build
+
+on:
+  workflow_dispatch:
+    inputs:
+      service:
+        description: 'Service à construire'
+        required: true
+        type: choice
+        options:
+          - api_gateway
+          - auth_service
+          - company_service
+          - customer_service
+          - dashboard_service
+          - email_service
+          - invoice_service
+          - pdf_service
+          - product_service
+          - quote_service
+          - stripe_service
+          - ai_service
+      tag:
+        description: 'Tag de l''image (défaut: branch name)'
+        required: false
+        default: ''
+        type: string
+      push_image:
+        description: 'Pousser l''image vers le registry'
+        required: true
+        type: boolean
+        default: true
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_PREFIX: zenbilling
+
+jobs:
+  build-shared:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: 'packages/shared/package-lock.json'
+
+      - name: Install and build shared package
+        run: |
+          cd packages/shared
+          npm ci
+          npm run build
+
+      - name: Upload shared build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: shared-dist
+          path: packages/shared/dist
+          retention-days: 1
+
+  build-service:
+    runs-on: ubuntu-latest
+    needs: build-shared
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Container Registry
+        if: github.event.inputs.push_image == 'true'
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Download shared build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: shared-dist
+          path: packages/shared/dist
+
+      - name: Determine tag
+        id: tag
+        run: |
+          if [[ -n "${{ github.event.inputs.tag }}" ]]; then
+            TAG="${{ github.event.inputs.tag }}"
+          else
+            TAG="${{ github.ref_name }}"
+          fi
+          echo "tag=$TAG" >> $GITHUB_OUTPUT
+          echo "full_image_name=${{ env.REGISTRY }}/${{ github.repository_owner }}/${{ env.IMAGE_PREFIX }}-${{ github.event.inputs.service }}:$TAG" >> $GITHUB_OUTPUT
+
+      - name: Build Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: packages/${{ github.event.inputs.service }}/Dockerfile
+          push: ${{ github.event.inputs.push_image }}
+          tags: |
+            ${{ steps.tag.outputs.full_image_name }}
+            ${{ env.REGISTRY }}/${{ github.repository_owner }}/${{ env.IMAGE_PREFIX }}-${{ github.event.inputs.service }}:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          platforms: linux/amd64
+
+      - name: Output image info
+        run: |
+          echo "🐳 Image construite: ${{ steps.tag.outputs.full_image_name }}"
+          echo "📦 Service: ${{ github.event.inputs.service }}"
+          echo "🏷️ Tag: ${{ steps.tag.outputs.tag }}"
+          echo "📤 Poussée: ${{ github.event.inputs.push_image }}"

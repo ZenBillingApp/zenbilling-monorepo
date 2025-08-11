@@ -1,7 +1,7 @@
 {
   "name": "zenbilling-dashboard-service",
   "description": "Service de tableau de bord et analytics Zenbilling",
-  "image": "ghcr.io/your-username/zenbilling-dashboard-service:latest",
+  "image": "ghcr.io/Hassan-JERRAR/zenbilling-dashboard-service:latest",
   "port": 3004,
   "environment": [
     {

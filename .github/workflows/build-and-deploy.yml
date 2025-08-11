@@ -1,0 +1,216 @@
+name: Build and Deploy Docker Images
+
+on:
+  push:
+    branches: [main, develop]
+    paths:
+      - 'packages/**'
+      - '.github/workflows/**'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'packages/**'
+  workflow_dispatch:
+    inputs:
+      services:
+        description: 'Services to build (comma-separated, or "all")'
+        required: false
+        default: 'all'
+        type: string
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_PREFIX: zenbilling
+
+jobs:
+  detect-changes:
+    runs-on: ubuntu-latest
+    outputs:
+      services: ${{ steps.changes.outputs.services }}
+      shared-changed: ${{ steps.changes.outputs.shared }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Detect changed services
+        id: changes
+        run: |
+          # Services disponibles
+          SERVICES=(
+            "api_gateway"
+            "auth_service" 
+            "company_service"
+            "customer_service"
+            "dashboard_service"
+            "email_service"
+            "invoice_service"
+            "pdf_service"
+            "product_service"
+            "quote_service"
+            "stripe_service"
+            "ai_service"
+          )
+          
+          # Si workflow_dispatch avec services spécifiés
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            if [[ "${{ github.event.inputs.services }}" == "all" ]]; then
+              CHANGED_SERVICES="${SERVICES[@]}"
+            else
+              CHANGED_SERVICES="${{ github.event.inputs.services }}"
+            fi
+          else
+            # Détection automatique des changements
+            CHANGED_SERVICES=()
+            
+            # Vérifier les changements dans shared
+            if git diff --name-only HEAD~1 | grep -q "packages/shared/"; then
+              echo "shared=true" >> $GITHUB_OUTPUT
+              # Si shared change, rebuilder tous les services
+              CHANGED_SERVICES="${SERVICES[@]}"
+            else
+              echo "shared=false" >> $GITHUB_OUTPUT
+              
+              # Vérifier les changements par service
+              for service in "${SERVICES[@]}"; do
+                if git diff --name-only HEAD~1 | grep -q "packages/$service/"; then
+                  CHANGED_SERVICES+=("$service")
+                fi
+              done
+            fi
+          fi
+          
+          # Convertir en JSON pour la matrice
+          if [[ ${#CHANGED_SERVICES[@]} -eq 0 ]]; then
+            echo "services=[]" >> $GITHUB_OUTPUT
+          else
+            SERVICES_JSON=$(printf '%s\n' "${CHANGED_SERVICES[@]}" | jq -R . | jq -s .)
+            echo "services=$SERVICES_JSON" >> $GITHUB_OUTPUT
+          fi
+          
+          echo "Detected services to build: ${CHANGED_SERVICES[@]}"
+
+  build-shared:
+    runs-on: ubuntu-latest
+    needs: detect-changes
+    if: needs.detect-changes.outputs.shared-changed == 'true' || github.event.inputs.services == 'all'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: 'packages/shared/package-lock.json'
+
+      - name: Install dependencies
+        run: |
+          cd packages/shared
+          npm ci
+
+      - name: Build shared package
+        run: |
+          cd packages/shared
+          npm run build
+
+      - name: Upload shared build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: shared-dist
+          path: packages/shared/dist
+          retention-days: 1
+
+  build-and-push:
+    runs-on: ubuntu-latest
+    needs: [detect-changes, build-shared]
+    if: needs.detect-changes.outputs.services != '[]'
+    strategy:
+      matrix:
+        service: ${{ fromJson(needs.detect-changes.outputs.services) }}
+      fail-fast: false
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Download shared build artifacts
+        if: needs.build-shared.result == 'success'
+        uses: actions/download-artifact@v4
+        with:
+          name: shared-dist
+          path: packages/shared/dist
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ github.repository_owner }}/${{ env.IMAGE_PREFIX }}-${{ matrix.service }}
+          tags: |
+            type=ref,event=branch
+            type=ref,event=pr
+            type=sha,prefix={{branch}}-
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: packages/${{ matrix.service }}/Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          platforms: linux/amd64,linux/arm64
+
+  deploy-to-coolify:
+    runs-on: ubuntu-latest
+    needs: [detect-changes, build-and-push]
+    if: github.ref == 'refs/heads/main' && needs.detect-changes.outputs.services != '[]'
+    strategy:
+      matrix:
+        service: ${{ fromJson(needs.detect-changes.outputs.services) }}
+    steps:
+      - name: Deploy to Coolify
+        run: |
+          echo "Déploiement de ${{ matrix.service }} vers Coolify"
+          echo "Service: ${{ matrix.service }}"
+          echo "Image: ${{ env.REGISTRY }}/${{ github.repository_owner }}/${{ env.IMAGE_PREFIX }}-${{ matrix.service }}:latest"
+          
+          # Ici vous pourrez intégrer l'API Coolify pour déclencher le déploiement
+          # curl -X POST "https://your-coolify-instance.com/api/applications/{app-id}/deploy" \
+          #   -H "Authorization: Bearer ${{ secrets.COOLIFY_TOKEN }}" \
+          #   -H "Content-Type: application/json"
+
+  notify:
+    runs-on: ubuntu-latest
+    needs: [detect-changes, build-and-push, deploy-to-coolify]
+    if: always() && needs.detect-changes.outputs.services != '[]'
+    steps:
+      - name: Notification
+        run: |
+          if [[ "${{ needs.build-and-push.result }}" == "success" ]]; then
+            echo "✅ Build réussi pour les services: ${{ needs.detect-changes.outputs.services }}"
+          else
+            echo "❌ Échec du build pour certains services"
+          fi
+          
+          if [[ "${{ needs.deploy-to-coolify.result }}" == "success" ]]; then
+            echo "✅ Déploiement réussi sur Coolify"
+          elif [[ "${{ needs.deploy-to-coolify.result }}" == "failure" ]]; then
+            echo "❌ Échec du déploiement sur Coolify"
+          else
+            echo "ℹ️ Déploiement ignoré (branche non-main ou échec build)"
+          fi

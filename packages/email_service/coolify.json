@@ -1,7 +1,7 @@
 {
   "name": "zenbilling-email-service",
   "description": "Service d'envoi d'emails Zenbilling",
-  "image": "ghcr.io/your-username/zenbilling-email-service:latest",
+  "image": "ghcr.io/Hassan-JERRAR/zenbilling-email-service:latest",
   "port": 3007,
   "environment": [
     {

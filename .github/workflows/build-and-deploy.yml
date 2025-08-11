@@ -168,7 +168,7 @@ jobs:
 
       - name: Download shared build artifacts
         if: needs.build-shared.result == 'success'
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
           name: shared-dist
           path: packages/shared/dist

@@ -38,7 +38,7 @@ jobs:
         id: changes
         run: |
           # Services disponibles
-          SERVICES=(
+          ALL_SERVICES=(
             "api_gateway"
             "auth_service" 
             "company_service"
@@ -53,27 +53,33 @@ jobs:
             "ai_service"
           )
           
+          CHANGED_SERVICES=()
+          
           # Si workflow_dispatch avec services spécifiés
           if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
             if [[ "${{ github.event.inputs.services }}" == "all" ]]; then
-              CHANGED_SERVICES="${SERVICES[@]}"
+              CHANGED_SERVICES=("${ALL_SERVICES[@]}")
             else
-              CHANGED_SERVICES="${{ github.event.inputs.services }}"
+              # Convertir la chaîne en tableau
+              IFS=',' read -ra CHANGED_SERVICES <<< "${{ github.event.inputs.services }}"
+              # Nettoyer les espaces
+              for i in "${!CHANGED_SERVICES[@]}"; do
+                CHANGED_SERVICES[i]=$(echo "${CHANGED_SERVICES[i]}" | xargs)
+              done
             fi
           else
             # Détection automatique des changements
-            CHANGED_SERVICES=()
             
             # Vérifier les changements dans shared
             if git diff --name-only HEAD~1 | grep -q "packages/shared/"; then
               echo "shared=true" >> $GITHUB_OUTPUT
               # Si shared change, rebuilder tous les services
-              CHANGED_SERVICES="${SERVICES[@]}"
+              CHANGED_SERVICES=("${ALL_SERVICES[@]}")
             else
               echo "shared=false" >> $GITHUB_OUTPUT
               
               # Vérifier les changements par service
-              for service in "${SERVICES[@]}"; do
+              for service in "${ALL_SERVICES[@]}"; do
                 if git diff --name-only HEAD~1 | grep -q "packages/$service/"; then
                   CHANGED_SERVICES+=("$service")
                 fi
@@ -81,15 +87,30 @@ jobs:
             fi
           fi
           
+          # Debug
+          echo "Services détectés comme modifiés:"
+          for service in "${CHANGED_SERVICES[@]}"; do
+            echo "  - $service"
+          done
+          
           # Convertir en JSON pour la matrice
           if [[ ${#CHANGED_SERVICES[@]} -eq 0 ]]; then
             echo "services=[]" >> $GITHUB_OUTPUT
           else
-            SERVICES_JSON=$(printf '%s\n' "${CHANGED_SERVICES[@]}" | jq -R . | jq -s .)
-            echo "services=$SERVICES_JSON" >> $GITHUB_OUTPUT
+            # Créer le JSON manuellement pour éviter les problèmes de formatage
+            json_services="["
+            for i in "${!CHANGED_SERVICES[@]}"; do
+              if [[ $i -gt 0 ]]; then
+                json_services+=","
+              fi
+              json_services+="\"${CHANGED_SERVICES[i]}\""
+            done
+            json_services+="]"
+            
+            echo "services=$json_services" >> $GITHUB_OUTPUT
           fi
           
-          echo "Detected services to build: ${CHANGED_SERVICES[@]}"
+          echo "JSON output: $json_services"
 
   build-shared:
     runs-on: ubuntu-latest

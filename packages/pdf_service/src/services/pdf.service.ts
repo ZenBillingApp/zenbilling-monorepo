@@ -4,17 +4,9 @@ import * as fs from "fs";
 import * as path from "path";
 import logger from "@zenbilling/shared/src/utils/logger";
 import { ICompany } from "@zenbilling/shared/src/interfaces/Company.interface";
-import { ICustomer } from "@zenbilling/shared/src/interfaces/Customer.interface";
-import { IIndividualCustomer } from "@zenbilling/shared/src/interfaces/IndividualCustomer.interface";
-import { IBusinessCustomer } from "@zenbilling/shared/src/interfaces/BusinessCustomer.interface";
 import { IInvoice } from "@zenbilling/shared/src/interfaces/Invoice.interface";
-import { IInvoiceItem } from "@zenbilling/shared/src/interfaces/InvoiceItem.interface";
-import {
-    IProduct,
-    vatRateToNumber,
-} from "@zenbilling/shared/src/interfaces/Product.interface";
+import { vatRateToNumber } from "@zenbilling/shared/src/interfaces/Product.interface";
 import { IQuote } from "@zenbilling/shared/src/interfaces/Quote.interface";
-import { IQuoteItem } from "@zenbilling/shared/src/interfaces/QuoteItem.interface";
 
 interface HandlebarsContext {
     [key: string]: any;

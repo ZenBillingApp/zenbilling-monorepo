@@ -1,7 +1,7 @@
 {
   "name": "zenbilling-ai-service",
   "description": "Service IA Zenbilling",
-  "image": "ghcr.io/your-username/zenbilling-ai-service:latest",
+  "image": "ghcr.io/Hassan-JERRAR/zenbilling-ai-service:latest",
   "port": 3011,
   "environment": [
     {

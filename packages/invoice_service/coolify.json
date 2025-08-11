@@ -1,7 +1,7 @@
 {
   "name": "zenbilling-invoice-service",
   "description": "Service de gestion des factures Zenbilling",
-  "image": "ghcr.io/your-username/zenbilling-invoice-service:latest",
+  "image": "ghcr.io/Hassan-JERRAR/zenbilling-invoice-service:latest",
   "port": 3005,
   "environment": [
     {

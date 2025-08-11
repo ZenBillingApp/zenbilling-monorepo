@@ -1,7 +1,7 @@
 {
   "name": "zenbilling-customer-service",
   "description": "Service de gestion des clients Zenbilling",
-  "image": "ghcr.io/your-username/zenbilling-customer-service:latest",
+  "image": "ghcr.io/Hassan-JERRAR/zenbilling-customer-service:latest",
   "port": 3009,
   "environment": [
     {

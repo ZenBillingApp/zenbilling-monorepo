@@ -1,0 +1,256 @@
+name: PR Validation
+
+on:
+  pull_request:
+    branches: [main, develop]
+    paths:
+      - 'packages/**'
+      - '.github/workflows/**'
+
+env:
+  NODE_VERSION: '18'
+
+jobs:
+  detect-changes:
+    runs-on: ubuntu-latest
+    outputs:
+      services: ${{ steps.changes.outputs.services }}
+      shared-changed: ${{ steps.changes.outputs.shared }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Detect changed services
+        id: changes
+        run: |
+          SERVICES=(
+            "api_gateway"
+            "auth_service" 
+            "company_service"
+            "customer_service"
+            "dashboard_service"
+            "email_service"
+            "invoice_service"
+            "pdf_service"
+            "product_service"
+            "quote_service"
+            "stripe_service"
+            "ai_service"
+          )
+          
+          CHANGED_SERVICES=()
+          SHARED_CHANGED=false
+          
+          # Obtenir la liste des fichiers modifiés
+          CHANGED_FILES=$(git diff --name-only origin/${{ github.base_ref }}...HEAD)
+          
+          # Vérifier si le package shared a changé
+          if echo "$CHANGED_FILES" | grep -q "packages/shared/"; then
+            SHARED_CHANGED=true
+            # Si shared change, vérifier tous les services
+            CHANGED_SERVICES="${SERVICES[@]}"
+          else
+            # Vérifier les changements par service
+            for service in "${SERVICES[@]}"; do
+              if echo "$CHANGED_FILES" | grep -q "packages/$service/"; then
+                CHANGED_SERVICES+=("$service")
+              fi
+            done
+          fi
+          
+          echo "shared=$SHARED_CHANGED" >> $GITHUB_OUTPUT
+          
+          if [[ ${#CHANGED_SERVICES[@]} -eq 0 ]]; then
+            echo "services=[]" >> $GITHUB_OUTPUT
+          else
+            SERVICES_JSON=$(printf '%s\n' "${CHANGED_SERVICES[@]}" | jq -R . | jq -s .)
+            echo "services=$SERVICES_JSON" >> $GITHUB_OUTPUT
+          fi
+          
+          echo "Services détectés: ${CHANGED_SERVICES[@]}"
+
+  validate-shared:
+    runs-on: ubuntu-latest
+    needs: detect-changes
+    if: needs.detect-changes.outputs.shared-changed == 'true'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: 'packages/shared/package-lock.json'
+
+      - name: Install dependencies
+        run: |
+          cd packages/shared
+          npm ci
+
+      - name: Run TypeScript check
+        run: |
+          cd packages/shared
+          npx tsc --noEmit
+
+      - name: Build shared package
+        run: |
+          cd packages/shared
+          npm run build
+
+      - name: Upload shared artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: shared-dist
+          path: packages/shared/dist
+          retention-days: 1
+
+  validate-services:
+    runs-on: ubuntu-latest
+    needs: [detect-changes, validate-shared]
+    if: needs.detect-changes.outputs.services != '[]'
+    strategy:
+      matrix:
+        service: ${{ fromJson(needs.detect-changes.outputs.services) }}
+      fail-fast: false
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Download shared artifacts
+        if: needs.validate-shared.result == 'success'
+        uses: actions/download-artifact@v4
+        with:
+          name: shared-dist
+          path: packages/shared/dist
+        continue-on-error: true
+
+      - name: Install service dependencies
+        run: |
+          cd packages/${{ matrix.service }}
+          if [[ -f package-lock.json ]]; then
+            npm ci
+          else
+            npm install
+          fi
+
+      - name: TypeScript check
+        run: |
+          cd packages/${{ matrix.service }}
+          if [[ -f tsconfig.json ]]; then
+            npx tsc --noEmit
+          else
+            echo "No TypeScript configuration found for ${{ matrix.service }}"
+          fi
+
+      - name: Build service
+        run: |
+          cd packages/${{ matrix.service }}
+          if npm run build &>/dev/null; then
+            npm run build
+          else
+            echo "No build script found for ${{ matrix.service }}"
+          fi
+
+  docker-build-test:
+    runs-on: ubuntu-latest
+    needs: [detect-changes, validate-shared]
+    if: needs.detect-changes.outputs.services != '[]'
+    strategy:
+      matrix:
+        service: ${{ fromJson(needs.detect-changes.outputs.services) }}
+      fail-fast: false
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Download shared artifacts
+        if: needs.validate-shared.result == 'success'
+        uses: actions/download-artifact@v4
+        with:
+          name: shared-dist
+          path: packages/shared/dist
+        continue-on-error: true
+
+      - name: Build Docker image (test only)
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: packages/${{ matrix.service }}/Dockerfile
+          push: false
+          tags: test/${{ matrix.service }}:pr-${{ github.event.number }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  pr-summary:
+    runs-on: ubuntu-latest
+    needs: [detect-changes, validate-shared, validate-services, docker-build-test]
+    if: always()
+    steps:
+      - name: PR Summary Comment
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const services = JSON.parse('${{ needs.detect-changes.outputs.services }}');
+            const sharedChanged = '${{ needs.detect-changes.outputs.shared-changed }}' === 'true';
+            
+            let summary = '## 🔍 Validation PR - Résumé\n\n';
+            
+            if (services.length === 0) {
+              summary += '✅ Aucun service modifié détecté\n';
+            } else {
+              summary += `📦 **Services modifiés:** ${services.join(', ')}\n`;
+              summary += `🔧 **Package shared modifié:** ${sharedChanged ? 'Oui' : 'Non'}\n\n`;
+              
+              summary += '### Résultats des validations:\n\n';
+              
+              if (sharedChanged) {
+                const sharedStatus = '${{ needs.validate-shared.result }}';
+                summary += `- **Shared package:** ${sharedStatus === 'success' ? '✅' : '❌'} ${sharedStatus}\n`;
+              }
+              
+              const servicesStatus = '${{ needs.validate-services.result }}';
+              summary += `- **Services TypeScript/Build:** ${servicesStatus === 'success' ? '✅' : servicesStatus === 'failure' ? '❌' : '⏭️'} ${servicesStatus}\n`;
+              
+              const dockerStatus = '${{ needs.docker-build-test.result }}';
+              summary += `- **Docker builds:** ${dockerStatus === 'success' ? '✅' : dockerStatus === 'failure' ? '❌' : '⏭️'} ${dockerStatus}\n`;
+            }
+            
+            // Trouve ou crée le commentaire
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+            
+            const botComment = comments.find(comment => 
+              comment.user.type === 'Bot' && 
+              comment.body.includes('🔍 Validation PR - Résumé')
+            );
+            
+            if (botComment) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: botComment.id,
+                body: summary
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body: summary
+              });
+            }

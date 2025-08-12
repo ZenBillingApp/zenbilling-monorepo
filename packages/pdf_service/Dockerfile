@@ -1,16 +1,16 @@
 FROM node:18-alpine AS builder
 
-WORKDIR /app
+WORKDIR /app/packages/pdf_service
 
 # Copier le package shared pour la compilation
 COPY packages/shared/ ./packages/shared/
 
 # Build du package shared d'abord
-WORKDIR /app/packages/shared
+WORKDIR /app/packages/pdf_service/packages/shared
 RUN npm ci && npm run build
 
 # Revenir à la racine
-WORKDIR /app
+WORKDIR /app/packages/pdf_service
 
 # Copier les fichiers du service pdf
 COPY packages/pdf_service/package*.json ./packages/pdf_service/
@@ -29,7 +29,7 @@ RUN npm run build
 # Stage final
 FROM node:18-alpine
 
-WORKDIR /app
+WORKDIR /app/packages/pdf_service
 
 # Copier les fichiers construits
 COPY --from=builder /app/packages/pdf_service/dist ./dist

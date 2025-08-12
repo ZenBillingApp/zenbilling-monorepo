@@ -1,8 +1,8 @@
 import { Request, Response, NextFunction } from "express";
-import { IUser } from "@zenbilling/shared/src/interfaces/User.interface";
-import { ApiResponse } from "@zenbilling/shared/src/utils/apiResponse";
-import logger from "@zenbilling/shared/src/utils/logger";
-import prisma from "@zenbilling/shared/src/libs/prisma";
+import { IUser } from "../interfaces/User.interface";
+import { ApiResponse } from "../utils/apiResponse";
+import logger from "../utils/logger";
+import prisma from "../libs/prisma";
 import { betterFetch } from "@better-fetch/fetch";
 import { AuthRequest } from "../interfaces/Auth.interface";
 

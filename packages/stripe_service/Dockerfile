@@ -1,23 +1,22 @@
 FROM node:18-alpine AS builder
 
-WORKDIR /app
+WORKDIR /app/packages/stripe_service
 
 # Copier le package shared pour la compilation
 COPY packages/shared/ ./packages/shared/
 
 # Build du package shared d'abord
-WORKDIR /app/packages/shared
+WORKDIR /app/packages/stripe_service/packages/shared
 RUN npm ci && npm run build
 
 # Revenir à la racine
-WORKDIR /app
+WORKDIR /app/packages/stripe_service
 
 # Copier les fichiers du service stripe
 COPY packages/stripe_service/package*.json ./packages/stripe_service/
 COPY packages/stripe_service/tsconfig.json ./packages/stripe_service/
 
 # Installer les dépendances
-WORKDIR /app/packages/stripe_service
 RUN npm ci --only=production
 
 # Copier le code source
@@ -29,7 +28,7 @@ RUN npm run build
 # Stage final
 FROM node:18-alpine
 
-WORKDIR /app
+WORKDIR /app/packages/stripe_service
 
 # Copier les fichiers construits
 COPY --from=builder /app/packages/stripe_service/dist ./dist

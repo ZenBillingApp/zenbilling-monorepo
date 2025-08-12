@@ -8,7 +8,7 @@ import logger from "@zenbilling/shared/src/utils/logger";
 const dashboardService = new DashboardService();
 
 export class DashboardController {
-    async getDashboardMetrics(req: AuthRequest, res: Response) {
+    async getDashboardMetrics(req: AuthRequest, res: any) {
         try {
             if (!req.user) {
                 return ApiResponse.error(res, 401, "Non autorisé");

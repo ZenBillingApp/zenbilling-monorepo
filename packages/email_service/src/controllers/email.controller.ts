@@ -35,7 +35,7 @@ export class EmailController {
     public static async sendEmailWithAttachment(req: Request, res: Response) {
         try {
             const { to, subject, html, attachment, filename } = req.body;
-            
+
             if (!to || !subject || !html || !attachment) {
                 return ApiResponse.error(
                     res,
@@ -45,13 +45,13 @@ export class EmailController {
             }
 
             const emailService = new EmailService();
-            
+
             // Convertir le Buffer en base64 si nécessaire pour l'API Brevo
             let attachmentBuffer: Buffer;
             if (Buffer.isBuffer(attachment)) {
                 attachmentBuffer = attachment;
-            } else if (typeof attachment === 'string') {
-                attachmentBuffer = Buffer.from(attachment, 'base64');
+            } else if (typeof attachment === "string") {
+                attachmentBuffer = Buffer.from(attachment, "base64");
             } else {
                 throw new Error("Format de pièce jointe non supporté");
             }
@@ -61,9 +61,9 @@ export class EmailController {
                 subject,
                 html,
                 attachmentBuffer,
-                filename || 'document.pdf'
+                filename || "document.pdf"
             );
-            
+
             return ApiResponse.success(
                 res,
                 200,

@@ -158,4 +158,5 @@ export class EmailService {
     }
 }
 
-export default new EmailService();
+// Export de l'instance par défaut seulement si nécessaire
+// export default new EmailService();

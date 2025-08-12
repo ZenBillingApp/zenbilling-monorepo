@@ -1,0 +1,147 @@
+http:
+    port: 8080
+admin:
+    port: 9876
+    host: localhost
+cors:
+    origin: ["http://localhost:3000", "http://localhost:8080"]
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"]
+    credentials: true
+apiEndpoints:
+    auth:
+        host: localhost
+        paths: ["/api/auth*", "/api/user*"]
+    company:
+        host: localhost
+        paths: ["/api/company*"]
+    stripe:
+        host: localhost
+        paths: ["/api/stripe*"]
+    dashboard:
+        host: localhost
+        paths: ["/api/dashboard*"]
+    invoice:
+        host: localhost
+        paths: ["/api/invoice*"]
+    quote:
+        host: localhost
+        paths: ["/api/quote*"]
+    product:
+        host: localhost
+        paths: ["/api/product*"]
+    customer:
+        host: localhost
+        paths: ["/api/customer*"]
+    ai:
+        host: localhost
+        paths: ["/api/ai*"]
+serviceEndpoints:
+    auth_service:
+        url: "http://localhost:3001"
+    company_service:
+        url: "http://localhost:3002"
+    stripe_service:
+        url: "http://localhost:3003"
+    dashboard_service:
+        url: "http://localhost:3004"
+    invoice_service:
+        url: "http://localhost:3005"
+    quote_service:
+        url: "http://localhost:3006"
+    product_service:
+        url: "http://localhost:3008"
+    customer_service:
+        url: "http://localhost:3009"
+    ai_service:
+        url: "http://localhost:3011"
+policies:
+    - basic-auth
+    - cors
+    - expression
+    - key-auth
+    - log
+    - oauth2
+    - proxy
+    - rate-limit
+pipelines:
+    auth:
+        apiEndpoints:
+            - auth
+        policies:
+            - proxy:
+                  - action:
+                        serviceEndpoint: auth_service
+                        changeOrigin: true
+                        stripPath: false
+    company:
+        apiEndpoints:
+            - company
+        policies:
+            - proxy:
+                  - action:
+                        serviceEndpoint: company_service
+                        changeOrigin: true
+                        stripPath: false
+    stripe:
+        apiEndpoints:
+            - stripe
+        policies:
+            - proxy:
+                  - action:
+                        serviceEndpoint: stripe_service
+                        changeOrigin: true
+                        stripPath: false
+    dashboard:
+        apiEndpoints:
+            - dashboard
+        policies:
+            - proxy:
+                  - action:
+                        serviceEndpoint: dashboard_service
+                        changeOrigin: true
+                        stripPath: false
+    invoice:
+        apiEndpoints:
+            - invoice
+        policies:
+            - proxy:
+                  - action:
+                        serviceEndpoint: invoice_service
+                        changeOrigin: true
+                        stripPath: false
+    quote:
+        apiEndpoints:
+            - quote
+        policies:
+            - proxy:
+                  - action:
+                        serviceEndpoint: quote_service
+                        changeOrigin: true
+                        stripPath: false
+    product:
+        apiEndpoints:
+            - product
+        policies:
+            - proxy:
+                  - action:
+                        serviceEndpoint: product_service
+                        changeOrigin: true
+                        stripPath: false
+    customer:
+        apiEndpoints:
+            - customer
+        policies:
+            - proxy:
+                  - action:
+                        serviceEndpoint: customer_service
+                        changeOrigin: true
+                        stripPath: false
+    ai:
+        apiEndpoints:
+            - ai
+        policies:
+            - proxy:
+                  - action:
+                        serviceEndpoint: ai_service
+                        changeOrigin: true
+                        stripPath: false

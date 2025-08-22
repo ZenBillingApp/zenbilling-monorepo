@@ -83,7 +83,11 @@ jobs:
       - name: Install dependencies
         run: |
           npm ci
-          npm run bootstrap || npm install
+          npx lerna bootstrap || npm install
+          
+      - name: Fix security vulnerabilities
+        run: npm audit fix --force
+        continue-on-error: true
       
       - name: Build shared package if changed
         if: needs.changes.outputs.shared == 'true'
@@ -134,7 +138,7 @@ jobs:
       - name: Install dependencies
         run: |
           npm ci
-          npm run bootstrap || npm install
+          npx lerna bootstrap || npm install
       
       - name: Build shared package
         run: |

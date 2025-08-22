@@ -12,7 +12,8 @@
     "build": "lerna run build",
     "test": "lerna run test",
     "clean": "lerna clean",
-    "publish": "lerna publish"
+    "publish": "lerna publish",
+    "bootstrap": "lerna bootstrap"
   },
   "keywords": [],
   "author": "",

@@ -1,0 +1,191 @@
+name: Emergency Rollback
+
+on:
+  workflow_dispatch:
+    inputs:
+      services:
+        description: 'Services to rollback (comma-separated or "all")'
+        required: true
+        default: 'all'
+        type: string
+      target_sha:
+        description: 'Target commit SHA to rollback to (leave empty for previous)'
+        required: false
+        type: string
+
+env:
+  REGISTRY: ghcr.io
+  TIMEOUT_MINUTES: 20
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  rollback:
+    name: "🔄 Rollback"
+    runs-on: ubuntu-latest
+    timeout-minutes: ${{ fromJSON(env.TIMEOUT_MINUTES) }}
+    strategy:
+      fail-fast: false
+      max-parallel: 2
+      matrix:
+        service: [api_gateway, auth_service, ai_service, company_service, customer_service, dashboard_service, email_service, invoice_service, pdf_service, product_service, quote_service, stripe_service]
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 50
+
+      - name: Check if service should be rolled back
+        id: should-rollback
+        run: |
+          SERVICE="${{ matrix.service }}"
+          SERVICES_INPUT="${{ github.event.inputs.services }}"
+          
+          if [[ "$SERVICES_INPUT" == "all" ]]; then
+            echo "rollback=true" >> $GITHUB_OUTPUT
+            echo "🔄 Rollback all: $SERVICE"
+          elif [[ "$SERVICES_INPUT" == *"$SERVICE"* ]]; then
+            echo "rollback=true" >> $GITHUB_OUTPUT
+            echo "🔄 Rollback selected: $SERVICE"
+          else
+            echo "rollback=false" >> $GITHUB_OUTPUT
+            echo "⏭️ Skip rollback: $SERVICE"
+          fi
+
+      - name: Determine target SHA
+        if: steps.should-rollback.outputs.rollback == 'true'
+        id: target-sha
+        run: |
+          if [[ -n "${{ github.event.inputs.target_sha }}" ]]; then
+            TARGET_SHA="${{ github.event.inputs.target_sha }}"
+            echo "sha=$TARGET_SHA" >> $GITHUB_OUTPUT
+            echo "🎯 Rolling back to specified SHA: $TARGET_SHA"
+          else
+            # Get the previous commit SHA
+            TARGET_SHA=$(git rev-parse HEAD~1)
+            echo "sha=$TARGET_SHA" >> $GITHUB_OUTPUT
+            echo "🎯 Rolling back to previous commit: $TARGET_SHA"
+          fi
+
+      - name: Log in to Container Registry
+        if: steps.should-rollback.outputs.rollback == 'true'
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Check if target image exists
+        if: steps.should-rollback.outputs.rollback == 'true'
+        id: check-image
+        run: |
+          IMAGE_NAME="${{ env.REGISTRY }}/zenbillingapp/zenbilling-${{ matrix.service }}"
+          TARGET_SHA="${{ steps.target-sha.outputs.sha }}"
+          
+          if docker manifest inspect "$IMAGE_NAME:main-$TARGET_SHA" > /dev/null 2>&1; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+            echo "✅ Target image exists: $IMAGE_NAME:main-$TARGET_SHA"
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+            echo "❌ Target image not found: $IMAGE_NAME:main-$TARGET_SHA"
+          fi
+
+      - name: Retag image for rollback
+        if: steps.should-rollback.outputs.rollback == 'true' && steps.check-image.outputs.exists == 'true'
+        run: |
+          IMAGE_NAME="${{ env.REGISTRY }}/zenbillingapp/zenbilling-${{ matrix.service }}"
+          TARGET_SHA="${{ steps.target-sha.outputs.sha }}"
+          
+          # Pull the target image
+          docker pull "$IMAGE_NAME:main-$TARGET_SHA"
+          
+          # Retag as latest
+          docker tag "$IMAGE_NAME:main-$TARGET_SHA" "$IMAGE_NAME:latest"
+          
+          # Push the retagged image
+          docker push "$IMAGE_NAME:latest"
+          
+          echo "✅ Image retagged for rollback: ${{ matrix.service }}"
+
+      - name: Trigger Coolify deployment
+        if: steps.should-rollback.outputs.rollback == 'true' && steps.check-image.outputs.exists == 'true'
+        uses: fjogeleit/http-request-action@v1
+        with:
+          url: ${{ secrets.COOLIFY_WEBHOOK_URL_PREFIX }}${{ matrix.service }}
+          method: 'GET'
+          timeout: 120000
+          retry: 2
+          retryWait: 30000
+
+      - name: Wait between deployments
+        if: steps.should-rollback.outputs.rollback == 'true' && steps.check-image.outputs.exists == 'true'
+        run: |
+          echo "⏳ Waiting for ${{ matrix.service }} rollback deployment..."
+          sleep 20
+
+      - name: Report rollback status
+        if: steps.should-rollback.outputs.rollback == 'true'
+        run: |
+          if [[ "${{ steps.check-image.outputs.exists }}" == "true" ]]; then
+            echo "✅ ${{ matrix.service }} rollback initiated to ${{ steps.target-sha.outputs.sha }}"
+          else
+            echo "❌ ${{ matrix.service }} rollback failed - target image not found"
+          fi
+
+  health-check-after-rollback:
+    name: "🏥 Health Check After Rollback"
+    runs-on: ubuntu-latest
+    needs: rollback
+    timeout-minutes: 10
+
+    steps:
+      - name: Wait for rollback completion
+        run: |
+          echo "⏳ Waiting for rollback to complete..."
+          sleep 60
+
+      - name: Health check services
+        run: |
+          BASE_URL="${{ secrets.COOLIFY_BASE_URL }}"
+          if [[ -z "$BASE_URL" ]]; then
+            echo "❌ COOLIFY_BASE_URL secret not configured"
+            exit 1
+          fi
+
+          failed_services=()
+          rolled_back_services="${{ github.event.inputs.services }}"
+          
+          # Determine which services to check
+          if [[ "$rolled_back_services" == "all" ]]; then
+            services="api_gateway auth_service ai_service company_service customer_service dashboard_service email_service invoice_service pdf_service product_service quote_service stripe_service"
+          else
+            services="$rolled_back_services"
+          fi
+          
+          for service in $services; do
+            if [[ "$service" == "api_gateway" ]]; then
+              url="$BASE_URL/"
+            else
+              url="$BASE_URL/api/$service/health"
+            fi
+            
+            echo "🔍 Checking $service at $url"
+            
+            if curl -f -s --max-time 10 "$url" > /dev/null; then
+              echo "✅ $service is healthy after rollback"
+            else
+              echo "❌ $service health check failed after rollback"
+              failed_services+=("$service")
+            fi
+          done
+
+          if [ ${#failed_services[@]} -gt 0 ]; then
+            echo "❌ Rollback health checks failed for: ${failed_services[*]}"
+            echo "🚨 Manual intervention required!"
+            exit 1
+          else
+            echo "🎉 All rolled back services are healthy!"
+          fi

@@ -1,0 +1,145 @@
+name: Development CI
+
+on:
+  push:
+    branches: [develop, feature/*]
+  pull_request:
+    branches: [develop, main]
+
+env:
+  NODE_VERSION: '20'
+
+permissions:
+  contents: read
+
+jobs:
+  # Test rapide pour les branches de développement
+  quick-test:
+    name: "⚡ Quick Test"
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: |
+          npm ci --no-audit --no-fund
+          echo "📦 Dependencies installed"
+
+      - name: Build shared package
+        run: |
+          cd packages/shared
+          npm ci --no-audit --no-fund
+          npm run build
+          echo "✅ Shared package built"
+
+      - name: Type check and build services
+        run: |
+          for service in packages/*/; do
+            if [[ "$(basename $service)" != "shared" && -f "$service/package.json" ]]; then
+              echo "🔍 Processing $(basename $service)..."
+              cd $service
+              npm ci --no-audit --no-fund
+              
+              # Build if available
+              if npm run --silent | grep -q "^  build$"; then
+                npm run build
+                echo "✅ $(basename $service) built successfully"
+              fi
+              
+              cd ../..
+            fi
+          done
+
+      - name: Run linting (if available)
+        run: |
+          for service in packages/*/; do
+            if [[ -f "$service/package.json" ]]; then
+              cd $service
+              if npm run --silent | grep -q "^  lint$"; then
+                npm run lint
+                echo "✅ $(basename $service) linted"
+              fi
+              cd ../..
+            fi
+          done
+        continue-on-error: true
+
+  # Tests unitaires pour les PR vers main
+  unit-tests:
+    name: "🧪 Unit Tests"
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request' && github.base_ref == 'main'
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        service: [auth_service, ai_service, company_service, customer_service, dashboard_service, email_service, invoice_service, pdf_service, product_service, quote_service, stripe_service]
+    
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_USER: test
+          POSTGRES_PASSWORD: test
+          POSTGRES_DB: test_db
+        options: >-
+          --health-cmd "pg_isready -U test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+      
+      redis:
+        image: redis:7-alpine
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install root dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Build shared package
+        run: |
+          cd packages/shared
+          npm ci --no-audit --no-fund
+          npm run build
+
+      - name: Install service dependencies and run tests
+        run: |
+          cd packages/${{ matrix.service }}
+          npm ci --no-audit --no-fund
+          
+          if npm run --silent | grep -q "^  test$"; then
+            npm test
+            echo "✅ Tests passed for ${{ matrix.service }}"
+          else
+            echo "ℹ️  No tests available for ${{ matrix.service }}"
+          fi
+        env:
+          NODE_ENV: test
+          DATABASE_URL: postgresql://test:test@localhost:5432/test_db
+          REDIS_URL: redis://localhost:6379

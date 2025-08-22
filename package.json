@@ -13,7 +13,7 @@
     "test": "lerna run test",
     "clean": "lerna clean",
     "publish": "lerna publish",
-    "bootstrap": "lerna bootstrap"
+    "bootstrap": "npm install --workspaces"
   },
   "keywords": [],
   "author": "",

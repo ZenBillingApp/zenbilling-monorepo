@@ -85,7 +85,7 @@ jobs:
       - name: Install dependencies
         run: |
           npm ci
-          npx lerna bootstrap || npm install
+          npm install --workspaces || npm install
       
       - name: Build shared package if changed
         if: needs.changes.outputs.shared == 'true'
@@ -136,7 +136,7 @@ jobs:
       - name: Install dependencies
         run: |
           npm ci
-          npx lerna bootstrap || npm install
+          npm install --workspaces || npm install
       
       - name: Build shared package
         run: |

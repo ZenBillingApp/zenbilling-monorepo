@@ -70,7 +70,8 @@ jobs:
       - name: Install dependencies (ignore vulnerabilities)
         run: |
           npm ci --audit=false
-          npx lerna bootstrap --ignore-scripts || echo "Bootstrap completed with warnings"
+          # Lerna v7+ utilise npm workspaces au lieu de bootstrap
+          npm install --workspaces --audit=false || echo "Workspaces installation completed"
         continue-on-error: true
       
       - name: Build shared package

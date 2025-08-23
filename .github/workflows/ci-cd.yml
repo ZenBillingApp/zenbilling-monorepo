@@ -65,7 +65,7 @@ jobs:
         if: always() && needs.setup.result == 'success' && needs.setup.outputs.changed != '[]'
         strategy:
             matrix:
-                service: ${{ fromJson(needs.setup.outputs.changed) }}
+                service: ${{ fromJson(needs.setup.outputs.changed || '[]') }}
             max-parallel: 4
         steps:
             - uses: actions/checkout@v3
@@ -95,12 +95,12 @@ jobs:
               working-directory: packages/${{ matrix.service.name }}
               timeout-minutes: 3
               run: |
-                if [ "${{ matrix.service.name }}" = "invoice_service" ] || [ "${{ matrix.service.name }}" = "ai_service" ]; then
-                  echo "Skipping tests for ${{ matrix.service.name }} (hangs in CI/CD)"
-                  exit 0
-                else
-                  npm test --if-present
-                fi
+                  if [ "${{ matrix.service.name }}" = "invoice_service" ] || [ "${{ matrix.service.name }}" = "ai_service" ]; then
+                    echo "Skipping tests for ${{ matrix.service.name }} (hangs in CI/CD)"
+                    exit 0
+                  else
+                    npm test --if-present
+                  fi
 
     build:
         name: Build Services
@@ -109,7 +109,7 @@ jobs:
         if: always() && (needs.test.result == 'success' || needs.test.result == 'skipped') && needs.setup.outputs.changed != '[]'
         strategy:
             matrix:
-                service: ${{ fromJson(needs.setup.outputs.changed) }}
+                service: ${{ fromJson(needs.setup.outputs.changed || '[]') }}
         steps:
             - uses: actions/checkout@v3
               if: matrix.service.name != '@zenbilling/shared'
@@ -127,7 +127,7 @@ jobs:
         if: needs.build.result == 'success' && needs.setup.outputs.changed != '[]'
         strategy:
             matrix:
-                service: ${{ fromJson(needs.setup.outputs.changed) }}
+                service: ${{ fromJson(needs.setup.outputs.changed || '[]') }}
         steps:
             - name: Deploy to Coolify
               if: matrix.service.name != '@zenbilling/shared'

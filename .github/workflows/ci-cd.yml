@@ -29,6 +29,8 @@ jobs:
               id: lerna
               run: |
                   CHANGED=$(npx lerna changed --json || echo "[]")
+                  # Compact JSON sur une ligne
+                  CHANGED=$(echo "$CHANGED" | jq -c .)
                   echo "raw=$CHANGED"
                   echo "raw=$CHANGED" >> $GITHUB_OUTPUT
 

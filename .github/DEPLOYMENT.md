@@ -4,23 +4,33 @@
 
 ### 1. GitHub Secrets à Configurer
 
-Dans votre repository GitHub, ajoutez ces secrets :
+Dans votre repository GitHub, ajoutez **UN SECRET PAR SERVICE** avec l'URL webhook complète :
 
 ```bash
-# URL de base de vos webhooks Coolify (sans le nom du service)
-COOLIFY_WEBHOOK_URL_PREFIX=https://your-coolify-domain/webhooks/deploy/your-project-
+# Format: COOLIFY_WEBHOOK_SERVICE_NAME (en majuscules)
+COOLIFY_WEBHOOK_API_GATEWAY=http://93.127.162.78:8000/api/v1/deploy?uuid=UUID1&force=false
+COOLIFY_WEBHOOK_AUTH_SERVICE=http://93.127.162.78:8000/api/v1/deploy?uuid=UUID2&force=false
+COOLIFY_WEBHOOK_AI_SERVICE=http://93.127.162.78:8000/api/v1/deploy?uuid=UUID3&force=false
+COOLIFY_WEBHOOK_COMPANY_SERVICE=http://93.127.162.78:8000/api/v1/deploy?uuid=UUID4&force=false
+COOLIFY_WEBHOOK_CUSTOMER_SERVICE=http://93.127.162.78:8000/api/v1/deploy?uuid=UUID5&force=false
+COOLIFY_WEBHOOK_DASHBOARD_SERVICE=http://93.127.162.78:8000/api/v1/deploy?uuid=UUID6&force=false
+COOLIFY_WEBHOOK_EMAIL_SERVICE=http://93.127.162.78:8000/api/v1/deploy?uuid=UUID7&force=false
+COOLIFY_WEBHOOK_INVOICE_SERVICE=http://93.127.162.78:8000/api/v1/deploy?uuid=UUID8&force=false
+COOLIFY_WEBHOOK_PDF_SERVICE=http://93.127.162.78:8000/api/v1/deploy?uuid=UUID9&force=false
+COOLIFY_WEBHOOK_PRODUCT_SERVICE=http://93.127.162.78:8000/api/v1/deploy?uuid=UUID10&force=false
+COOLIFY_WEBHOOK_QUOTE_SERVICE=http://93.127.162.78:8000/api/v1/deploy?uuid=UUID11&force=false
+COOLIFY_WEBHOOK_STRIPE_SERVICE=http://93.127.162.78:8000/api/v1/deploy?uuid=UUID12&force=false
 
 # URL de base de votre application en production (pour health checks)
-COOLIFY_BASE_URL=https://your-production-domain.com
+COOLIFY_BASE_URL=http://93.127.162.78:8080
 ```
 
-### 2. Webhooks Coolify par Service
+### 2. Comment Récupérer les UUIDs
 
-Chaque service doit avoir son webhook dans Coolify :
-- `api_gateway` → `COOLIFY_WEBHOOK_URL_PREFIX`api_gateway
-- `auth_service` → `COOLIFY_WEBHOOK_URL_PREFIX`auth_service
-- `ai_service` → `COOLIFY_WEBHOOK_URL_PREFIX`ai_service
-- etc.
+Dans Coolify, pour chaque service :
+1. **Service** → **Webhooks** 
+2. **Copier l'URL complète** générée
+3. **Ajouter le secret** dans GitHub avec le bon nom
 
 ### 3. Images Docker Attendues
 

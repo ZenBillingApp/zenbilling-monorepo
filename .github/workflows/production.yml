@@ -435,7 +435,7 @@ jobs:
         if: steps.should-deploy.outputs.deploy == 'true'
         uses: fjogeleit/http-request-action@v1
         with:
-          url: ${{ secrets.COOLIFY_WEBHOOK_URL_PREFIX }}${{ matrix.service }}
+          url: ${{ secrets[format('COOLIFY_WEBHOOK_{0}', matrix.service | upper)] }}
           method: 'GET'
           timeout: 180000
           retry: 3

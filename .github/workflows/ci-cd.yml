@@ -1,168 +1,136 @@
-name: CI/CD Monorepo
+name: CI/CD ZenBilling
 
 on:
     push:
-        branches:
-            - main
+        branches: [main]
     pull_request:
 
+env:
+    NODE_VERSION: 20
+    REGISTRY: ${{ secrets.DOCKER_USERNAME }}
+
 jobs:
-    setup:
-        name: Setup Monorepo
+    install:
         runs-on: ubuntu-latest
-        outputs:
-            changed: ${{ steps.filter.outputs.services }}
         steps:
-            - name: Checkout code
-              uses: actions/checkout@v3
+            - uses: actions/checkout@v4
 
             - name: Setup Node.js
-              uses: actions/setup-node@v3
+              uses: actions/setup-node@v4
               with:
-                  node-version: 18
+                  node-version: ${{ env.NODE_VERSION }}
                   cache: "npm"
 
             - name: Install dependencies
               run: npm ci
 
-            - name: Detect changed packages
-              id: lerna
-              run: |
-                  CHANGED=$(npx lerna changed --json || echo "[]")
-                  # Compact JSON sur une ligne
-                  CHANGED=$(echo "$CHANGED" | jq -c .)
-                  echo "raw=$CHANGED"
-                  echo "raw=$CHANGED" >> $GITHUB_OUTPUT
-
-            - name: Filter services (exclude shared)
-              id: filter
-              run: |
-                  SERVICES=$(echo '${{ steps.lerna.outputs.raw }}' | jq '[.[] | select(.name != "@zenbilling/shared")]')
-                  echo "services=$SERVICES" >> $GITHUB_OUTPUT
-                  echo "Filtered services: $SERVICES"
-
-    build-shared:
-        name: Build Shared Package
-        needs: setup
-        runs-on: ubuntu-latest
-        if: contains(needs.setup.outputs.changed, '@zenbilling/shared')
-        steps:
-            - uses: actions/checkout@v3
-
-            - name: Setup Node.js
-              uses: actions/setup-node@v3
-              with:
-                  node-version: 18
-                  cache: "npm"
-
-            - name: Install dependencies
-              run: npm ci
-
-            - name: Generate Prisma Client
-              run: cd packages/shared && npm run prisma:generate
-
-            - name: Build Shared Package
-              run: cd packages/shared && npm run build
-
-    test:
-        name: Test Services
-        needs: [setup, build-shared]
-        runs-on: ubuntu-latest
-        if: needs.setup.outputs.changed != '[]'
-        strategy:
-            matrix:
-                service: ${{ fromJson(needs.setup.outputs.changed) }}
-            max-parallel: 4
-        steps:
-            - uses: actions/checkout@v3
-
-            - name: Setup Node.js
-              uses: actions/setup-node@v3
-              with:
-                  node-version: 18
-                  cache: "npm"
-
-            - name: Install dependencies
-              run: npm ci
-
-            - name: Generate Prisma Client
-              run: cd packages/shared && npm run prisma:generate
-
-            - name: Build Shared Package
-              run: cd packages/shared && npm run build
-
-            - name: Run Tests
-              working-directory: packages/${{ matrix.service.name }}
-              timeout-minutes: 3
-              run: |
-                  if [ "${{ matrix.service.name }}" = "invoice_service" ] || [ "${{ matrix.service.name }}" = "ai_service" ]; then
-                    echo "Skipping tests for ${{ matrix.service.name }} (hangs in CI/CD)"
-                    exit 0
-                  else
-                    npm test --if-present
-                  fi
+            - name: Build shared
+              run: npx lerna run build --scope @shared --stream
 
     build:
-        name: Build Services
-        needs: [test, build-shared]
+        needs: install
         runs-on: ubuntu-latest
-        if: needs.setup.outputs.changed != '[]' && (needs.test.result == 'success' || needs.test.result == 'skipped')
         strategy:
             matrix:
-                service: ${{ fromJson(needs.setup.outputs.changed) }}
+                service:
+                    [
+                        ai_service,
+                        api_gateway,
+                        auth_service,
+                        company_service,
+                        customer_service,
+                        dashboard_service,
+                        email_service,
+                        invoice_service,
+                        pdf_service,
+                        product_service,
+                        quote_service,
+                        stripe_service,
+                    ]
         steps:
-            - uses: actions/checkout@v3
+            - uses: actions/checkout@v4
 
-            - name: Build Docker image
-              working-directory: packages/${{ matrix.service.name }}
-              run: docker build -t zenbilling/${{ matrix.service.name }} .
+            - name: Setup Node.js
+              uses: actions/setup-node@v4
+              with:
+                  node-version: ${{ env.NODE_VERSION }}
+                  cache: "npm"
+
+            - name: Install dependencies
+              run: npm ci
+
+            - name: Build service
+              run: npx lerna run build --scope @${{ matrix.service }} --stream
+
+            - name: Run tests
+              run: npx lerna run test --scope @${{ matrix.service }} --stream
+
+    docker:
+        needs: build
+        runs-on: ubuntu-latest
+        strategy:
+            matrix:
+                service:
+                    [
+                        ai_service,
+                        api_gateway,
+                        auth_service,
+                        company_service,
+                        customer_service,
+                        dashboard_service,
+                        email_service,
+                        invoice_service,
+                        pdf_service,
+                        product_service,
+                        quote_service,
+                        stripe_service,
+                    ]
+        steps:
+            - uses: actions/checkout@v4
+
+            - name: Login to DockerHub
+              uses: docker/login-action@v3
+              with:
+                  username: ${{ secrets.DOCKER_USERNAME }}
+                  password: ${{ secrets.DOCKER_PASSWORD }}
+
+            - name: Build and Push Docker Image
+              run: |
+                  docker build -t ${{ env.REGISTRY }}/${{ matrix.service }}:latest ./packages/${{ matrix.service }}
+                  docker push ${{ env.REGISTRY }}/${{ matrix.service }}:latest
 
     deploy:
-        name: Deploy Services to Coolify
-        needs: [build, setup]
+        needs: docker
         runs-on: ubuntu-latest
-        if: needs.setup.outputs.changed != '[]' && needs.build.result == 'success'
         strategy:
             matrix:
-                service: ${{ fromJson(needs.setup.outputs.changed) }}
+                service:
+                    [
+                        ai_service,
+                        api_gateway,
+                        auth_service,
+                        company_service,
+                        customer_service,
+                        dashboard_service,
+                        email_service,
+                        invoice_service,
+                        pdf_service,
+                        product_service,
+                        quote_service,
+                        stripe_service,
+                    ]
         steps:
-            - name: Deploy to Coolify
+            - name: Deploy via Coolify Webhook
               run: |
-                  case ${{ matrix.service.name }} in
-                    dashboard_service)
-                      curl -X POST -d '{}' ${{ secrets.COOLIFY_WEBHOOK_DASHBOARD_SERVICE }}
-                      ;;
-                    auth_service)
-                      curl -X POST -d '{}' ${{ secrets.COOLIFY_WEBHOOK_AUTH_SERVICE }}
-                      ;;
-                    company_service)
-                      curl -X POST -d '{}' ${{ secrets.COOLIFY_WEBHOOK_COMPANY_SERVICE }}
-                      ;;
-                    customer_service)
-                      curl -X POST -d '{}' ${{ secrets.COOLIFY_WEBHOOK_CUSTOMER_SERVICE }}
-                      ;;
-                    invoice_service)
-                      curl -X POST -d '{}' ${{ secrets.COOLIFY_WEBHOOK_INVOICE_SERVICE }}
-                      ;;
-                    product_service)
-                      curl -X POST -d '{}' ${{ secrets.COOLIFY_WEBHOOK_PRODUCT_SERVICE }}
-                      ;;
-                    quote_service)
-                      curl -X POST -d '{}' ${{ secrets.COOLIFY_WEBHOOK_QUOTE_SERVICE }}
-                      ;;
-                    email_service)
-                      curl -X POST -d '{}' ${{ secrets.COOLIFY_WEBHOOK_EMAIL_SERVICE }}
-                      ;;
-                    ai_service)
-                      curl -X POST -d '{}' ${{ secrets.COOLIFY_WEBHOOK_AI_SERVICE }}
-                      ;;
-                    pdf_service)
-                      curl -X POST -d '{}' ${{ secrets.COOLIFY_WEBHOOK_PDF_SERVICE }}
-                      ;;
-                    stripe_service)
-                      curl -X POST -d '{}' ${{ secrets.COOLIFY_WEBHOOK_STRIPE_SERVICE }}
-                      ;;
-                    api_gateway)
-                      curl -X POST -d '{}' ${{ secrets.COOLIFY_WEBHOOK_API_GATEWAY }}
-                      ;;
-                  esac
+                  # Normaliser le nom du service en majuscule pour accéder au secret
+                  SERVICE_UPPER=$(echo "${{ matrix.service }}" | tr '[:lower:]' '[:upper:]')
+                  WEBHOOK_VAR="COOLIFY_WEBHOOK_${SERVICE_UPPER}"
+                  WEBHOOK_URL=${!WEBHOOK_VAR}
+
+                  if [ -z "$WEBHOOK_URL" ]; then
+                    echo "❌ Aucun webhook trouvé pour $SERVICE_UPPER"
+                    exit 1
+                  fi
+
+                  echo "🚀 Déploiement de ${{ matrix.service }} via $WEBHOOK_URL"
+                  curl -X POST "$WEBHOOK_URL"

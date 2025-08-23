@@ -1,5 +1,5 @@
 {
-  "name": "company-service",
+  "name": "company_service",
   "version": "1.0.0",
   "description": "service gestion des entreprises Zenbilling ",
   "license": "ISC",

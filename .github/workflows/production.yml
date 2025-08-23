@@ -84,6 +84,11 @@ jobs:
       - name: Detect changed packages with Lerna
         id: lerna-changes
         run: |
+          # Function to convert package names to folder names (tiret -> underscore)
+          convert_to_folder_name() {
+            echo "$1" | sed 's/-/_/g'
+          }
+          
           if [[ "${{ github.event.inputs.service }}" != "all" && "${{ github.event.inputs.service }}" != "" ]]; then
             # Déploiement manuel d'un service spécifique
             echo "packages=[\"${{ github.event.inputs.service }}\"]" >> $GITHUB_OUTPUT
@@ -95,7 +100,7 @@ jobs:
             echo "🚀 Force deploy all services"
           else
             # Utilisation de Lerna pour détecter les changements
-            if npx lerna changed --json 2>/dev/null | jq empty; then
+            if command -v npx >/dev/null 2>&1 && npx lerna changed --json 2>/dev/null | jq empty 2>/dev/null; then
               CHANGED=$(npx lerna changed --json 2>/dev/null || echo "[]")
               if [[ "$CHANGED" == "[]" ]] && [[ "${{ steps.changes.outputs.shared }}" == "true" || "${{ steps.changes.outputs.root }}" == "true" ]]; then
                 # Si shared ou root a changé, rebuilder tous les services
@@ -103,13 +108,32 @@ jobs:
                 echo "packages=$PACKAGES" >> $GITHUB_OUTPUT
                 echo "📦 Shared/root changes detected, rebuilding all services"
               else
-                PACKAGES=$(echo "$CHANGED" | jq '[.[].name | split("/") | last]')
-                echo "packages=$PACKAGES" >> $GITHUB_OUTPUT
-                echo "📦 Changed packages detected: $PACKAGES"
+                # Convertir les noms de packages (avec tirets) vers les noms de dossiers (avec underscores)
+                PACKAGES_CONVERTED="[]"
+                if [[ "$CHANGED" != "[]" ]]; then
+                  PACKAGES_CONVERTED=$(echo "$CHANGED" | jq -r '.[].name' | while read -r pkg_name; do
+                    folder_name=$(convert_to_folder_name "$pkg_name")
+                    # Vérifier que le dossier existe
+                    if [[ -d "packages/$folder_name" ]]; then
+                      echo "$folder_name"
+                    else
+                      echo "⚠️  Warning: Package $pkg_name -> $folder_name not found in packages/" >&2
+                    fi
+                  done | jq -R . | jq -s .)
+                fi
+                echo "packages=$PACKAGES_CONVERTED" >> $GITHUB_OUTPUT
+                echo "📦 Changed packages detected: $PACKAGES_CONVERTED"
               fi
             else
-              echo "packages=[]" >> $GITHUB_OUTPUT
-              echo "✅ No packages changed"
+              # Fallback : utiliser la détection de fichiers si Lerna n'est pas disponible
+              if [[ "${{ steps.changes.outputs.shared }}" == "true" || "${{ steps.changes.outputs.root }}" == "true" ]]; then
+                PACKAGES=$(find packages -maxdepth 1 -type d -name "*_service" -o -name "api_gateway" | xargs -I {} basename {} | jq -R . | jq -s .)
+                echo "packages=$PACKAGES" >> $GITHUB_OUTPUT
+                echo "📦 Fallback: Shared/root changes detected, rebuilding all services"
+              else
+                echo "packages=[]" >> $GITHUB_OUTPUT
+                echo "✅ No packages changed (Lerna unavailable, using file detection)"
+              fi
             fi
           fi
 

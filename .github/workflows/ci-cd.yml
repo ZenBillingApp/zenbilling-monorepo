@@ -1,0 +1,124 @@
+name: CI/CD Monorepo
+
+on:
+    push:
+        branches:
+            - main
+    pull_request:
+
+jobs:
+    setup:
+        name: Setup Monorepo
+        runs-on: ubuntu-latest
+        outputs:
+            changed: ${{ steps.lerna.outputs.changed }}
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@v3
+
+            - name: Setup Node.js
+              uses: actions/setup-node@v3
+              with:
+                  node-version: 18
+                  cache: "npm"
+
+            - name: Install dependencies (root + packages)
+              run: |
+                  npm install --global lerna
+                  npm ci
+                  lerna bootstrap --ci
+
+            - name: Detect changed packages
+              id: lerna
+              run: |
+                  CHANGED=$(lerna changed --json || echo "[]")
+                  echo "changed=$CHANGED" >> $GITHUB_OUTPUT
+                  echo "Changed packages: $CHANGED"
+
+    test:
+        name: Test Services
+        needs: setup
+        runs-on: ubuntu-latest
+        strategy:
+            matrix:
+                service: ${{ fromJson(needs.setup.outputs.changed) }}
+            max-parallel: 4
+        steps:
+            - uses: actions/checkout@v3
+
+            - name: Setup Node.js
+              uses: actions/setup-node@v3
+              with:
+                  node-version: 18
+                  cache: "npm"
+
+            - name: Install dependencies
+              run: |
+                  npm install --global lerna
+                  npm ci
+                  lerna bootstrap --ci
+
+            - name: Run Tests
+              working-directory: packages/${{ matrix.service.name }}
+              run: npm test --if-present
+
+    build:
+        name: Build Services
+        needs: test
+        runs-on: ubuntu-latest
+        strategy:
+            matrix:
+                service: ${{ fromJson(needs.setup.outputs.changed) }}
+        steps:
+            - uses: actions/checkout@v3
+
+            - name: Build Docker image
+              working-directory: packages/${{ matrix.service.name }}
+              run: |
+                  docker build -t zenbilling/${{ matrix.service.name }} .
+
+    deploy:
+        name: Deploy Services to Coolify
+        needs: build
+        runs-on: ubuntu-latest
+        strategy:
+            matrix:
+                service: ${{ fromJson(needs.setup.outputs.changed) }}
+        steps:
+            - name: Deploy to Coolify
+              run: |
+                  case ${{ matrix.service.name }} in
+                    dashboard_service)
+                      curl -X POST -d '{}' ${{ secrets.COOLIFY_WEBHOOK_DASHBOARD_SERVICE }}
+                      ;;
+                    auth_service)
+                      curl -X POST -d '{}' ${{ secrets.COOLIFY_WEBHOOK_AUTH_SERVICE }}
+                      ;;
+                    company_service)
+                      curl -X POST -d '{}' ${{ secrets.COOLIFY_WEBHOOK_COMPANY_SERVICE }}
+                      ;;
+                    customer_service)
+                      curl -X POST -d '{}' ${{ secrets.COOLIFY_WEBHOOK_CUSTOMER_SERVICE }}
+                      ;;
+                    invoice_service)
+                      curl -X POST -d '{}' ${{ secrets.COOLIFY_WEBHOOK_INVOICE_SERVICE }}
+                      ;;
+                    product_service)
+                      curl -X POST -d '{}' ${{ secrets.COOLIFY_WEBHOOK_PRODUCT_SERVICE }}
+                      ;;
+                    quote_service)
+                      curl -X POST -d '{}' ${{ secrets.COOLIFY_WEBHOOK_QUOTE_SERVICE }}
+                      ;;
+                    email_service)
+                      curl -X POST -d '{}' ${{ secrets.COOLIFY_WEBHOOK_EMAIL_SERVICE }}
+                      ;;
+                    ai_service)
+                      curl -X POST -d '{}' ${{ secrets.COOLIFY_WEBHOOK_AI_SERVICE }}
+                      ;;
+                    pdf_service)
+                      curl -X POST -d '{}' ${{ secrets.COOLIFY_WEBHOOK_PDF_SERVICE }}
+                      ;;
+                    stripe_service)
+                      curl -X POST -d '{}' ${{ secrets.COOLIFY_WEBHOOK_STRIPE_SERVICE }}
+                      ;;
+                  esac

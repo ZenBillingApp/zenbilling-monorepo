@@ -54,9 +54,7 @@ jobs:
 
             - name: Install dependencies
               run: |
-                  npm install --global lerna
                   npm ci
-                  lerna bootstrap --ci
 
             - name: Run Tests
               working-directory: packages/${{ matrix.service.name }}

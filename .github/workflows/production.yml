@@ -1,4 +1,4 @@
-name: Production CI/CD Pipeline
+name: Production CI/CD Pipeline - Lerna Monorepo
 
 on:
   push:
@@ -12,11 +12,29 @@ on:
         required: false
         default: 'false'
         type: boolean
+      service:
+        description: 'Deploy specific service only'
+        required: false
+        default: 'all'
+        type: choice
+        options:
+          - all
+          - api_gateway
+          - auth_service
+          - ai_service
+          - company_service
+          - customer_service
+          - dashboard_service
+          - email_service
+          - invoice_service
+          - pdf_service
+          - product_service
+          - quote_service
+          - stripe_service
 
 env:
   REGISTRY: ghcr.io
   NODE_VERSION: '20'
-  TIMEOUT_MINUTES: 30
 
 permissions:
   contents: read
@@ -24,78 +42,105 @@ permissions:
   actions: read
 
 jobs:
-  # 1. DÉTECTION DES CHANGEMENTS
+  # 1. DÉTECTION DES CHANGEMENTS AVEC LERNA
   detect-changes:
-    name: "🔍 Detect Changes"
+    name: "🔍 Detect Changes (Lerna)"
     runs-on: ubuntu-latest
     timeout-minutes: 5
     outputs:
-      services: ${{ steps.changes.outputs.changes }}
-      shared: ${{ steps.changes.outputs.shared }}
+      changed_packages: ${{ steps.lerna-changes.outputs.packages }}
       has_changes: ${{ steps.has-changes.outputs.result }}
+      shared_changed: ${{ steps.changes.outputs.shared }}
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-          fetch-depth: 2
+          fetch-depth: 0  # Nécessaire pour Lerna
 
-      - name: Detect file changes
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install root dependencies
+        run: |
+          npm ci --no-audit --no-fund
+          echo "📦 Root dependencies installed"
+
+      - name: Detect file changes (fallback)
         uses: dorny/paths-filter@v3
         id: changes
         with:
           filters: |
             shared:
               - 'packages/shared/**'
-            api_gateway:
-              - 'packages/api_gateway/**'
-            auth_service:
-              - 'packages/auth_service/**'
-            ai_service:
-              - 'packages/ai_service/**'
-            company_service:
-              - 'packages/company_service/**'
-            customer_service:
-              - 'packages/customer_service/**'
-            dashboard_service:
-              - 'packages/dashboard_service/**'
-            email_service:
-              - 'packages/email_service/**'
-            invoice_service:
-              - 'packages/invoice_service/**'
-            pdf_service:
-              - 'packages/pdf_service/**'
-            product_service:
-              - 'packages/product_service/**'
-            quote_service:
-              - 'packages/quote_service/**'
-            stripe_service:
-              - 'packages/stripe_service/**'
+            root:
+              - 'package.json'
+              - 'lerna.json'
+              - '.github/workflows/**'
+
+      - name: Detect changed packages with Lerna
+        id: lerna-changes
+        run: |
+          if [[ "${{ github.event.inputs.service }}" != "all" && "${{ github.event.inputs.service }}" != "" ]]; then
+            # Déploiement manuel d'un service spécifique
+            echo "packages=[\"${{ github.event.inputs.service }}\"]" >> $GITHUB_OUTPUT
+            echo "🎯 Manual deployment: ${{ github.event.inputs.service }}"
+          elif [[ "${{ github.event.inputs.force_deploy }}" == "true" ]]; then
+            # Force deploy tous les services
+            PACKAGES=$(find packages -maxdepth 1 -type d -name "*_service" -o -name "api_gateway" | xargs -I {} basename {} | jq -R . | jq -s .)
+            echo "packages=$PACKAGES" >> $GITHUB_OUTPUT
+            echo "🚀 Force deploy all services"
+          else
+            # Utilisation de Lerna pour détecter les changements
+            if npx lerna changed --json 2>/dev/null | jq empty; then
+              CHANGED=$(npx lerna changed --json 2>/dev/null || echo "[]")
+              if [[ "$CHANGED" == "[]" ]] && [[ "${{ steps.changes.outputs.shared }}" == "true" || "${{ steps.changes.outputs.root }}" == "true" ]]; then
+                # Si shared ou root a changé, rebuilder tous les services
+                PACKAGES=$(find packages -maxdepth 1 -type d -name "*_service" -o -name "api_gateway" | xargs -I {} basename {} | jq -R . | jq -s .)
+                echo "packages=$PACKAGES" >> $GITHUB_OUTPUT
+                echo "📦 Shared/root changes detected, rebuilding all services"
+              else
+                PACKAGES=$(echo "$CHANGED" | jq '[.[].name | split("/") | last]')
+                echo "packages=$PACKAGES" >> $GITHUB_OUTPUT
+                echo "📦 Changed packages detected: $PACKAGES"
+              fi
+            else
+              echo "packages=[]" >> $GITHUB_OUTPUT
+              echo "✅ No packages changed"
+            fi
+          fi
 
       - name: Check if deployment needed
         id: has-changes
         run: |
-          if [[ "${{ github.event.inputs.force_deploy }}" == "true" ]]; then
+          PACKAGES="${{ steps.lerna-changes.outputs.packages }}"
+          if [[ "$PACKAGES" != "[]" && "$PACKAGES" != "" ]]; then
             echo "result=true" >> $GITHUB_OUTPUT
-            echo "🚀 Force deploy requested"
-          elif [[ "${{ steps.changes.outputs.changes }}" != "[]" || "${{ steps.changes.outputs.shared }}" == "true" ]]; then
-            echo "result=true" >> $GITHUB_OUTPUT
-            echo "📦 Changes detected: ${{ steps.changes.outputs.changes }}"
+            echo "📦 Deployment needed for: $PACKAGES"
           else
             echo "result=false" >> $GITHUB_OUTPUT
-            echo "✅ No changes detected, skipping pipeline"
+            echo "✅ No deployment needed"
           fi
 
-  # 2. BUILD PHASE
+      - name: Set matrix for parallel jobs
+        id: set-matrix
+        run: |
+          PACKAGES="${{ steps.lerna-changes.outputs.packages }}"
+          echo "matrix={\"service\":$PACKAGES}" >> $GITHUB_OUTPUT
+
+  # 2. BUILD INDÉPENDANT PAR SERVICE
   build:
     name: "🏗️ Build"
     runs-on: ubuntu-latest
     needs: detect-changes
     if: needs.detect-changes.outputs.has_changes == 'true'
-    timeout-minutes: 30
+    timeout-minutes: 15
     strategy:
-      fail-fast: true
-      matrix:
-        service: [api_gateway, auth_service, ai_service, company_service, customer_service, dashboard_service, email_service, invoice_service, pdf_service, product_service, quote_service, stripe_service]
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.detect-changes.outputs.matrix) }}
     
     steps:
       - name: Checkout code
@@ -112,64 +157,67 @@ jobs:
           npm ci --no-audit --no-fund
           echo "📦 Root dependencies installed"
 
-      - name: Build shared package
-        if: needs.detect-changes.outputs.shared == 'true' || github.event.inputs.force_deploy == 'true'
+      - name: Build shared package (if needed)
+        if: needs.detect-changes.outputs.shared_changed == 'true' || github.event.inputs.force_deploy == 'true'
         run: |
-          cd packages/shared
-          npm ci --no-audit --no-fund
-          npm run build
-          echo "✅ Shared package built successfully"
-
-      - name: Check if service needs build
-        id: should-build
-        run: |
-          SERVICE="${{ matrix.service }}"
-          if [[ "${{ github.event.inputs.force_deploy }}" == "true" ]]; then
-            echo "build=true" >> $GITHUB_OUTPUT
-            echo "🔄 Force build: $SERVICE"
-          elif [[ "${{ needs.detect-changes.outputs.services }}" == *"$SERVICE"* || "${{ needs.detect-changes.outputs.shared }}" == "true" ]]; then
-            echo "build=true" >> $GITHUB_OUTPUT
-            echo "📦 Build needed: $SERVICE"
-          else
-            echo "build=false" >> $GITHUB_OUTPUT
-            echo "⏭️ Skip build: $SERVICE"
+          if [ -d "packages/shared" ]; then
+            echo "🔧 Building shared package..."
+            cd packages/shared
+            npm ci --no-audit --no-fund
+            if npm run 2>&1 | grep -q "build$"; then
+              npm run build
+              echo "✅ Shared package built successfully"
+            else
+              echo "ℹ️  No build script for shared package"
+            fi
+            cd ../..
           fi
 
       - name: Build service
-        if: steps.should-build.outputs.build == 'true'
         run: |
-          cd packages/${{ matrix.service }}
+          SERVICE="${{ matrix.service }}"
+          echo "🔧 Building $SERVICE..."
+          
+          cd packages/$SERVICE
           npm ci --no-audit --no-fund
           
-          # Build si disponible
+          # Vérifier si un script de build existe
           if npm run 2>&1 | grep -q "build$"; then
+            echo "📦 Running build for $SERVICE..."
             npm run build
-            echo "✅ ${{ matrix.service }} built successfully"
+            echo "✅ $SERVICE built successfully"
+            
+            # Vérifier que le build a produit des fichiers
+            if [ -d "dist" ]; then
+              echo "📂 Build artifacts created in dist/"
+              ls -la dist/
+            else
+              echo "⚠️  No dist/ directory created"
+            fi
           else
-            echo "ℹ️  No build script for ${{ matrix.service }}"
+            echo "ℹ️  No build script for $SERVICE, using source files directly"
           fi
 
       - name: Cache build artifacts
-        if: steps.should-build.outputs.build == 'true'
-        uses: actions/cache@v3
+        uses: actions/cache/save@v3
         with:
           path: |
             packages/${{ matrix.service }}/dist
             packages/${{ matrix.service }}/node_modules
             packages/shared/dist
+            packages/shared/node_modules
           key: build-${{ matrix.service }}-${{ github.sha }}
 
-  # 3. TEST PHASE
+  # 3. TESTS PAR SERVICE
   test:
     name: "🧪 Test"
     runs-on: ubuntu-latest
     needs: [detect-changes, build]
     if: needs.detect-changes.outputs.has_changes == 'true'
-    timeout-minutes: 30
+    timeout-minutes: 10
     strategy:
       fail-fast: false
-      matrix:
-        service: [api_gateway, auth_service, ai_service, company_service, customer_service, dashboard_service, email_service, invoice_service, pdf_service, product_service, quote_service, stripe_service]
+      matrix: ${{ fromJSON(needs.detect-changes.outputs.matrix) }}
     
     services:
       postgres:
@@ -206,53 +254,29 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'npm'
 
-      - name: Check if service needs testing
-        id: should-test
-        run: |
-          SERVICE="${{ matrix.service }}"
-          if [[ "${{ github.event.inputs.force_deploy }}" == "true" ]]; then
-            echo "test=true" >> $GITHUB_OUTPUT
-            echo "🔄 Force test: $SERVICE"
-          elif [[ "${{ needs.detect-changes.outputs.services }}" == *"$SERVICE"* || "${{ needs.detect-changes.outputs.shared }}" == "true" ]]; then
-            echo "test=true" >> $GITHUB_OUTPUT
-            echo "🧪 Test needed: $SERVICE"
-          else
-            echo "test=false" >> $GITHUB_OUTPUT
-            echo "⏭️ Skip test: $SERVICE"
-          fi
-
       - name: Restore build cache
-        if: steps.should-test.outputs.test == 'true'
-        uses: actions/cache@v3
+        uses: actions/cache/restore@v3
         with:
           path: |
             packages/${{ matrix.service }}/dist
             packages/${{ matrix.service }}/node_modules
             packages/shared/dist
+            packages/shared/node_modules
           key: build-${{ matrix.service }}-${{ github.sha }}
 
-      - name: Install dependencies if cache miss
-        if: steps.should-test.outputs.test == 'true'
+      - name: Install dependencies (if cache miss)
         run: |
-          # Install shared
-          cd packages/shared
-          if [ ! -d "node_modules" ]; then
+          if [ ! -d "packages/${{ matrix.service }}/node_modules" ]; then
             npm ci --no-audit --no-fund
-            npm run build
-          fi
-          cd ../..
-          
-          # Install service
-          cd packages/${{ matrix.service }}
-          if [ ! -d "node_modules" ]; then
+            cd packages/${{ matrix.service }}
             npm ci --no-audit --no-fund
           fi
 
       - name: Run tests
-        if: steps.should-test.outputs.test == 'true'
         run: |
           cd packages/${{ matrix.service }}
-          if npm run --silent | grep -q "^  test$"; then
+          if npm run 2>&1 | grep -q "test$"; then
+            echo "🧪 Running tests for ${{ matrix.service }}..."
             npm test
             echo "✅ Tests passed for ${{ matrix.service }}"
           else
@@ -263,7 +287,7 @@ jobs:
           DATABASE_URL: postgresql://test:test@localhost:5432/test_db
           REDIS_URL: redis://localhost:6379
 
-  # 4. SECURITY SCAN
+  # 4. SECURITY SCAN (une seule fois)
   security:
     name: "🔒 Security Scan"
     runs-on: ubuntu-latest
@@ -291,25 +315,26 @@ jobs:
 
       - name: Check for secrets
         run: |
-          # Vérifie qu'aucun secret n'est commité
-          if grep -r -E "(STRIPE_SECRET_KEY|OPENAI_API_KEY|DATABASE_URL|BETTER_AUTH_SECRET)" --include="*.ts" --include="*.js" --exclude-dir=node_modules packages/; then
+          # Vérification des secrets dans le code
+          if grep -r -E "(STRIPE_SECRET_KEY|OPENAI_API_KEY|DATABASE_URL|BETTER_AUTH_SECRET)" \
+             --include="*.ts" --include="*.js" --exclude-dir=node_modules \
+             --exclude-dir=dist packages/; then
             echo "❌ Secrets found in code!"
             exit 1
           fi
           echo "✅ No secrets found in code"
 
-  # 5. BUILD & PUSH DOCKER IMAGES
+  # 5. BUILD & PUSH DOCKER IMAGES PAR SERVICE
   push:
-    name: "🐳 Push Images"
+    name: "🐳 Push"
     runs-on: ubuntu-latest
     needs: [detect-changes, build, test, security]
     if: needs.detect-changes.outputs.has_changes == 'true' && github.ref == 'refs/heads/main'
-    timeout-minutes: 30
+    timeout-minutes: 20
     strategy:
-      fail-fast: true
-      max-parallel: 4
-      matrix:
-        service: [api_gateway, auth_service, ai_service, company_service, customer_service, dashboard_service, email_service, invoice_service, pdf_service, product_service, quote_service, stripe_service]
+      fail-fast: false
+      max-parallel: 3
+      matrix: ${{ fromJSON(needs.detect-changes.outputs.matrix) }}
 
     steps:
       - name: Checkout code
@@ -321,41 +346,27 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'npm'
 
-      - name: Check if service needs push
-        id: should-push
-        run: |
-          SERVICE="${{ matrix.service }}"
-          if [[ "${{ github.event.inputs.force_deploy }}" == "true" ]]; then
-            echo "push=true" >> $GITHUB_OUTPUT
-            echo "🔄 Force push: $SERVICE"
-          elif [[ "${{ needs.detect-changes.outputs.services }}" == *"$SERVICE"* || "${{ needs.detect-changes.outputs.shared }}" == "true" ]]; then
-            echo "push=true" >> $GITHUB_OUTPUT
-            echo "🐳 Push needed: $SERVICE"
-          else
-            echo "push=false" >> $GITHUB_OUTPUT
-            echo "⏭️ Skip push: $SERVICE"
-          fi
-
       - name: Restore build cache
-        if: steps.should-push.outputs.push == 'true'
-        uses: actions/cache@v3
+        uses: actions/cache/restore@v3
         with:
           path: |
             packages/${{ matrix.service }}/dist
             packages/${{ matrix.service }}/node_modules
             packages/shared/dist
+            packages/shared/node_modules
           key: build-${{ matrix.service }}-${{ github.sha }}
 
       - name: Rebuild if cache miss
-        if: steps.should-push.outputs.push == 'true'
         run: |
           # Rebuild shared if needed
-          cd packages/shared
-          if [ ! -d "dist" ]; then
+          if [ -d "packages/shared" ] && [ ! -d "packages/shared/node_modules" ]; then
+            cd packages/shared
             npm ci --no-audit --no-fund
-            npm run build
+            if npm run 2>&1 | grep -q "build$"; then
+              npm run build
+            fi
+            cd ../..
           fi
-          cd ../..
           
           # Rebuild service if needed
           cd packages/${{ matrix.service }}
@@ -367,11 +378,9 @@ jobs:
           fi
 
       - name: Set up Docker Buildx
-        if: steps.should-push.outputs.push == 'true'
         uses: docker/setup-buildx-action@v3
 
       - name: Log in to Container Registry
-        if: steps.should-push.outputs.push == 'true'
         uses: docker/login-action@v3
         with:
           registry: ${{ env.REGISTRY }}
@@ -379,7 +388,6 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Extract metadata
-        if: steps.should-push.outputs.push == 'true'
         id: meta
         uses: docker/metadata-action@v5
         with:
@@ -390,7 +398,6 @@ jobs:
             type=raw,value=latest,enable={{is_default_branch}}
 
       - name: Build and push Docker image
-        if: steps.should-push.outputs.push == 'true'
         uses: docker/build-push-action@v5
         with:
           context: .
@@ -402,61 +409,55 @@ jobs:
           cache-to: type=gha,mode=max
           provenance: false
 
-  # 6. DEPLOY TO COOLIFY
+  # 6. DÉPLOIEMENT COOLIFY PAR SERVICE
   deploy:
-    name: "🚀 Deploy"
+    name: "🚀 Deploy to Coolify"
     runs-on: ubuntu-latest
     needs: [detect-changes, push]
     if: needs.detect-changes.outputs.has_changes == 'true' && github.ref == 'refs/heads/main'
-    timeout-minutes: 30
+    timeout-minutes: 15
     strategy:
       fail-fast: false
       max-parallel: 2
-      matrix:
-        service: [api_gateway, auth_service, ai_service, company_service, customer_service, dashboard_service, email_service, invoice_service, pdf_service, product_service, quote_service, stripe_service]
+      matrix: ${{ fromJSON(needs.detect-changes.outputs.matrix) }}
 
     steps:
-      - name: Check if service needs deploy
-        id: should-deploy
+      - name: Deploy to Coolify
         run: |
           SERVICE="${{ matrix.service }}"
-          if [[ "${{ github.event.inputs.force_deploy }}" == "true" ]]; then
-            echo "deploy=true" >> $GITHUB_OUTPUT
-            echo "🔄 Force deploy: $SERVICE"
-          elif [[ "${{ needs.detect-changes.outputs.services }}" == *"$SERVICE"* || "${{ needs.detect-changes.outputs.shared }}" == "true" ]]; then
-            echo "deploy=true" >> $GITHUB_OUTPUT
-            echo "🚀 Deploy needed: $SERVICE"
-          else
-            echo "deploy=false" >> $GITHUB_OUTPUT
-            echo "⏭️ Skip deploy: $SERVICE"
-          fi
-
-      - name: Deploy to Coolify
-        if: steps.should-deploy.outputs.deploy == 'true'
-        run: |
-          SERVICE_UPPER=$(echo "${{ matrix.service }}" | tr '[:lower:]' '[:upper:]')
+          SERVICE_UPPER=$(echo "$SERVICE" | tr '[:lower:]' '[:upper:]')
           WEBHOOK_VAR="COOLIFY_WEBHOOK_${SERVICE_UPPER}"
           WEBHOOK_URL="${!WEBHOOK_VAR}"
           
           if [ -z "$WEBHOOK_URL" ]; then
-            echo "❌ Webhook URL not found for ${{ matrix.service }}"
+            echo "❌ Webhook URL not found for $SERVICE"
+            echo "Expected environment variable: $WEBHOOK_VAR"
             exit 1
           fi
           
-          echo "🚀 Deploying ${{ matrix.service }} to Coolify..."
+          echo "🚀 Deploying $SERVICE to Coolify..."
+          echo "📡 Using webhook: $WEBHOOK_URL"
           
-          for i in {1..3}; do
+          # Déploiement avec retry
+          for attempt in {1..3}; do
+            echo "🔄 Deployment attempt $attempt for $SERVICE..."
+            
             if curl -f -s --max-time 180 "$WEBHOOK_URL"; then
-              echo "✅ Deployment webhook sent successfully for ${{ matrix.service }}"
+              echo "✅ Deployment webhook sent successfully for $SERVICE"
               break
             else
-              echo "❌ Deployment attempt $i failed for ${{ matrix.service }}"
-              if [ $i -eq 3 ]; then
+              echo "❌ Deployment attempt $attempt failed for $SERVICE"
+              if [ $attempt -eq 3 ]; then
+                echo "💥 All deployment attempts failed for $SERVICE"
                 exit 1
               fi
+              echo "⏳ Waiting 30s before retry..."
               sleep 30
             fi
           done
+          
+          echo "⏳ Waiting for $SERVICE deployment to start..."
+          sleep 45
         env:
           COOLIFY_WEBHOOK_API_GATEWAY: ${{ secrets.COOLIFY_WEBHOOK_API_GATEWAY }}
           COOLIFY_WEBHOOK_AUTH_SERVICE: ${{ secrets.COOLIFY_WEBHOOK_AUTH_SERVICE }}
@@ -471,13 +472,7 @@ jobs:
           COOLIFY_WEBHOOK_QUOTE_SERVICE: ${{ secrets.COOLIFY_WEBHOOK_QUOTE_SERVICE }}
           COOLIFY_WEBHOOK_STRIPE_SERVICE: ${{ secrets.COOLIFY_WEBHOOK_STRIPE_SERVICE }}
 
-      - name: Wait for deployment
-        if: steps.should-deploy.outputs.deploy == 'true'
-        run: |
-          echo "⏳ Waiting for ${{ matrix.service }} deployment..."
-          sleep 30
-
-  # 7. HEALTH CHECK
+  # 7. HEALTH CHECK DES SERVICES DÉPLOYÉS
   health-check:
     name: "🏥 Health Check"
     runs-on: ubuntu-latest
@@ -488,10 +483,10 @@ jobs:
     steps:
       - name: Wait for services startup
         run: |
-          echo "⏳ Waiting for all services to start..."
-          sleep 60
+          echo "⏳ Waiting for deployed services to start..."
+          sleep 90
 
-      - name: Health check services
+      - name: Health check deployed services
         run: |
           BASE_URL="${{ secrets.COOLIFY_BASE_URL }}"
           if [[ -z "$BASE_URL" ]]; then
@@ -499,16 +494,22 @@ jobs:
             exit 1
           fi
 
+          DEPLOYED_SERVICES='${{ needs.detect-changes.outputs.changed_packages }}'
+          echo "🔍 Checking health of deployed services: $DEPLOYED_SERVICES"
+
           failed_services=()
           
-          # Health check pour chaque service
-          services="auth_service ai_service company_service customer_service dashboard_service email_service invoice_service pdf_service product_service quote_service stripe_service"
-          
-          for service in $services; do
-            url="$BASE_URL/api/$service/health"
+          # Parse JSON array of deployed services
+          for service in $(echo "$DEPLOYED_SERVICES" | jq -r '.[]'); do
+            # Skip api_gateway for service-specific health checks
+            if [[ "$service" == "api_gateway" ]]; then
+              continue
+            fi
+            
+            url="$BASE_URL/api/${service}/health"
             echo "🔍 Checking $service at $url"
             
-            if curl -f -s --max-time 10 "$url" > /dev/null; then
+            if curl -f -s --max-time 15 "$url" > /dev/null; then
               echo "✅ $service is healthy"
             else
               echo "❌ $service health check failed"
@@ -516,38 +517,57 @@ jobs:
             fi
           done
 
-          # Check API Gateway
-          echo "🔍 Checking API Gateway at $BASE_URL/"
-          if curl -f -s --max-time 10 "$BASE_URL/" > /dev/null; then
-            echo "✅ API Gateway is healthy"
-          else
-            echo "❌ API Gateway health check failed"
-            failed_services+=("api_gateway")
+          # Check API Gateway if deployed
+          if echo "$DEPLOYED_SERVICES" | jq -r '.[]' | grep -q "api_gateway"; then
+            echo "🔍 Checking API Gateway at $BASE_URL/"
+            if curl -f -s --max-time 15 "$BASE_URL/" > /dev/null; then
+              echo "✅ API Gateway is healthy"
+            else
+              echo "❌ API Gateway health check failed"
+              failed_services+=("api_gateway")
+            fi
           fi
 
+          # Report results
           if [ ${#failed_services[@]} -gt 0 ]; then
             echo "❌ Health checks failed for: ${failed_services[*]}"
+            echo "🔍 Check Coolify logs for more details"
             exit 1
           else
-            echo "🎉 All services are healthy!"
+            echo "🎉 All deployed services are healthy!"
           fi
 
-  # 8. CLEANUP
+  # 8. NOTIFICATION ET CLEANUP
   cleanup:
-    name: "🧹 Cleanup"
+    name: "🧹 Cleanup & Notify"
     runs-on: ubuntu-latest
     needs: [detect-changes, health-check]
     if: always() && needs.detect-changes.outputs.has_changes == 'true'
     
     steps:
-      - name: Clean up old images
-        run: |
-          echo "🧹 Cleanup completed (placeholder for future image cleanup)"
-          
       - name: Report deployment status
         run: |
+          DEPLOYED_SERVICES='${{ needs.detect-changes.outputs.changed_packages }}'
+          
           if [[ "${{ needs.health-check.result }}" == "success" ]]; then
-            echo "🎉 Deployment completed successfully!"
+            echo "🎉 ✅ Deployment completed successfully!"
+            echo "🚀 Deployed services: $DEPLOYED_SERVICES"
+            echo "📊 Workflow summary:"
+            echo "  - Build: ${{ needs.build.result }}"
+            echo "  - Test: ${{ needs.test.result }}"
+            echo "  - Security: ${{ needs.security.result }}"
+            echo "  - Push: ${{ needs.push.result }}"
+            echo "  - Deploy: ${{ needs.deploy.result }}"
+            echo "  - Health: ${{ needs.health-check.result }}"
           else
-            echo "❌ Deployment failed or health checks failed"
+            echo "❌ ⚠️  Deployment failed or health checks failed"
+            echo "🔍 Check the logs above for more details"
+            echo "📋 Deployed services: $DEPLOYED_SERVICES"
+            
+            # En cas d'échec, indiquer les étapes pour le rollback
+            echo "🔄 To rollback, run the rollback workflow manually"
           fi
+          
+      - name: Clean up old artifacts
+        run: |
+          echo "🧹 Cleanup completed (caches are automatically managed by GitHub Actions)"

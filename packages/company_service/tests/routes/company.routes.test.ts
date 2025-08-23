@@ -2,7 +2,7 @@ import request from "supertest";
 import express from "express";
 import companyRoutes from "../../src/routes/company.routes";
 import { CompanyService } from "../../src/services/company.service";
-import { LegalForm } from "@zenbilling/shared/src/interfaces/company.interface";
+import { LegalForm } from "@zenbilling/shared/src/interfaces/Company.interface";
 
 // Mock des middlewares
 jest.mock("@zenbilling/shared/src/middlewares/auth.middleware", () => ({

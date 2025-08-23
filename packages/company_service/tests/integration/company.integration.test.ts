@@ -6,7 +6,7 @@ import rateLimit from "express-rate-limit";
 import companyRoutes from "../../src/routes/company.routes";
 import { CompanyService } from "../../src/services/company.service";
 import { CustomError } from "@zenbilling/shared/src/utils/customError";
-import { LegalForm } from "@zenbilling/shared/src/interfaces/company.interface";
+import { LegalForm } from "@zenbilling/shared/src/interfaces/Company.interface";
 
 // Mock des middlewares et services
 jest.mock("@zenbilling/shared/src/middlewares/auth.middleware", () => ({

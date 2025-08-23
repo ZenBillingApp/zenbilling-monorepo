@@ -62,7 +62,7 @@ jobs:
         name: Test Services
         needs: [setup, build-shared]
         runs-on: ubuntu-latest
-        if: always() && needs.setup.result == 'success'
+        if: always() && needs.setup.result == 'success' && needs.setup.outputs.changed != '[]'
         strategy:
             matrix:
                 service: ${{ fromJson(needs.setup.outputs.changed) }}
@@ -106,7 +106,7 @@ jobs:
         name: Build Services
         needs: [test, build-shared]
         runs-on: ubuntu-latest
-        if: always() && needs.test.result == 'success'
+        if: always() && (needs.test.result == 'success' || needs.test.result == 'skipped') && needs.setup.outputs.changed != '[]'
         strategy:
             matrix:
                 service: ${{ fromJson(needs.setup.outputs.changed) }}
@@ -122,8 +122,9 @@ jobs:
 
     deploy:
         name: Deploy Services to Coolify
-        needs: build
+        needs: [build, setup]
         runs-on: ubuntu-latest
+        if: needs.build.result == 'success' && needs.setup.outputs.changed != '[]'
         strategy:
             matrix:
                 service: ${{ fromJson(needs.setup.outputs.changed) }}

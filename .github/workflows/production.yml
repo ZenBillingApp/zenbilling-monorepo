@@ -142,7 +142,7 @@ jobs:
           npm ci --no-audit --no-fund
           
           # Build si disponible
-          if npm run --silent | grep -q "^  build$"; then
+          if npm run 2>&1 | grep -q "build$"; then
             npm run build
             echo "✅ ${{ matrix.service }} built successfully"
           else
@@ -362,7 +362,7 @@ jobs:
           if [ ! -d "node_modules" ]; then
             npm ci --no-audit --no-fund
           fi
-          if [ ! -d "dist" ] && npm run --silent | grep -q "^  build$"; then
+          if [ ! -d "dist" ] && npm run 2>&1 | grep -q "build$"; then
             npm run build
           fi
 

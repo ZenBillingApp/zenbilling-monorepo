@@ -11,7 +11,7 @@ jobs:
         name: Setup Monorepo
         runs-on: ubuntu-latest
         outputs:
-            changed: ${{ steps.lerna.outputs.changed }}
+            changed: ${{ steps.filter.outputs.services }}
         steps:
             - name: Checkout code
               uses: actions/checkout@v3
@@ -23,17 +23,21 @@ jobs:
                   cache: "npm"
 
             - name: Install dependencies
-              run: |
-                  npm ci
+              run: npm ci
 
             - name: Detect changed packages
               id: lerna
               run: |
                   CHANGED=$(npx lerna changed --json || echo "[]")
-                  # Compacte le JSON sur une seule ligne
-                  CHANGED=$(echo "$CHANGED" | jq -c .)
-                  echo "changed=$CHANGED" >> $GITHUB_OUTPUT
-                  echo "Changed packages: $CHANGED"
+                  echo "raw=$CHANGED"
+                  echo "raw=$CHANGED" >> $GITHUB_OUTPUT
+
+            - name: Filter services (exclude shared)
+              id: filter
+              run: |
+                  SERVICES=$(echo '${{ steps.lerna.outputs.raw }}' | jq '[.[] | select(.name != "@zenbilling/shared")]')
+                  echo "services=$SERVICES" >> $GITHUB_OUTPUT
+                  echo "Filtered services: $SERVICES"
 
     build-shared:
         name: Build Shared Package
@@ -62,36 +66,30 @@ jobs:
         name: Test Services
         needs: [setup, build-shared]
         runs-on: ubuntu-latest
-        if: always() && needs.setup.result == 'success' && needs.setup.outputs.changed != '[]'
+        if: needs.setup.outputs.changed != '[]'
         strategy:
             matrix:
-                service: ${{ fromJson(needs.setup.outputs.changed || '[]') }}
+                service: ${{ fromJson(needs.setup.outputs.changed) }}
             max-parallel: 4
         steps:
             - uses: actions/checkout@v3
-              if: matrix.service.name != '@zenbilling/shared'
 
             - name: Setup Node.js
               uses: actions/setup-node@v3
-              if: matrix.service.name != '@zenbilling/shared'
               with:
                   node-version: 18
                   cache: "npm"
 
             - name: Install dependencies
-              if: matrix.service.name != '@zenbilling/shared'
               run: npm ci
 
             - name: Generate Prisma Client
-              if: matrix.service.name != '@zenbilling/shared'
               run: cd packages/shared && npm run prisma:generate
 
             - name: Build Shared Package
-              if: matrix.service.name != '@zenbilling/shared'
               run: cd packages/shared && npm run build
 
             - name: Run Tests
-              if: matrix.service.name != '@zenbilling/shared'
               working-directory: packages/${{ matrix.service.name }}
               timeout-minutes: 3
               run: |
@@ -106,31 +104,27 @@ jobs:
         name: Build Services
         needs: [test, build-shared]
         runs-on: ubuntu-latest
-        if: always() && (needs.test.result == 'success' || needs.test.result == 'skipped') && needs.setup.outputs.changed != '[]'
+        if: needs.setup.outputs.changed != '[]' && (needs.test.result == 'success' || needs.test.result == 'skipped')
         strategy:
             matrix:
-                service: ${{ fromJson(needs.setup.outputs.changed || '[]') }}
+                service: ${{ fromJson(needs.setup.outputs.changed) }}
         steps:
             - uses: actions/checkout@v3
-              if: matrix.service.name != '@zenbilling/shared'
 
             - name: Build Docker image
-              if: matrix.service.name != '@zenbilling/shared'
               working-directory: packages/${{ matrix.service.name }}
-              run: |
-                  docker build -t zenbilling/${{ matrix.service.name }} .
+              run: docker build -t zenbilling/${{ matrix.service.name }} .
 
     deploy:
         name: Deploy Services to Coolify
         needs: [build, setup]
         runs-on: ubuntu-latest
-        if: needs.build.result == 'success' && needs.setup.outputs.changed != '[]'
+        if: needs.setup.outputs.changed != '[]' && needs.build.result == 'success'
         strategy:
             matrix:
-                service: ${{ fromJson(needs.setup.outputs.changed || '[]') }}
+                service: ${{ fromJson(needs.setup.outputs.changed) }}
         steps:
             - name: Deploy to Coolify
-              if: matrix.service.name != '@zenbilling/shared'
               run: |
                   case ${{ matrix.service.name }} in
                     dashboard_service)

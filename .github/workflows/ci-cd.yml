@@ -162,4 +162,7 @@ jobs:
                     stripe_service)
                       curl -X POST -d '{}' ${{ secrets.COOLIFY_WEBHOOK_STRIPE_SERVICE }}
                       ;;
+                    api_gateway)
+                      curl -X POST -d '{}' ${{ secrets.COOLIFY_WEBHOOK_API_GATEWAY }}
+                      ;;
                   esac

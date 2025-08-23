@@ -22,11 +22,9 @@ jobs:
                   node-version: 18
                   cache: "npm"
 
-            - name: Install dependencies (root + packages)
+            - name: Install dependencies
               run: |
-                  npm install --global lerna
                   npm ci
-                  lerna bootstrap --ci
 
             - name: Detect changed packages
               id: lerna

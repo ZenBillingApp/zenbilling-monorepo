@@ -29,7 +29,9 @@ jobs:
             - name: Detect changed packages
               id: lerna
               run: |
-                  CHANGED=$(lerna changed --json || echo "[]")
+                  CHANGED=$(npx lerna changed --json || echo "[]")
+                  # Compacte le JSON sur une seule ligne
+                  CHANGED=$(echo "$CHANGED" | jq -c .)
                   echo "changed=$CHANGED" >> $GITHUB_OUTPUT
                   echo "Changed packages: $CHANGED"
 

@@ -1,7 +1,7 @@
 {
   "name": "auth-service",
   "version": "1.0.0",
-  "description": "service authentification Zenbilling ",
+  "description": "Service d'authentification ZenBilling avec Better Auth",
   "license": "ISC",
   "author": "JERRAR Hassan",
   "type": "commonjs",

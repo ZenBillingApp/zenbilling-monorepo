@@ -28,7 +28,7 @@
     "typescript": "^5.9.2"
   },
   "dependencies": {
-    "@zenbilling/shared": "1.0.0",
+    "@zenbilling/shared": "file:../shared",
     "@types/pino": "^7.0.4",
     "cors": "^2.8.5",
     "dotenv": "^16.0.0",

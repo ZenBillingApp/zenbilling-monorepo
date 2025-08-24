@@ -1,19 +1,30 @@
-name: CI/CD ZenBilling
+name: CI/CD - Test, Build & Deploy
 
 on:
     push:
-        branches: [main]
+        branches: [main, develop]
     pull_request:
+        branches: [main, develop]
 
 env:
     NODE_VERSION: 20
     REGISTRY: ${{ secrets.DOCKER_USERNAME }}
+    IMAGE_PREFIX: zenbilling
 
 jobs:
-    install:
+    # Job pour installer les dépendances et construire le package shared
+    setup:
         runs-on: ubuntu-latest
+        outputs:
+            cache-key: ${{ steps.cache-keys.outputs.node-cache-key }}
         steps:
-            - uses: actions/checkout@v4
+            - name: Checkout code
+              uses: actions/checkout@v4
+
+            - name: Generate cache keys
+              id: cache-keys
+              run: |
+                  echo "node-cache-key=${{ runner.os }}-node-${{ env.NODE_VERSION }}-${{ hashFiles('**/package-lock.json') }}" >> $GITHUB_OUTPUT
 
             - name: Setup Node.js
               uses: actions/setup-node@v4
@@ -24,13 +35,26 @@ jobs:
             - name: Install dependencies
               run: npm ci
 
-            - name: Build shared
-              run: npx lerna run build --scope @shared --stream
+            - name: Cache node_modules
+              uses: actions/cache@v4
+              id: cache
+              with:
+                  path: |
+                      node_modules
+                      packages/*/node_modules
+                  key: ${{ steps.cache-keys.outputs.node-cache-key }}
+                  restore-keys: |
+                      ${{ runner.os }}-node-${{ env.NODE_VERSION }}-
 
-    build:
-        needs: install
+            - name: Build shared package
+              run: npx lerna run build --scope @zenbilling/shared --stream
+
+    # Job pour tester et construire tous les services
+    test-and-build:
+        needs: setup
         runs-on: ubuntu-latest
         strategy:
+            fail-fast: false
             matrix:
                 service:
                     [
@@ -48,7 +72,8 @@ jobs:
                         stripe_service,
                     ]
         steps:
-            - uses: actions/checkout@v4
+            - name: Checkout code
+              uses: actions/checkout@v4
 
             - name: Setup Node.js
               uses: actions/setup-node@v4
@@ -56,19 +81,40 @@ jobs:
                   node-version: ${{ env.NODE_VERSION }}
                   cache: "npm"
 
-            - name: Install dependencies
+            - name: Restore cache
+              uses: actions/cache@v4
+              with:
+                  path: |
+                      node_modules
+                      packages/*/node_modules
+                  key: ${{ needs.setup.outputs.cache-key }}
+
+            - name: Install dependencies (fallback)
               run: npm ci
+              if: steps.cache.outputs.cache-hit != 'true'
 
             - name: Build service
-              run: npx lerna run build --scope @${{ matrix.service }} --stream
+              run: npx lerna run build --scope @zenbilling/${{ matrix.service }} --stream
 
             - name: Run tests
-              run: npx lerna run test --scope @${{ matrix.service }} --stream
+              run: npx lerna run test --scope @zenbilling/${{ matrix.service }} --stream
+              continue-on-error: false
 
-    docker:
-        needs: build
+            - name: Upload test coverage
+              uses: actions/upload-artifact@v4
+              if: always()
+              with:
+                  name: coverage-${{ matrix.service }}
+                  path: packages/${{ matrix.service }}/coverage/
+                  retention-days: 30
+
+    # Job pour construire et pousser les images Docker
+    docker-build-push:
+        needs: test-and-build
         runs-on: ubuntu-latest
+        if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop'
         strategy:
+            fail-fast: false
             matrix:
                 service:
                     [
@@ -86,7 +132,11 @@ jobs:
                         stripe_service,
                     ]
         steps:
-            - uses: actions/checkout@v4
+            - name: Checkout code
+              uses: actions/checkout@v4
+
+            - name: Set up Docker Buildx
+              uses: docker/setup-buildx-action@v3
 
             - name: Login to DockerHub
               uses: docker/login-action@v3
@@ -94,55 +144,71 @@ jobs:
                   username: ${{ secrets.DOCKER_USERNAME }}
                   password: ${{ secrets.DOCKER_PASSWORD }}
 
+            - name: Extract metadata
+              id: meta
+              uses: docker/metadata-action@v5
+              with:
+                  images: ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}-${{ matrix.service }}
+                  tags: |
+                      type=ref,event=branch
+                      type=sha,prefix={{branch}}-
+                      type=raw,value=latest,enable={{is_default_branch}}
+                      type=raw,value=develop,enable={{is_default_branch}}
+
             - name: Build and Push Docker Image
-              run: |
-                  docker build -t ${{ env.REGISTRY }}/${{ matrix.service }}:latest ./packages/${{ matrix.service }}
-                  docker push ${{ env.REGISTRY }}/${{ matrix.service }}:latest
+              uses: docker/build-push-action@v5
+              with:
+                  context: ./packages/${{ matrix.service }}
+                  push: true
+                  tags: ${{ steps.meta.outputs.tags }}
+                  labels: ${{ steps.meta.outputs.labels }}
+                  cache-from: type=gha
+                  cache-to: type=gha,mode=max
+                  platforms: linux/amd64,linux/arm64
+                  build-args: |
+                      NODE_ENV=production
+                      BUILD_DATE=${{ github.event.head_commit.timestamp }}
 
-    deploy:
-        needs: docker
+            - name: Scan Docker image
+              uses: aquasecurity/trivy-action@master
+              with:
+                  image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}-${{ matrix.service }}:${{ github.sha }}
+                  format: "sarif"
+                  output: "trivy-results.sarif"
+
+            - name: Upload Trivy scan results
+              uses: github/codeql-action/upload-sarif@v3
+              if: always()
+              with:
+                  sarif_file: "trivy-results.sarif"
+
+    # Job pour déclencher le déploiement
+    trigger-deployment:
+        needs: docker-build-push
         runs-on: ubuntu-latest
-        strategy:
-            matrix:
-                service:
-                    [
-                        ai_service,
-                        api_gateway,
-                        auth_service,
-                        company_service,
-                        customer_service,
-                        dashboard_service,
-                        email_service,
-                        invoice_service,
-                        pdf_service,
-                        product_service,
-                        quote_service,
-                        stripe_service,
-                    ]
+        if: github.ref == 'refs/heads/main'
         steps:
-            - name: Deploy via Coolify Webhook
-              env:
-                  AI_SERVICE_WEBHOOK: ${{ secrets.COOLIFY_WEBHOOK_AI_SERVICE }}
-                  API_GATEWAY_WEBHOOK: ${{ secrets.COOLIFY_WEBHOOK_API_GATEWAY }}
-                  AUTH_SERVICE_WEBHOOK: ${{ secrets.COOLIFY_WEBHOOK_AUTH_SERVICE }}
-                  COMPANY_SERVICE_WEBHOOK: ${{ secrets.COOLIFY_WEBHOOK_COMPANY_SERVICE }}
-                  CUSTOMER_SERVICE_WEBHOOK: ${{ secrets.COOLIFY_WEBHOOK_CUSTOMER_SERVICE }}
-                  DASHBOARD_SERVICE_WEBHOOK: ${{ secrets.COOLIFY_WEBHOOK_DASHBOARD_SERVICE }}
-                  EMAIL_SERVICE_WEBHOOK: ${{ secrets.COOLIFY_WEBHOOK_EMAIL_SERVICE }}
-                  INVOICE_SERVICE_WEBHOOK: ${{ secrets.COOLIFY_WEBHOOK_INVOICE_SERVICE }}
-                  PDF_SERVICE_WEBHOOK: ${{ secrets.COOLIFY_WEBHOOK_PDF_SERVICE }}
-                  PRODUCT_SERVICE_WEBHOOK: ${{ secrets.COOLIFY_WEBHOOK_PRODUCT_SERVICE }}
-                  QUOTE_SERVICE_WEBHOOK: ${{ secrets.COOLIFY_WEBHOOK_QUOTE_SERVICE }}
-                  STRIPE_SERVICE_WEBHOOK: ${{ secrets.COOLIFY_WEBHOOK_STRIPE_SERVICE }}
+            - name: Trigger deployment workflow
+              uses: peter-evans/repository-dispatch@v3
+              with:
+                  token: ${{ secrets.GITHUB_TOKEN }}
+                  event-type: deploy-services
+                  client-payload: '{"ref": "${{ github.ref }}", "sha": "${{ github.sha }}"}'
+
+    # Job pour les notifications
+    notify:
+        needs: [test-and-build, docker-build-push]
+        runs-on: ubuntu-latest
+        if: always()
+        steps:
+            - name: Notify on failure
+              if: failure()
               run: |
-                  SERVICE_UPPER=$(echo "${{ matrix.service }}" | tr '[:lower:]' '[:upper:]')
-                  WEBHOOK_VAR="${SERVICE_UPPER}_WEBHOOK"
-                  WEBHOOK_URL=$(eval echo \$${WEBHOOK_VAR})
+                  echo "❌ CI/CD pipeline failed!"
+                  echo "Check the logs for more details."
+              # Ici vous pouvez ajouter des notifications Slack, Discord, etc.
 
-                  if [ -z "$WEBHOOK_URL" ]; then
-                    echo "❌ Aucun webhook trouvé pour ${{ matrix.service }}"
-                    exit 1
-                  fi
-
-                  echo "🚀 Déploiement de ${{ matrix.service }}"
-                  curl -X POST "$WEBHOOK_URL"
+            - name: Notify on success
+              if: success()
+              run: |
+                  echo "✅ CI/CD pipeline completed successfully!"

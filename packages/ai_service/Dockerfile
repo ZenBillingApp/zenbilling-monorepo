@@ -1,52 +1,78 @@
-FROM node:18-alpine AS builder
+# Build stage
+FROM node:20-alpine AS builder
 
-WORKDIR /app/packages/ai_service
+WORKDIR /app
 
-# Copier le package shared pour la compilation
-COPY packages/shared/ ./packages/shared/
+# Copy root package files for workspaces
+COPY package*.json ./
+COPY lerna.json ./
 
-# Build du package shared d'abord
-WORKDIR /app/packages/ai_service/packages/shared
-RUN npm ci && npm run build
-
-# Revenir à la racine
-WORKDIR /app/packages/ai_service
-
-# Copier les fichiers du service ai
+# Copy all package.json files
+COPY packages/shared/package*.json ./packages/shared/
 COPY packages/ai_service/package*.json ./packages/ai_service/
-COPY packages/ai_service/tsconfig.json ./packages/ai_service/
 
-# Installer les dépendances
-WORKDIR /app/packages/ai_service
-RUN npm ci --only=production
+# Install dependencies with workspaces
+RUN npm install
 
-# Copier le code source
-COPY packages/ai_service/src/ ./src/
+# Copy source files
+COPY packages/shared/ ./packages/shared/
+COPY packages/ai_service/ ./packages/ai_service/
 
-# Build du service
+# Build shared package first
+WORKDIR /app/packages/shared
+RUN npm run prisma:generate
 RUN npm run build
 
-# Stage final
-FROM node:18-alpine
-
+# Build the service
 WORKDIR /app/packages/ai_service
+RUN npm run build
 
-# Copier les fichiers construits
-COPY --from=builder /app/packages/ai_service/dist ./dist
-COPY --from=builder /app/packages/ai_service/node_modules ./node_modules
-COPY --from=builder /app/packages/ai_service/package.json ./package.json
-COPY --from=builder /app/packages/shared/dist ./node_modules/@zenbilling/shared/dist
-COPY --from=builder /app/packages/shared/package.json ./node_modules/@zenbilling/shared/package.json
+# Production stage
+FROM node:20-alpine AS production
 
-# Créer un utilisateur non-root
-RUN addgroup -g 1001 -S nodejs && adduser -S nodejs -u 1001
-RUN chown -R nodejs:nodejs /app
+WORKDIR /app
+
+# Install curl for healthcheck
+RUN apk add --no-cache curl
+
+# Copy root package files for workspaces
+COPY package*.json ./
+COPY lerna.json ./
+
+# Copy package.json files
+COPY packages/shared/package*.json ./packages/shared/
+COPY packages/ai_service/package*.json ./packages/ai_service/
+
+# Install only production dependencies with workspaces
+RUN npm ci --only=production --workspaces
+
+# Copy built service
+COPY --from=builder /app/packages/ai_service/dist ./packages/ai_service/dist
+
+# Copy built shared package and install it properly
+COPY --from=builder /app/packages/shared ./packages/shared
+COPY --from=builder /app/packages/shared/package.json ./packages/shared/package.json
+
+# Copy the entire generated Prisma client from builder
+COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
+
+# Create symbolic link or copy shared package to node_modules
+RUN mkdir -p node_modules/@zenbilling && \
+    ln -sf /app/packages/shared node_modules/@zenbilling/shared
+
+# Create non-root user
+RUN addgroup -g 1001 -S nodejs && \
+    adduser -S nodejs -u 1001 && \
+    chown -R nodejs:nodejs /app
+
 USER nodejs
 
 EXPOSE 3011
 
-# Healthcheck
-HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-  CMD node -e "require('http').get('http://localhost:3011/health', (res) => process.exit(res.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))"
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
+  CMD curl -f http://localhost:3011/health || exit 1
 
+WORKDIR /app/packages/ai_service
 CMD ["node", "dist/app.js"]
+

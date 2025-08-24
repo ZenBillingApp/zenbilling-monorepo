@@ -450,35 +450,40 @@ services:
 
 ### 3.2 Pipeline d'Intégration Continue
 
-**Workflow GitHub Actions** (`production.yml`) :
+**Workflow GitHub Actions** (`ci-cd.yml`) :
 
-1. **Détection des changements** : Smart change detection par service
-2. **Build** : Compilation TypeScript avec cache
-3. **Tests** : Tests unitaires et d'intégration avec PostgreSQL/Redis
-4. **Sécurité** : Audit de sécurité et détection de secrets
-5. **Push** : Construction et push des images Docker
-6. **Déploiement** : Déploiement via webhooks Coolify
-7. **Health Check** : Vérification de la santé des services
-8. **Cleanup** : Nettoyage post-déploiement
+1. **Setup** : Installation des dépendances avec cache intelligent et build du package shared
+2. **Test & Build** : Tests unitaires et compilation TypeScript en parallèle pour les 12 services
+3. **Docker Build & Push** : Construction multi-plateforme des images Docker avec scan sécurité Trivy
+4. **Deploy Trigger** : Déclenchement du déploiement via repository dispatch event
+5. **Notifications** : Alertes en cas de succès ou d'échec
+
+**Fonctionnalités Avancées :**
+- **Stratégie Matrix** : Build et tests en parallèle pour tous les services
+- **Cache Intelligent** : Cache des node_modules basé sur hash des package-lock.json
+- **Multi-plateforme** : Images Docker pour linux/amd64 et linux/arm64
+- **Scan Sécurité** : Analyse Trivy des vulnérabilités avec upload SARIF
+- **Artifacts** : Upload automatique des rapports de couverture de tests
 
 **Critères de Qualité :**
-- Couverture de tests > 80%
-- Pas de vulnérabilités critiques
-- Build réussi sur tous les services
-- Health checks passants
+- Couverture de tests > 80% par service
+- Scan sécurité Trivy sans vulnérabilités critiques
+- Build TypeScript réussi sur tous les services
+- Tests Jest passants avec timeout 10s par service
 
 ### 3.3 Déploiement Continu
 
 **Infrastructure :**
-- **Registry** : GitHub Container Registry (GHCR)
-- **Orchestrateur** : Coolify (self-hosted)
-- **Monitoring** : Health checks automatisés
-- **Rollback** : One-click rollback vers version précédente
+- **Registry** : DockerHub avec authentification par secrets GitHub
+- **Déclenchement** : Repository dispatch pour workflow de déploiement séparé
+- **Environnements** : Déploiement sur main et develop branches
+- **Monitoring** : Logs centralisés avec notifications d'échec
 
 **Stratégie de déploiement :**
-- Zero-downtime deployment
-- Blue-green deployment pour les services critiques
-- Rollback automatique en cas d'échec des health checks
+- **Déclenchement conditionnel** : Déploiement uniquement sur push vers main/develop
+- **Images taguées** : Versioning automatique avec SHA commit et branches
+- **Fallback** : Gestion gracieuse des échecs de cache avec réinstallation
+- **Artifacts persistants** : Conservation des rapports de tests pendant 30 jours
 
 ---
 
@@ -524,13 +529,13 @@ services:
 
 | Domaine | Bibliothèque | Version | Usage |
 |---------|-------------|---------|-------|
-| Authentication | Better Auth | ^1.0.1 | Auth avec onboarding |
+| Authentication | Better Auth | ^1.3.4 | Auth avec onboarding |
 | Payments | Stripe | ^14.21.0 | Traitement des paiements |
-| AI | OpenAI | ^4.28.4 | Génération de contenu |
-| Email | Brevo | ^2.2.0 | Envoi d'emails |
+| AI | OpenAI | ^4.67.3 | Génération de contenu |
+| Email | Brevo | ^3.0.1 | Envoi d'emails |
 | PDF | Puppeteer | ^22.6.2 | Génération de PDF |
-| Logging | Pino | ^8.19.0 | Logging structuré |
-| Security | Helmet | ^7.1.0 | Sécurisation des headers |
+| Logging | Pino | ^9.7.0 | Logging structuré |
+| Security | Helmet | ^8.1.0 | Sécurisation des headers |
 
 ---
 
@@ -566,7 +571,7 @@ module.exports = {
     }
   },
   setupFilesAfterEnv: ['<rootDir>/tests/setup.ts'],
-  testTimeout: 30000
+  testTimeout: 10000
 };
 ```
 
@@ -761,15 +766,18 @@ cd packages/product_service && npm test
 
 **Security Checks automatisés :**
 ```yaml
-- name: Run security audit
-  run: npm audit --audit-level=high
+- name: Scan Docker image
+  uses: aquasecurity/trivy-action@master
+  with:
+    image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}-${{ matrix.service }}:${{ github.sha }}
+    format: "sarif"
+    output: "trivy-results.sarif"
 
-- name: Check for secrets
-  run: |
-    if grep -r -E "(STRIPE_SECRET_KEY|OPENAI_API_KEY)" --include="*.ts" packages/; then
-      echo "❌ Secrets found in code!"
-      exit 1
-    fi
+- name: Upload Trivy scan results
+  uses: github/codeql-action/upload-sarif@v3
+  if: always()
+  with:
+    sarif_file: "trivy-results.sarif"
 ```
 
 **Monitoring et Alertes :**

@@ -73,8 +73,16 @@ build_shared_package() {
     cd packages/shared
     if [ ! -d "node_modules" ]; then
         log_info "Installation des dépendances du package shared..."
-        npm ci
+        if [ ! -f "package-lock.json" ]; then
+            log_info "Génération du package-lock.json pour le package shared..."
+            npm install
+        else
+            npm ci
+        fi
     fi
+    
+    log_info "Génération des clients Prisma..."
+    npm run prisma:generate
     
     log_info "Compilation du package shared..."
     npm run build

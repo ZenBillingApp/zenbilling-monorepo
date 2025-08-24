@@ -20,7 +20,7 @@ export const connectRedis = async () => {
     try {
         await redisClient.connect();
     } catch (error) {
-        logger.error("Impossible de se connecter à Redis:", error instanceof Error ? error.message : String(error));
+        logger.error("Impossible de se connecter à Redis:", error);
         throw error;
     }
 };

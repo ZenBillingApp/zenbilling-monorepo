@@ -1,52 +1,58 @@
-FROM node:18-alpine AS builder
+# Build stage
+FROM node:20-alpine AS builder
 
-WORKDIR /app/packages/product_service
+WORKDIR /app
 
-# Copier le package shared pour la compilation
-COPY packages/shared/ ./packages/shared/
-
-# Build du package shared d'abord
-WORKDIR /app/packages/product_service/packages/shared
-RUN npm ci && npm run build
-
-# Revenir à la racine
-WORKDIR /app/packages/product_service
-
-# Copier les fichiers du service product
-COPY packages/product_service/package*.json ./packages/product_service/
-COPY packages/product_service/tsconfig.json ./packages/product_service/
-
-# Installer les dépendances
-WORKDIR /app/packages/product_service
-RUN npm ci --only=production
-
-# Copier le code source
-COPY packages/product_service/src/ ./src/
-
-# Build du service
+# Build shared package first
+COPY packages/shared/package*.json ./packages/shared/
+WORKDIR /app/packages/shared
+RUN if [ -f package-lock.json ]; then npm ci; else npm install; fi
+COPY packages/shared/tsconfig.json ./
+COPY packages/shared/src/ ./src/
+COPY packages/shared/prisma/ ./prisma/
+RUN npm run prisma:generate
 RUN npm run build
 
-# Stage final
-FROM node:18-alpine
-
+# Build the service
+WORKDIR /app
+COPY packages/product_service/package*.json ./packages/product_service/
+COPY packages/product_service/tsconfig.json ./packages/product_service/
 WORKDIR /app/packages/product_service
+RUN if [ -f package-lock.json ]; then npm ci; else npm install; fi
+COPY packages/product_service/src/ ./src/
+RUN npm run build
 
-# Copier les fichiers construits
+# Production stage
+FROM node:20-alpine AS production
+
+WORKDIR /app
+
+# Install curl for healthcheck
+RUN apk add --no-cache curl
+
+# Copy service package.json and install production deps
+COPY packages/product_service/package*.json ./
+RUN if [ -f package-lock.json ]; then npm ci --only=production; else npm install --only=production; fi && npm cache clean --force
+
+# Copy built service
 COPY --from=builder /app/packages/product_service/dist ./dist
-COPY --from=builder /app/packages/product_service/node_modules ./node_modules
-COPY --from=builder /app/packages/product_service/package.json ./package.json
+
+# Copy built shared package
 COPY --from=builder /app/packages/shared/dist ./node_modules/@zenbilling/shared/dist
 COPY --from=builder /app/packages/shared/package.json ./node_modules/@zenbilling/shared/package.json
+COPY --from=builder /app/packages/shared/node_modules/@prisma/client ./node_modules/@prisma/client
 
-# Créer un utilisateur non-root
-RUN addgroup -g 1001 -S nodejs && adduser -S nodejs -u 1001
-RUN chown -R nodejs:nodejs /app
+# Create non-root user
+RUN addgroup -g 1001 -S nodejs && \
+    adduser -S nodejs -u 1001 && \
+    chown -R nodejs:nodejs /app
+
 USER nodejs
 
 EXPOSE 3008
 
-# Healthcheck
-HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-  CMD node -e "require('http').get('http://localhost:3008/health', (res) => process.exit(res.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))"
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
+  CMD curl -f http://localhost:3008/health || exit 1
 
 CMD ["node", "dist/app.js"]

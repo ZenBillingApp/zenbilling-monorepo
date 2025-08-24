@@ -58,7 +58,7 @@ ZenBilling utilise une architecture microservices basée sur Node.js/TypeScript,
 ```
 ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
 │   Frontend      │────│   API Gateway   │────│   Microservices │
-│   (React)       │    │   (Express)     │    │   (Node.js/TS)  │
+│  (Next.js 15)   │    │   (Express)     │    │   (Node.js/TS)  │
 └─────────────────┘    └─────────────────┘    └─────────────────┘
                                 │                        │
                        ┌─────────────────┐    ┌─────────────────┐
@@ -68,7 +68,73 @@ ZenBilling utilise une architecture microservices basée sur Node.js/TypeScript,
                        └─────────────────┘    └─────────────────┘
 ```
 
-### 2.2 Services Métier
+### 2.2 Frontend Next.js 15
+
+**Stack Frontend :**
+- **Next.js 15** : Framework React avec App Router et Server Components
+- **TypeScript** : Typage statique pour la robustesse et maintenabilité  
+- **TailwindCSS** : Framework CSS utility-first pour un design moderne et responsive
+- **shadcn/ui** : Bibliothèque de composants UI basée sur Radix UI + Tailwind
+
+**Architecture Frontend :**
+```
+src/
+├── 📁 app/                     # App Router Next.js 13+
+│   ├── 📁 (app)/              # Groupe de routes protégées
+│   │   ├── 📁 (dashboard)/    # Routes du tableau de bord
+│   │   │   ├── 📁 company/    # Gestion de l'entreprise
+│   │   │   ├── 📁 customers/  # Gestion des clients
+│   │   │   ├── 📁 dashboard/  # Tableau de bord principal
+│   │   │   ├── 📁 invoices/   # Gestion des factures
+│   │   │   ├── 📁 products/   # Gestion des produits
+│   │   │   ├── 📁 profile/    # Profil utilisateur
+│   │   │   └── 📁 quotes/     # Gestion des devis
+│   │   └── 📁 onboarding/     # Processus d'intégration
+│   ├── 📁 (auth)/             # Routes d'authentification
+│   │   ├── 📁 login/          # Page de connexion
+│   │   └── 📁 register/       # Page d'inscription
+│   ├── 📁 (public)/           # Routes publiques
+│   │   └── 📁 payment/        # Pages de paiement
+│   ├── 📁 api/                # API Routes
+│   │   └── 📁 stripe/         # Intégration Stripe
+│   └── 📄 Fichiers globaux
+│       ├── layout.tsx         # Layout racine
+│       ├── page.tsx           # Page d'accueil
+│       └── globals.css        # Styles globaux
+├── 📁 components/             # Composants réutilisables
+│   ├── 📁 customers/          # Composants clients
+│   ├── 📁 invoices/           # Composants factures
+│   ├── 📁 products/           # Composants produits
+│   ├── 📁 quotes/             # Composants devis
+│   └── 📁 ui/                 # Composants UI (shadcn/ui)
+├── 📁 hooks/                  # Hooks React personnalisés
+├── 📁 lib/                    # Utilitaires et configurations
+├── 📁 providers/              # Providers React (Context)
+├── 📁 stores/                 # Stores d'état (Zustand)
+├── 📁 types/                  # Types TypeScript
+└── 📁 utils/                  # Fonctions utilitaires
+```
+
+**Fonctionnalités Next.js 15 utilisées :**
+- **App Router** : Système de routage moderne avec layouts imbriqués et groupes de routes
+- **Server Components** : Rendu côté serveur par défaut pour les performances
+- **Route Groups** : Organisation logique avec `(app)`, `(auth)`, `(public)`
+- **Layouts imbriqués** : Layout global + layouts spécifiques par section
+- **API Routes** : Endpoints Next.js pour proxy vers microservices
+- **Streaming** : Rendu progressif avec Suspense
+
+**Gestion d'état :**
+- **Zustand** : State management léger et performant
+- **React Context** : Providers pour authentification et configuration globale
+- **Server State** : Gestion cache et synchronisation avec APIs backend
+
+**Intégrations Frontend :**
+- **Better Auth** : Session management côté client avec cookies httpOnly
+- **Stripe Elements** : Composants de paiement intégrés
+- **Umami Analytics** : Tracking des événements utilisateur
+- **API Microservices** : Communication avec les 12 services backend
+
+### 2.3 Services Backend
 
 | Service | Port | Responsabilité |
 |---------|------|----------------|
@@ -491,10 +557,17 @@ services:
 
 ### 4.1 Stack Technique
 
+**Frontend :**
+- **Framework** : Next.js 15 avec App Router
+- **Language** : TypeScript 5.9
+- **Styling** : TailwindCSS + shadcn/ui
+- **State Management** : Zustand + React Context
+- **Testing** : Jest + React Testing Library (si implémenté)
+
 **Backend :**
 - **Runtime** : Node.js 20 LTS
 - **Language** : TypeScript 5.9
-- **Framework** : Express.js pour les APIs
+- **Framework** : Express.js pour les APIs microservices
 - **ORM** : Prisma pour la gestion de base de données
 - **Validation** : Joi pour la validation des schémas
 - **Testing** : Jest pour les tests unitaires et d'intégration
@@ -507,28 +580,41 @@ services:
 - **Containerization** : Docker & Docker Compose
 - **Reverse Proxy** : Express Gateway
 - **CI/CD** : GitHub Actions
-- **Registry** : GitHub Container Registry
+- **Registry** : DockerHub
 
 ### 4.2 Paradigmes de Développement
 
-**Architecture Microservices :**
-- Services indépendants et déployables séparément
-- Communication via APIs REST
+**Architecture Frontend (Next.js) :**
+- **Server-First** : Server Components par défaut pour les performances
+- **Progressive Enhancement** : Hydratation sélective côté client
+- **Route Groups** : Organisation modulaire des pages et layouts
+- **Component-Driven** : Composants réutilisables avec shadcn/ui
+
+**Architecture Backend (Microservices) :**
+- **Services indépendants** : Déploiement et scaling séparés
+- **Communication REST** : APIs HTTP standardisées
+- **Event-Driven** : Communication asynchrone entre services
 
 **Domain-Driven Design (DDD) :**
-- Services organisés par domaine métier
-- Isolation des contextes bornés
-- Langage ubiquitaire par domaine
+- **Services organisés par domaine métier** : Auth, Company, Invoice, etc.
+- **Isolation des contextes bornés** : Chaque service gère son domaine
+- **Langage ubiquitaire** : Terminologie métier cohérente
 
 **Clean Architecture :**
-- Séparation claire des couches (Controllers, Services, Repository)
-- Inversion de dépendances
-- Testabilité optimisée
+- **Séparation des couches** : Controllers, Services, Repository
+- **Inversion de dépendances** : Abstractions vers les détails
+- **Testabilité optimisée** : Mocks et isolation des composants
 
 ### 4.3 Bibliothèques Principales
 
 | Domaine | Bibliothèque | Version | Usage |
 |---------|-------------|---------|-------|
+| **Frontend** | | | |
+| Framework | Next.js | ^15.0.0 | Framework React avec App Router |
+| Styling | TailwindCSS | ^3.4.0 | CSS utility-first |
+| UI Components | shadcn/ui | Latest | Composants basés sur Radix UI |
+| State Management | Zustand | ^4.0.0 | Store d'état global |
+| **Backend** | | | |
 | Authentication | Better Auth | ^1.3.4 | Auth avec onboarding |
 | Payments | Stripe | ^14.21.0 | Traitement des paiements |
 | AI | OpenAI | ^4.67.3 | Génération de contenu |

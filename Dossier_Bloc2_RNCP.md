@@ -895,131 +895,275 @@ cd packages/product_service && npm test
 
 ## 9. CAHIER DE RECETTES
 
-### 9.1 Scénarios de Test Fonctionnels
+## �� TESTS FONCTIONNELS
 
-#### Test 1 : Création d'une entreprise
+### 9.1. SERVICE D'AUTHENTIFICATION (auth_service)
 
-**Objectif :** Vérifier la création complète d'une entreprise avec toutes ses informations
+#### 9.1.1 Tests d'Inscription/Connexion
 
-**Pré-requis :**
-- Nouveau utilisateur authentifié
-- Accès au formulaire de création d'entreprise via l'onboarding 
+| Test ID | Scénario | Étapes | Résultat Attendu | Statut |
+|---------|----------|---------|------------------|--------|
+| AUTH-001 | Inscription email/mot de passe | 1. POST /api/auth/register<br>2. Fournir email, password, name, first_name, last_name | Utilisateur créé avec onboarding_step=CHOOSING_COMPANY | ✅ |
+| AUTH-002 | Connexion valide | 1. POST /api/auth/login<br>2. Email/password corrects | Session créée, cookies httpOnly définis | ✅ |
+| AUTH-003 | Connexion Google OAuth | 1. GET /api/auth/google<br>2. Autoriser dans Google | Utilisateur créé/connecté, redirection correcte | ✅ |
+| AUTH-004 | Déconnexion | 1. POST /api/auth/logout | Session supprimée, cookies effacés | ✅ |
 
-**Étapes :**
-1. Rediriger vers `/onboarding/company`
-2. Remplir le formulaire :
-   - Nom : "Test Company SARL"
-   - SIRET : "12345678901234"
-   - RCS : "123 456 789 RCS Paris"
-   - TVA Applicable : Vrai
-   - N° TVA : "FR12345678901"
-   - Adresse : "123 Rue de Test, 75001 Paris"
-   - Email : "contact@testcompany.com"
-   - Téléphone : "+33123456789"
-3. Cliquer sur "Créer l'entreprise"
-4. Vérifier la redirection vers la prochaine etape de l'onboarding 
-5. Vérifier l'affichage des informations dans le profil un fois l'onboarding compléter 
+#### 9.1.2 Tests de Workflow d'Onboarding
 
-**Résultats attendus :**
-- ✅ Entreprise créée avec ID unique
-- ✅ Redirection vers dashboard
-- ✅ Informations visibles dans le profil
-- ✅ Logs d'audit générés
+| Test ID | Scénario | Étapes | Résultat Attendu | Statut |
+|---------|----------|---------|------------------|--------|
+| AUTH-006 | Étape CHOOSING_COMPANY | 1. Utilisateur connecté<br>2. Vérifier onboarding_step | Étape = CHOOSING_COMPANY, invité l'utilisateur a indiqué les données de l'entreprise  | ✅ |
+| AUTH-007 | Transition vers STRIPE_SETUP | 1. Sélectionner/créer entreprise<br>2. Valider choix | onboarding_step = STRIPE_SETUP | ✅ |
+| AUTH-008 | Finalisation onboarding | 1. Compléter setup Stripe<br>2. Valider dernière étape | onboarding_completed = true, accès complet | ✅ |
 
-**Statut :** VALIDÉ ✅
+### 9.2. SERVICE ENTREPRISE (company_service)
 
-#### Test 2 : Génération d'une facture PDF
+#### 9.2.1 Tests CRUD Entreprise
 
-**Objectif :** Créer une facture et générer le PDF correspondant
+| Test ID | Scénario | Étapes | Résultat Attendu | Statut |
+|---------|----------|---------|------------------|--------|
+| COMP-001 | Création entreprise | 1. POST /api/company/<br>2. Données complètes (name, siret, etc.) | Entreprise créée, validation SIRET | ✅ |
+| COMP-002 | Validation SIRET unique | 1. Créer entreprise avec SIRET existant | Erreur 400, message explicite | ✅ |
+| COMP-003 | Récupération entreprises utilisateur | 1. GET /api/company/user/{user_id} | Liste des entreprises de l'utilisateur | ✅ |
+| COMP-004 | Mise à jour entreprise | 1. PUT /api/company/{id}<br>2. Modifier données légales | Mise à jour réussie | ✅ |
 
-**Pré-requis :**
-- Entreprise configurée
-- Client existant
-- Produit en catalogue
+### 9.3. SERVICE CLIENT (customer_service)
 
-**Étapes :**
-1. Accéder à `/invoices/create`
-2. Sélectionner un client existant
-3. Ajouter des lignes de facturation
-4. Définir les conditions de paiement
-5. Cliquer sur "Générer la facture"
-6. Télécharger le PDF
+#### 9.3.1 Tests Gestion Clients
 
-**Résultats attendus :**
-- ✅ Facture créée avec numéro unique
-- ✅ PDF généré avec bon formatage
-- ✅ Toutes les informations présentes
-- ✅ Calculs corrects (HT, TVA, TTC)
-- ✅ Email envoyé au client
+| Test ID | Scénario | Étapes | Résultat Attendu | Statut |
+|---------|----------|---------|------------------|--------|
+| CUST-001 | Création client particulier | 1. POST /api/customer/<br>2. type=individual, first_name, last_name | Client individuel créé | ✅ |
+| CUST-002 | Création client entreprise | 1. POST /api/customer/<br>2. type=company, siret, siren, etc. | Client professionnel avec données légales | ✅ |
+| CUST-003 | Validation données entreprise | 1. Client type=company sans SIRET | Erreur de validation | ✅ |
+| CUST-004 | Recherche clients | 1. GET /api/customer | Résultats filtrés par nom/email | ✅ |
 
-**Statut :** VALIDÉ ✅
+### 9.4. SERVICE PRODUITS (product_service)
 
-#### Test 3 : Intégration Stripe Connect
+#### 9.4.1 Tests Catalogue Produits
 
-**Objectif :** Vérifier la configuration Stripe et le traitement des paiements
+| Test ID | Scénario | Étapes | Résultat Attendu | Statut |
+|---------|----------|---------|------------------|--------|
+| PROD-001 | Création produit manuel | 1. POST /api/product/<br>2. Données produit complètes | Produit créé avec prix HT, taux TVA | ✅ |
+| PROD-002 | Génération description IA | 1. POST /api/product/ai/generate-description<br>2. Nom + contexte basique | Description enrichie par OpenAI | ✅ |
+| PROD-003 | Calcul prix TTC automatique | 1. Produit avec price_excluding_tax + vat_rate | Prix TTC calculé correctement | ⏳ |
+| PROD-004 | Gestion unités diverses | 1. Produit avec unit=kg, m², h, etc. | Unité appliquée dans facturation | ✅ |
+| PROD-005 | Recherche produits | 1. GET /api/product | Résultats pertinents | ✅ |
 
-**Pré-requis :**
-- Onboarding Complèter 
-- Compte Stripe configuré
+### 9.5. SERVICE DEVIS (quote_service)
 
-**Étapes :**
-1. Configuration du compte Stripe Connect lors de l'onboarding ou bien sur la section entreprise 
-2. Validation par Stripe
-3. Création d'une facture
-4. envoie d'un mail au cleint avec un lien de paiement 
-5. paiement de la facture via le lien present sur le mail
-6. Mise à jour du statut de facture
-7. Client rediriger vers une page de comfirmation 
+#### 9.5.1 Tests Cycle de Vie Devis
 
-**Résultats attendus :**
-- ✅ Compte Stripe validé
-- ✅ Paiement traité correctement
-- ✅ Webhook reçu et traité
-- ✅ Statut facture mis à jour
-- ✅ Client rediriger vers la page de confirmation 
+| Test ID | Scénario | Étapes | Résultat Attendu | Statut |
+|---------|----------|---------|------------------|--------|
+| QUOT-001 | Création devis | 1. POST /api/quote/<br>2. Client + produits | Devis status=draft, numéro auto-généré | ✅ |
+| QUOT-002 | Calcul totaux automatique | 1. Ajouter items avec qty + prix | HT, TVA, TTC calculés correctement | ⏳ |
+| QUOT-003 | Envoi devis client | 1. PUT /api/quote/{id}/send | status=sent, email notification | ✅ |
+| QUOT-004 | Acceptation devis | 1. PUT /api/quote/{id} | status=accepted, prêt conversion | ⏳ |
+| QUOT-005 | Expiration automatique | 1. Devis dépassé validity_date | status=expired automatiquement | ✅ |
 
-**Statut :** VALIDÉ ✅
+### 9.6. SERVICE FACTURATION (invoice_service)
 
-### 9.2 Tests d'Intégration
+#### 9.6.1 Tests Génération et Gestion Factures
 
-#### Test API : Authentification
+| Test ID | Scénario | Étapes | Résultat Attendu | Statut |
+|---------|----------|---------|------------------|--------|
+| INV-001 | Création facture manuelle | 1. POST /api/invoice/<br>2. Client + items | Facture status=pending, numérotation séquentielle | ✅ |
+| INV-002 | Conditions paiement | 1. Facture avec conditions spécifiques | Conditions affichées sur document | ✅ |
 
-**Endpoint :** `POST /api/auth/login`
+### 9.7. SERVICE PDF (pdf_service)
+
+#### 9.7.1 Tests Génération Documents
+
+| Test ID | Scénario | Étapes | Résultat Attendu | Statut |
+|---------|----------|---------|------------------|--------|
+| PDF-001 | PDF facture | 1. POST /api/invoice/{id}/pdf | PDF généré avec template invoice.template.html | ✅ |
+| PDF-002 | PDF devis | 1. POST /api/quote/{id}/pdf | PDF avec template quote.template.html | ✅ |
+| PDF-003 | Données entreprise | 1. PDF avec infos légales | SIRET, RCS, TVA intra affichés | ✅ |
+| PDF-004 | Multi-devises | 1. Facture avec montants Euro | Format €, séparateurs corrects | ✅ |
+
+### 9.8. SERVICE EMAIL (email_service)
+
+#### 9.8.1 Tests Notifications
+
+| Test ID | Scénario | Étapes | Résultat Attendu | Statut |
+|---------|----------|---------|------------------|--------|
+| EMAIL-001 | Email nouveau devis | 1. Envoi devis à client | Email avec PDF attaché, lien acceptation | ✅ |
+| EMAIL-002 | Email nouvelle facture | 1. Envoi facture à client | Email avec PDF, infos paiement | ✅ |
+| EMAIL-003 | Gestion erreurs SMTP | 1. Erreur envoi email | Retry automatique, log erreur | ⏳ |
+
+### 9.9. SERVICE STRIPE (stripe_service)
+
+#### 9.9.1 Tests Intégration Paiements
+
+| Test ID | Scénario | Étapes | Résultat Attendu | Statut |
+|---------|----------|---------|------------------|--------|
+| STRIPE-001 | Setup compte Connect | 1. POST /api/stripe/connect/setup | URL onboarding Stripe retournée | ✅ |
+| STRIPE-002 | Vérification onboarding | 1. GET /api/stripe/connect/status | Statut compte (incomplete/active) | ⏳ |
+| STRIPE-003 | Création lien paiement | 1. POST /api/stripe/payment-link<br>2. Facture ID | Lien paiement sécurisé généré | ✅ |
+| STRIPE-004 | Webhook paiement réussi | 1. Simulation webhook Stripe | Invoice status=paid, payment créé | ✅ |
+
+### 9.10. SERVICE IA (ai_service)
+
+#### 9.10.1 Tests Intelligence Artificielle
+
+| Test ID | Scénario | Étapes | Résultat Attendu | Statut |
+|---------|----------|---------|------------------|--------|
+| AI-001 | Génération description produit | 1. POST /api/ai/enhance-product<br>2. Nom produit + contexte | Description marketing optimisée | ✅ |
+| AI-002 | Gestion erreurs OpenAI | 1. Requête invalide/API down | Gestion gracieuse, fallback | ⏳ |
+
+---
+
+## 🔄 TESTS D'INTÉGRATION
+
+### 9.11. Workflow Complet Facturation
+
+| Test ID | Scénario | Étapes | Résultat Attendu | Statut |
+|---------|----------|---------|------------------|--------|
+| INT-001 | Parcours complet utilisateur | 1. Inscription → Onboarding → Création entreprise → Client → Produit → Devis → Facture → PDF → Email | Workflow bout en bout fonctionnel | ✅ |
+| INT-002 | Communication inter-services | 1. product_service ↔ ai_service | Enrichissement produit via IA | ✅ |
+| INT-003 | Synchronisation données | 1. Modification client dans CRM | Répercussion dans factures existantes | ✅ |
+| INT-004 | Gestion sessions cross-services | 1. Auth via API Gateway | Session valide sur tous services | ⏳ |
+
+### 9.12. Tests API Gateway
+
+| Test ID | Scénario | Étapes | Résultat Attendu | Statut |
+|---------|----------|---------|------------------|--------|
+| GW-001 | Routage correct | 1. Requêtes vers /api/auth/*, /api/company/*, etc. | Redirection vers services appropriés | ✅ |
+| GW-002 | Gestion CORS | 1. Requêtes depuis frontend (ports 3000, 8080) | Headers CORS corrects | ✅ |
+| GW-003 | Rate limiting | 1. Trop de requêtes simultanées | Protection contre spam/DDoS | ✅ |
+| GW-004 | Health checks | 1. GET /health sur chaque service | Statut services disponibles | ✅ |
+
+---
+
+## ��️ TESTS BASE DE DONNÉES
+
+### 9.13. Tests Intégrité Données
+
+| Test ID | Scénario | Étapes | Résultat Attendu | Statut |
+|---------|----------|---------|------------------|--------|
+| DB-001 | Contraintes unicité | 1. SIRET, email, numéros factures | Erreurs contraintes appropriées | ✅ |
+| DB-002 | Suppressions cascade | 1. Suppression entreprise | Clients, factures, produits supprimés | ✅ |
+| DB-003 | Relations clés étrangères | 1. Création facture avec client inexistant | Erreur relation FK | ⏳ |
+| DB-004 | Migrations Prisma | 1. Migration nouvelle version schéma | Migration réussie, données préservées | ✅ |
+| DB-005 | Performance requêtes | 1. Requêtes complexes (joins, agrégations) | Temps réponse < 500ms | ✅ |
+
+### 9.14. Tests Sauvegardes
+
+| Test ID | Scénario | Étapes | Résultat Attendu | Statut |
+|---------|----------|---------|------------------|--------|
+| BK-001 | Sauvegarde automatique | 1. Backup quotidien programmé | Dump PostgreSQL créé | ✅ |
+| BK-002 | Restauration données | 1. Restore depuis backup | Données complètes et cohérentes | ✅ |
+
+---
+
+## 🚀 TESTS DÉPLOIEMENT & DEVOPS
+
+### 9.15. Tests Pipeline CI/CD
+
+| Test ID | Scénario | Étapes | Résultat Attendu | Statut |
+|---------|----------|---------|------------------|--------|
+| CI-001 | Tests automatiques | 1. Push sur main → GitHub Actions | Tous tests Jest passent | ⏳ |
+| CI-002 | Build images Docker | 1. Lerna détection changements | Images construites services modifiés uniquement | ⏳ |
+| CI-003 | Push registry | 1. Images taguées et pushées | ghcr.io/zenbillingapp/{service}:latest | ⏳ |
+| CI-004 | Déploiement Coolify | 1. Webhooks déclenchés | Services redéployés automatiquement | ✅ |
+
+### 9.16. Tests Environnements
+
+| Test ID | Scénario | Étapes | Résultat Attendu | Statut |
+|---------|----------|---------|------------------|--------|
+| ENV-001 | Variables environnement | 1. Vérification toutes variables requises | Services démarrent sans erreurs | ⏳ |
+| ENV-002 | Secrets sensibles | 1. Clés API, passwords, tokens | Aucun secret en plain text dans logs | ✅ |
+| ENV-003 | SSL/TLS | 1. Communications chiffrées | Certificats valides, HTTPS forcé | ✅ |
+
+---
+
+## 🔧 TESTS PERFORMANCE
+
+### 9.17. Tests Sécurité
+
+| Test ID | Scénario | Étapes | Résultat Attendu | Statut |
+|---------|----------|---------|------------------|--------|
+| SEC-001 | Injection SQL | 1. Tentatives injection dans formulaires | Protection Prisma ORM | ✅ |
+| SEC-002 | Authentification required | 1. Accès endpoints sans token | Erreurs 401/403 appropriées | ✅ |
+| SEC-003 | CORS strict | 1. Requêtes depuis domaines non autorisés | Blocage CORS | ✅ |
+| SEC-004 | Validation inputs | 1. Données malformées dans API | Validation Joi, erreurs 400 | ✅ |
+| SEC-005 | Rate limiting agressif | 1. Attaque par déni de service | Protection automatique | ✅ |
+
+---
+
+## �� TESTS COMPATIBILITÉ
+
+### 9.18. Tests Multi-navigateurs
+
+| Test ID | Scénario | Étapes | Résultat Attendu | Statut |
+|---------|----------|---------|------------------|--------|
+| COMP-001 | Chrome/Firefox/Safari | 1. Accès interface dans chaque navigateur | Fonctionnalité identique | ✅ |
+| COMP-002 | Mobile responsive | 1. Interface sur smartphones/tablettes | Ergonomie préservée | ✅ |
+| COMP-003 | PDF multi-plateformes | 1. Ouverture PDF générés | Rendu correct tous viewers | ✅ |
+
+---
+
+## 📋 PROCÉDURES DE VALIDATION
+
+### Pré-requis Environnement
 
 ```bash
-curl -X POST http://localhost:8080/api/auth/login \
-  -H "Content-Type: application/json" \
-  -d '{
-    "email": "test@example.com",
-    "password": "TestPassword123!"
-    "name": "test TEST"
-  }'
+# Démarrage complet
+docker-compose up -d
+npm run dev
+
+# Vérification santé services
+curl http://localhost:8080/health
+curl http://localhost:3001/health
+# ... pour chaque service
 ```
 
-**Résultat attendu :** Status 200, JWT token valide
-**Statut :** VALIDÉ ✅
+### Commandes Tests Automatisés
 
-#### Test API : CRUD Produits
-
-**Création :**
 ```bash
-curl -X POST http://localhost:8080/api/product \
-  -H "Authorization: Bearer <token>" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "name": "PARIS YNOV CAMPUS",
-    "quantity": 1,
-    "unit": "unité",
-    "price_excluding_tax": "0.00",
-    "vat_rate": "0.00"
+# Tests unitaires tous services
+npm run test
 
-  }'
+# Tests service spécifique
+cd packages/auth_service && npm test
+cd packages/invoice_service && npm test
+
+# Coverage reports
+npm run test:coverage
 ```
 
-**Résultat attendu :** Status 201, produit créé
-**Statut :** VALIDÉ ✅
+### Validation Manuelle
 
-### 9.3 Tests de Performance
+1. **Authentification** : Inscription, connexion, onboarding complet
+2. **Gestion données** : CRUD entreprises, clients, produits
+3. **Facturation** : Devis → Facture → PDF → Email → Paiement
+4. **Analytics** : Dashboard avec données réelles
+5. **Intégrations** : Stripe, OpenAI, SMTP
+
+---
+
+## ✅ CRITÈRES D'ACCEPTATION
+
+### Critères Obligatoires
+
+- [ ] **100% des tests fonctionnels** passent
+- [ ] **Aucune erreur critique** dans les logs
+- [ ] **Temps de réponse API** < 2 secondes
+- [ ] **Pipeline CI/CD** déploie sans erreur
+- [ ] **Sécurité** : Authentification + autorisation OK
+- [ ] **Données sensibles** protégées et chiffrées
+- [ ] **Intégrations tierces** (Stripe, OpenAI) fonctionnelles
+
+### Critères Recommandés
+
+- [ ] **Coverage tests** > 80%
+- [ ] **Documentation** API complète
+- [ ] **Monitoring** et alertes configurés
+- [ ] **Sauvegardes** automatisées et testées
+- [ ] **Performance** optimisée pour charge attendue
+
+### 9.19. Tests de Performance
 
 #### Test de Charge
 
@@ -1440,10 +1584,11 @@ psql -U zenbilling -d zenbilling -c "DELETE FROM _prisma_migrations WHERE migrat
 - Service down → Notification Email
 - Erreur rate > 5% → Email admin
 
-
-
 ---
 
-**Repository GitHub :** `https://github.com/username/zenbilling-monorepo`  
+**Repository GitHub :**  
+Backend: `https://github.com/ZenBillingApp/zenbilling-monorepo.git`  
+Front: `https://github.com/ZenBillingApp/ZenBilling_Frontend.git`
+
 **Version Actuelle :** 1.0.0 (Stable)  
 **Date de Livraison :** Août 2025

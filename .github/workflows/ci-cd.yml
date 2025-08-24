@@ -121,16 +121,28 @@ jobs:
                     ]
         steps:
             - name: Deploy via Coolify Webhook
+              env:
+                  AI_SERVICE_WEBHOOK: ${{ secrets.COOLIFY_WEBHOOK_AI_SERVICE }}
+                  API_GATEWAY_WEBHOOK: ${{ secrets.COOLIFY_WEBHOOK_API_GATEWAY }}
+                  AUTH_SERVICE_WEBHOOK: ${{ secrets.COOLIFY_WEBHOOK_AUTH_SERVICE }}
+                  COMPANY_SERVICE_WEBHOOK: ${{ secrets.COOLIFY_WEBHOOK_COMPANY_SERVICE }}
+                  CUSTOMER_SERVICE_WEBHOOK: ${{ secrets.COOLIFY_WEBHOOK_CUSTOMER_SERVICE }}
+                  DASHBOARD_SERVICE_WEBHOOK: ${{ secrets.COOLIFY_WEBHOOK_DASHBOARD_SERVICE }}
+                  EMAIL_SERVICE_WEBHOOK: ${{ secrets.COOLIFY_WEBHOOK_EMAIL_SERVICE }}
+                  INVOICE_SERVICE_WEBHOOK: ${{ secrets.COOLIFY_WEBHOOK_INVOICE_SERVICE }}
+                  PDF_SERVICE_WEBHOOK: ${{ secrets.COOLIFY_WEBHOOK_PDF_SERVICE }}
+                  PRODUCT_SERVICE_WEBHOOK: ${{ secrets.COOLIFY_WEBHOOK_PRODUCT_SERVICE }}
+                  QUOTE_SERVICE_WEBHOOK: ${{ secrets.COOLIFY_WEBHOOK_QUOTE_SERVICE }}
+                  STRIPE_SERVICE_WEBHOOK: ${{ secrets.COOLIFY_WEBHOOK_STRIPE_SERVICE }}
               run: |
-                  # Normaliser le nom du service en majuscule pour accéder au secret
                   SERVICE_UPPER=$(echo "${{ matrix.service }}" | tr '[:lower:]' '[:upper:]')
-                  WEBHOOK_VAR="COOLIFY_WEBHOOK_${SERVICE_UPPER}"
-                  WEBHOOK_URL=${!WEBHOOK_VAR}
+                  WEBHOOK_VAR="${SERVICE_UPPER}_WEBHOOK"
+                  WEBHOOK_URL=$(eval echo \$${WEBHOOK_VAR})
 
                   if [ -z "$WEBHOOK_URL" ]; then
-                    echo "❌ Aucun webhook trouvé pour $SERVICE_UPPER"
+                    echo "❌ Aucun webhook trouvé pour ${{ matrix.service }}"
                     exit 1
                   fi
 
-                  echo "🚀 Déploiement de ${{ matrix.service }} via $WEBHOOK_URL"
+                  echo "🚀 Déploiement de ${{ matrix.service }}"
                   curl -X POST "$WEBHOOK_URL"

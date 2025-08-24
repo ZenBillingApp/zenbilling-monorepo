@@ -5,6 +5,6 @@ import { authMiddleware } from "@zenbilling/shared/src/middlewares/auth.middlewa
 const router = Router();
 const dashboardController = new DashboardController();
 
-router.get("/metrics", authMiddleware, (req: any, res: any) => dashboardController.getDashboardMetrics(req, res));
+router.get("/metrics", authMiddleware, dashboardController.getDashboardMetrics.bind(dashboardController));
 
 export default router;

@@ -1,6 +1,6 @@
 import { Response } from "express";
 
-interface IApiResponse<T = any> {
+export interface IApiResponse<T = any> {
     success: boolean;
     message: string;
     data?: T;

@@ -1,7 +1,7 @@
 # DOSSIER BLOC 2 - ZENBILLING
 ## Concevoir et développer des applications logicielles
 
-**Candidat :** Hassan  
+**Prénom Nom :** Hassan Jerrar
 **Formation :** Mastère 2 Expert Développement Web  
 **Date :** Août 2025  
 **Projet :** ZenBilling - Plateforme de facturation et gestion commerciale

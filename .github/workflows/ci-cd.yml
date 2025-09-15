@@ -1,250 +1,277 @@
 name: CI/CD Pipeline
 
 on:
-  push:
-    branches: [main, develop]
-  pull_request:
-    branches: [main, develop]
-  workflow_dispatch:
-    inputs:
-      force_deploy_all:
-        description: 'Force deployment of all services'
-        required: false
-        default: 'false'
-        type: choice
-        options:
-          - 'false'
-          - 'true'
+    push:
+        branches: [main, develop]
+    pull_request:
+        branches: [main, develop]
+    workflow_dispatch:
+        inputs:
+            force_deploy_all:
+                description: "Force deployment of all services"
+                required: false
+                default: "false"
+                type: choice
+                options:
+                    - "false"
+                    - "true"
 
 env:
-  REGISTRY: docker.io
-  NODE_VERSION: '20'
+    REGISTRY: docker.io
+    NODE_VERSION: "20"
 
 jobs:
-  detect-changes:
-    name: Detect Changed Services
-    runs-on: ubuntu-latest
-    outputs:
-      services: ${{ steps.changes.outputs.services }}
-      shared-changed: ${{ steps.changes.outputs.shared }}
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
+    detect-changes:
+        name: Detect Changed Services
+        runs-on: ubuntu-latest
+        outputs:
+            services: ${{ steps.changes.outputs.services }}
+            shared-changed: ${{ steps.changes.outputs.shared }}
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@v4
+              with:
+                  fetch-depth: 0
 
-      - name: Detect changes
-        id: changes
-        run: |
-          # Get the list of changed files
-          if [ "${{ github.event_name }}" = "pull_request" ]; then
-            CHANGED_FILES=$(git diff --name-only ${{ github.event.pull_request.base.sha }} ${{ github.sha }})
-          else
-            CHANGED_FILES=$(git diff --name-only HEAD~1 HEAD)
-          fi
-
-          echo "Changed files:"
-          echo "$CHANGED_FILES"
-
-          # Check if shared package changed
-          SHARED_CHANGED="false"
-          if echo "$CHANGED_FILES" | grep -q "^packages/shared/"; then
-            SHARED_CHANGED="true"
-          fi
-          echo "shared=$SHARED_CHANGED" >> $GITHUB_OUTPUT
-
-          # Detect changed services
-          SERVICES=""
-          for file in $CHANGED_FILES; do
-            if [[ $file == packages/*/src/* ]] || [[ $file == packages/*/package.json ]] || [[ $file == packages/*/Dockerfile ]]; then
-              SERVICE=$(echo $file | cut -d'/' -f2)
-              # Exclude shared package
-              if [[ $SERVICE != "shared" ]]; then
-                if [[ ! $SERVICES =~ $SERVICE ]]; then
-                  if [ -z "$SERVICES" ]; then
-                    SERVICES="$SERVICE"
+            - name: Detect changes
+              id: changes
+              run: |
+                  # Get the list of changed files
+                  if [ "${{ github.event_name }}" = "pull_request" ]; then
+                    CHANGED_FILES=$(git diff --name-only ${{ github.event.pull_request.base.sha }} ${{ github.sha }})
                   else
-                    SERVICES="$SERVICES,$SERVICE"
+                    CHANGED_FILES=$(git diff --name-only HEAD~1 HEAD)
                   fi
-                fi
-              fi
-            fi
-          done
 
-          # If shared changed or force deploy all is true, deploy all services
-          if [ "$SHARED_CHANGED" = "true" ] || [ "${{ github.event.inputs.force_deploy_all }}" = "true" ]; then
-            SERVICES="ai_service,auth_service,company_service,customer_service,dashboard_service,email_service,invoice_service,pdf_service,product_service,quote_service,stripe_service,api_gateway"
-          fi
+                  echo "Changed files:"
+                  echo "$CHANGED_FILES"
 
-          echo "Detected services: $SERVICES"
+                  # Check if shared package changed
+                  SHARED_CHANGED="false"
+                  if echo "$CHANGED_FILES" | grep -q "^packages/shared/"; then
+                    SHARED_CHANGED="true"
+                  fi
+                  echo "shared=$SHARED_CHANGED" >> $GITHUB_OUTPUT
 
-          # Convert to JSON array
-          if [ -n "$SERVICES" ]; then
-            SERVICES_JSON="[\"$(echo $SERVICES | sed 's/,/","/g')\"]"
-          else
-            SERVICES_JSON="[]"
-          fi
+                  # Detect changed services
+                  SERVICES=""
+                  for file in $CHANGED_FILES; do
+                    if [[ $file == packages/*/src/* ]] || [[ $file == packages/*/package.json ]] || [[ $file == packages/*/Dockerfile ]]; then
+                      SERVICE=$(echo $file | cut -d'/' -f2)
+                      # Exclude shared package
+                      if [[ $SERVICE != "shared" ]]; then
+                        if [[ ! $SERVICES =~ $SERVICE ]]; then
+                          if [ -z "$SERVICES" ]; then
+                            SERVICES="$SERVICE"
+                          else
+                            SERVICES="$SERVICES,$SERVICE"
+                          fi
+                        fi
+                      fi
+                    fi
+                  done
 
-          echo "services=$SERVICES_JSON" >> $GITHUB_OUTPUT
+                  # If shared changed or force deploy all is true, deploy all services
+                  if [ "$SHARED_CHANGED" = "true" ] || [ "${{ github.event.inputs.force_deploy_all }}" = "true" ]; then
+                    SERVICES="ai_service,auth_service,company_service,customer_service,dashboard_service,email_service,invoice_service,pdf_service,product_service,quote_service,stripe_service,api_gateway"
+                  fi
 
-  setup:
-    name: Setup Shared Dependencies
-    runs-on: ubuntu-latest
-    needs: detect-changes
-    if: needs.detect-changes.outputs.shared-changed == 'true' || needs.detect-changes.outputs.services != '[]'
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+                  echo "Detected services: $SERVICES"
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: 'npm'
+                  # Convert to JSON array
+                  if [ -n "$SERVICES" ]; then
+                    SERVICES_JSON="[\"$(echo $SERVICES | sed 's/,/","/g')\"]"
+                  else
+                    SERVICES_JSON="[]"
+                  fi
 
-      - name: Install root dependencies
-        run: npm ci
+                  echo "services=$SERVICES_JSON" >> $GITHUB_OUTPUT
 
-      - name: Install shared dependencies
-        run: |
-          cd packages/shared
-          npm ci
+    setup:
+        name: Setup Shared Dependencies
+        runs-on: ubuntu-latest
+        needs: detect-changes
+        if: needs.detect-changes.outputs.shared-changed == 'true' || needs.detect-changes.outputs.services != '[]'
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@v4
 
-      - name: Build shared package
-        run: |
-          cd packages/shared
-          npm run build
+            - name: Setup Node.js
+              uses: actions/setup-node@v4
+              with:
+                  node-version: ${{ env.NODE_VERSION }}
+                  cache: "npm"
 
-      - name: Generate Prisma client
-        run: |
-          cd packages/shared
-          npm run prisma:generate
+            - name: Install root dependencies
+              run: npm ci
 
-      - name: Cache shared build
-        uses: actions/cache@v4
-        with:
-          path: |
-            packages/shared/dist
-            packages/shared/node_modules
-            node_modules
-            node_modules/.prisma
-          key: shared-${{ hashFiles('packages/shared/package-lock.json', 'package-lock.json') }}-${{ github.sha }}
+            - name: Install shared dependencies
+              run: |
+                  cd packages/shared
+                  npm ci
 
-  build:
-    name: Build Services
-    runs-on: ubuntu-latest
-    needs: [detect-changes, setup]
-    if: needs.detect-changes.outputs.services != '[]'
-    strategy:
-      matrix:
-        service: ${{ fromJson(needs.detect-changes.outputs.services) }}
-      fail-fast: false
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+            - name: Build shared package
+              run: |
+                  cd packages/shared
+                  npm run build
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: 'npm'
+            - name: Generate Prisma client
+              run: |
+                  cd packages/shared
+                  npm run prisma:generate
 
-      - name: Restore shared cache
-        uses: actions/cache@v4
-        with:
-          path: |
-            packages/shared/dist
-            packages/shared/node_modules
-            node_modules
-            node_modules/.prisma
-          key: shared-${{ hashFiles('packages/shared/package-lock.json', 'package-lock.json') }}-${{ github.sha }}
+            - name: Cache shared build
+              uses: actions/cache@v4
+              with:
+                  path: |
+                      packages/shared/dist
+                      packages/shared/node_modules
+                      node_modules
+                      node_modules/.prisma
+                  key: shared-${{ hashFiles('packages/shared/package-lock.json', 'package-lock.json') }}-${{ github.sha }}
 
-      - name: Install service dependencies
-        run: |
-          cd packages/${{ matrix.service }}
-          npm ci
+    build:
+        name: Build Services
+        runs-on: ubuntu-latest
+        needs: [detect-changes, setup]
+        if: needs.detect-changes.outputs.services != '[]'
+        strategy:
+            matrix:
+                service: ${{ fromJson(needs.detect-changes.outputs.services) }}
+            fail-fast: false
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@v4
 
-      - name: Generate Prisma client
-        if: matrix.service != 'api_gateway'
-        run: |
-          cd packages/shared
-          npm run prisma:generate
+            - name: Setup Node.js
+              uses: actions/setup-node@v4
+              with:
+                  node-version: ${{ env.NODE_VERSION }}
+                  cache: "npm"
 
-      - name: Build service
-        if: matrix.service != 'api_gateway'
-        run: |
-          cd packages/${{ matrix.service }}
-          npm run build
+            - name: Restore shared cache
+              uses: actions/cache@v4
+              with:
+                  path: |
+                      packages/shared/dist
+                      packages/shared/node_modules
+                      node_modules
+                      node_modules/.prisma
+                  key: shared-${{ hashFiles('packages/shared/package-lock.json', 'package-lock.json') }}-${{ github.sha }}
 
-  docker-build-push:
-    name: Build and Push Docker Images
-    runs-on: ubuntu-latest
-    needs: [detect-changes]
-    if: needs.detect-changes.outputs.services != '[]' && github.event_name == 'push'
-    strategy:
-      matrix:
-        service: ${{ fromJson(needs.detect-changes.outputs.services) }}
-      fail-fast: false
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+            - name: Install service dependencies
+              run: |
+                  cd packages/${{ matrix.service }}
+                  npm ci
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+            - name: Generate Prisma client
+              if: matrix.service != 'api_gateway'
+              run: |
+                  cd packages/shared
+                  npm run prisma:generate
 
-      - name: Log in to Docker Hub
-        uses: docker/login-action@v3
-        with:
-          username: ${{ secrets.DOCKER_USERNAME }}
-          password: ${{ secrets.DOCKER_PASSWORD }}
+            - name: Build service
+              if: matrix.service != 'api_gateway'
+              run: |
+                  cd packages/${{ matrix.service }}
+                  npm run build
 
-      - name: Extract metadata
-        id: meta
-        uses: docker/metadata-action@v5
-        with:
-          images: ${{ secrets.DOCKER_USERNAME }}/zenbilling-${{ matrix.service }}
-          tags: |
-            type=ref,event=branch
-            type=sha,prefix={{branch}}-
-            type=raw,value=latest,enable={{is_default_branch}}
+    docker-build-push:
+        name: Build and Push Docker Images
+        runs-on: ubuntu-latest
+        needs: [detect-changes, setup]
+        if: needs.detect-changes.outputs.services != '[]' && github.event_name == 'push'
+        strategy:
+            matrix:
+                service: ${{ fromJson(needs.detect-changes.outputs.services) }}
+            fail-fast: false
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@v4
 
-      - name: Build and push Docker image
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          file: ./packages/${{ matrix.service }}/Dockerfile
-          platforms: linux/amd64
-          push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+            - name: Setup Node.js
+              uses: actions/setup-node@v4
+              with:
+                  node-version: ${{ env.NODE_VERSION }}
+                  cache: "npm"
 
-      - name: Run Trivy vulnerability scanner
-        uses: aquasecurity/trivy-action@master
-        with:
-          image-ref: ${{ secrets.DOCKER_USERNAME }}/zenbilling-${{ matrix.service }}:latest
-          format: 'sarif'
-          output: 'trivy-results-${{ matrix.service }}.sarif'
+            - name: Restore shared cache
+              uses: actions/cache@v4
+              with:
+                  path: |
+                      packages/shared/dist
+                      packages/shared/node_modules
+                      node_modules
+                      node_modules/.prisma
+                  key: shared-${{ hashFiles('packages/shared/package-lock.json', 'package-lock.json') }}-${{ github.sha }}
 
-      - name: Upload Trivy scan results
-        uses: github/codeql-action/upload-sarif@v3
-        if: always()
-        with:
-          sarif_file: 'trivy-results-${{ matrix.service }}.sarif'
+            - name: Install service dependencies
+              run: |
+                  cd packages/${{ matrix.service }}
+                  npm ci
 
-  deploy-notification:
-    name: Deployment Notification
-    runs-on: ubuntu-latest
-    needs: [detect-changes, docker-build-push]
-    if: always() && needs.detect-changes.outputs.services != '[]' && github.event_name == 'push'
-    steps:
-      - name: Deployment Status
-        run: |
-          if [ "${{ needs.docker-build-push.result }}" = "success" ]; then
-            echo "✅ All services deployed successfully to Docker Hub"
-            echo "Services deployed: ${{ needs.detect-changes.outputs.services }}"
-          else
-            echo "❌ Deployment failed"
-            exit 1
-          fi
+            - name: Build service (if needed)
+              if: matrix.service != 'api_gateway'
+              run: |
+                  cd packages/${{ matrix.service }}
+                  npm run build
+
+            - name: Set up Docker Buildx
+              uses: docker/setup-buildx-action@v3
+
+            - name: Log in to Docker Hub
+              uses: docker/login-action@v3
+              with:
+                  username: ${{ secrets.DOCKER_USERNAME }}
+                  password: ${{ secrets.DOCKER_PASSWORD }}
+
+            - name: Extract metadata
+              id: meta
+              uses: docker/metadata-action@v5
+              with:
+                  images: ${{ secrets.DOCKER_USERNAME }}/zenbilling-${{ matrix.service }}
+                  tags: |
+                      type=ref,event=branch
+                      type=sha,prefix={{branch}}-
+                      type=raw,value=latest,enable={{is_default_branch}}
+
+            - name: Build and push Docker image
+              uses: docker/build-push-action@v5
+              with:
+                  context: .
+                  file: ./packages/${{ matrix.service }}/Dockerfile
+                  platforms: linux/amd64
+                  push: true
+                  tags: ${{ steps.meta.outputs.tags }}
+                  labels: ${{ steps.meta.outputs.labels }}
+                  cache-from: type=gha
+                  cache-to: type=gha,mode=max
+
+            - name: Run Trivy vulnerability scanner
+              uses: aquasecurity/trivy-action@master
+              with:
+                  image-ref: ${{ secrets.DOCKER_USERNAME }}/zenbilling-${{ matrix.service }}:latest
+                  format: "sarif"
+                  output: "trivy-results-${{ matrix.service }}.sarif"
+
+            - name: Upload Trivy scan results
+              uses: github/codeql-action/upload-sarif@v3
+              if: always()
+              with:
+                  sarif_file: "trivy-results-${{ matrix.service }}.sarif"
+
+    deploy-notification:
+        name: Deployment Notification
+        runs-on: ubuntu-latest
+        needs: [detect-changes, docker-build-push]
+        if: always() && needs.detect-changes.outputs.services != '[]' && github.event_name == 'push'
+        steps:
+            - name: Deployment Status
+              run: |
+                  if [ "${{ needs.docker-build-push.result }}" = "success" ]; then
+                    echo "✅ All services deployed successfully to Docker Hub"
+                    echo "Services deployed: ${{ needs.detect-changes.outputs.services }}"
+                  else
+                    echo "❌ Deployment failed"
+                    exit 1
+                  fi

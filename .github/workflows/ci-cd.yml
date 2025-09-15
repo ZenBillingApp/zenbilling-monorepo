@@ -26,7 +26,10 @@ jobs:
         runs-on: ubuntu-latest
         outputs:
             services: ${{ steps.changes.outputs.services }}
+            services-with-build: ${{ steps.changes.outputs.services-with-build }}
+            services-without-build: ${{ steps.changes.outputs.services-without-build }}
             shared-changed: ${{ steps.changes.outputs.shared }}
+            has-changes: ${{ steps.changes.outputs.has-changes }}
         steps:
             - name: Checkout code
               uses: actions/checkout@v4
@@ -56,7 +59,7 @@ jobs:
                   # Detect changed services
                   SERVICES=""
                   for file in $CHANGED_FILES; do
-                    if [[ $file == packages/*/src/* ]] || [[ $file == packages/*/package.json ]] || [[ $file == packages/*/Dockerfile ]]; then
+                    if [[ $file == packages/*/src/* ]] || [[ $file == packages/*/package.json ]] || [[ $file == packages/*/Dockerfile ]] || [[ $file == packages/*/config/* ]] || [[ $file == packages/*/server.js ]]; then
                       SERVICE=$(echo $file | cut -d'/' -f2)
                       # Exclude shared package
                       if [[ $SERVICE != "shared" ]]; then
@@ -78,20 +81,63 @@ jobs:
 
                   echo "Detected services: $SERVICES"
 
-                  # Convert to JSON array
+                  # Séparer les services qui ont besoin de build de ceux qui n'en ont pas besoin
+                  SERVICES_WITH_BUILD=""
+                  SERVICES_WITHOUT_BUILD=""
+
+                  if [ -n "$SERVICES" ]; then
+                    IFS=',' read -ra SERVICE_ARRAY <<< "$SERVICES"
+                    for service in "${SERVICE_ARRAY[@]}"; do
+                      if [[ $service == "api_gateway" ]]; then
+                        if [ -z "$SERVICES_WITHOUT_BUILD" ]; then
+                          SERVICES_WITHOUT_BUILD="$service"
+                        else
+                          SERVICES_WITHOUT_BUILD="$SERVICES_WITHOUT_BUILD,$service"
+                        fi
+                      else
+                        if [ -z "$SERVICES_WITH_BUILD" ]; then
+                          SERVICES_WITH_BUILD="$service"
+                        else
+                          SERVICES_WITH_BUILD="$SERVICES_WITH_BUILD,$service"
+                        fi
+                      fi
+                    done
+                  fi
+
+                  echo "Services with build: $SERVICES_WITH_BUILD"
+                  echo "Services without build: $SERVICES_WITHOUT_BUILD"
+
+                  # Convert to JSON arrays
                   if [ -n "$SERVICES" ]; then
                     SERVICES_JSON="[\"$(echo $SERVICES | sed 's/,/","/g')\"]"
+                    HAS_CHANGES="true"
                   else
                     SERVICES_JSON="[]"
+                    HAS_CHANGES="false"
+                  fi
+
+                  if [ -n "$SERVICES_WITH_BUILD" ]; then
+                    SERVICES_WITH_BUILD_JSON="[\"$(echo $SERVICES_WITH_BUILD | sed 's/,/","/g')\"]"
+                  else
+                    SERVICES_WITH_BUILD_JSON="[]"
+                  fi
+
+                  if [ -n "$SERVICES_WITHOUT_BUILD" ]; then
+                    SERVICES_WITHOUT_BUILD_JSON="[\"$(echo $SERVICES_WITHOUT_BUILD | sed 's/,/","/g')\"]"
+                  else
+                    SERVICES_WITHOUT_BUILD_JSON="[]"
                   fi
 
                   echo "services=$SERVICES_JSON" >> $GITHUB_OUTPUT
+                  echo "services-with-build=$SERVICES_WITH_BUILD_JSON" >> $GITHUB_OUTPUT
+                  echo "services-without-build=$SERVICES_WITHOUT_BUILD_JSON" >> $GITHUB_OUTPUT
+                  echo "has-changes=$HAS_CHANGES" >> $GITHUB_OUTPUT
 
-    setup:
+    setup-shared:
         name: Setup Shared Dependencies
         runs-on: ubuntu-latest
         needs: detect-changes
-        if: needs.detect-changes.outputs.shared-changed == 'true' || needs.detect-changes.outputs.services != '[]'
+        if: needs.detect-changes.outputs.has-changes == 'true'
         steps:
             - name: Checkout code
               uses: actions/checkout@v4
@@ -130,14 +176,14 @@ jobs:
                       node_modules/.prisma
                   key: shared-${{ hashFiles('packages/shared/package-lock.json', 'package-lock.json') }}-${{ github.sha }}
 
-    build:
-        name: Build Services
+    build-services:
+        name: Build Services (TypeScript)
         runs-on: ubuntu-latest
-        needs: [detect-changes, setup]
-        if: needs.detect-changes.outputs.services != '[]'
+        needs: [detect-changes, setup-shared]
+        if: needs.detect-changes.outputs.services-with-build != '[]'
         strategy:
             matrix:
-                service: ${{ fromJson(needs.detect-changes.outputs.services) }}
+                service: ${{ fromJson(needs.detect-changes.outputs.services-with-build) }}
             fail-fast: false
         steps:
             - name: Checkout code
@@ -165,25 +211,29 @@ jobs:
                   npm ci
 
             - name: Generate Prisma client
-              if: matrix.service != 'api_gateway'
               run: |
                   cd packages/shared
                   npm run prisma:generate
 
             - name: Build service
-              if: matrix.service != 'api_gateway'
               run: |
                   cd packages/${{ matrix.service }}
                   npm run build
 
-    docker-build-push:
-        name: Build and Push Docker Images
+            - name: Cache service build
+              uses: actions/cache@v4
+              with:
+                  path: packages/${{ matrix.service }}/dist
+                  key: service-${{ matrix.service }}-${{ hashFiles(format('packages/{0}/package-lock.json', matrix.service)) }}-${{ github.sha }}
+
+    docker-build-push-with-build:
+        name: Build & Push Docker (Services with Build)
         runs-on: ubuntu-latest
-        needs: [detect-changes, setup]
-        if: needs.detect-changes.outputs.services != '[]' && github.event_name == 'push'
+        needs: [detect-changes, build-services]
+        if: needs.detect-changes.outputs.services-with-build != '[]' && github.event_name == 'push'
         strategy:
             matrix:
-                service: ${{ fromJson(needs.detect-changes.outputs.services) }}
+                service: ${{ fromJson(needs.detect-changes.outputs.services-with-build) }}
             fail-fast: false
         steps:
             - name: Checkout code
@@ -205,16 +255,84 @@ jobs:
                       node_modules/.prisma
                   key: shared-${{ hashFiles('packages/shared/package-lock.json', 'package-lock.json') }}-${{ github.sha }}
 
-            - name: Install service dependencies
-              run: |
-                  cd packages/${{ matrix.service }}
-                  npm ci
+            - name: Restore service build cache
+              uses: actions/cache@v4
+              with:
+                  path: packages/${{ matrix.service }}/dist
+                  key: service-${{ matrix.service }}-${{ hashFiles(format('packages/{0}/package-lock.json', matrix.service)) }}-${{ github.sha }}
 
-            - name: Build service (if needed)
-              if: matrix.service != 'api_gateway'
-              run: |
-                  cd packages/${{ matrix.service }}
-                  npm run build
+            - name: Set up Docker Buildx
+              uses: docker/setup-buildx-action@v3
+
+            - name: Log in to Docker Hub
+              uses: docker/login-action@v3
+              with:
+                  username: ${{ secrets.DOCKER_USERNAME }}
+                  password: ${{ secrets.DOCKER_PASSWORD }}
+
+            - name: Extract metadata
+              id: meta
+              uses: docker/metadata-action@v5
+              with:
+                  images: ${{ secrets.DOCKER_USERNAME }}/zenbilling-${{ matrix.service }}
+                  tags: |
+                      type=ref,event=branch
+                      type=sha,prefix={{branch}}-
+                      type=raw,value=latest,enable={{is_default_branch}}
+
+            - name: Build and push Docker image
+              uses: docker/build-push-action@v5
+              with:
+                  context: .
+                  file: ./packages/${{ matrix.service }}/Dockerfile
+                  platforms: linux/amd64
+                  push: true
+                  tags: ${{ steps.meta.outputs.tags }}
+                  labels: ${{ steps.meta.outputs.labels }}
+                  cache-from: type=gha
+                  cache-to: type=gha,mode=max
+
+            - name: Run Trivy vulnerability scanner
+              uses: aquasecurity/trivy-action@master
+              with:
+                  image-ref: ${{ secrets.DOCKER_USERNAME }}/zenbilling-${{ matrix.service }}:latest
+                  format: "sarif"
+                  output: "trivy-results-${{ matrix.service }}.sarif"
+
+            - name: Upload Trivy scan results
+              uses: github/codeql-action/upload-sarif@v3
+              if: always()
+              with:
+                  sarif_file: "trivy-results-${{ matrix.service }}.sarif"
+
+    docker-build-push-without-build:
+        name: Build & Push Docker (Services without Build)
+        runs-on: ubuntu-latest
+        needs: [detect-changes, setup-shared]
+        if: needs.detect-changes.outputs.services-without-build != '[]' && github.event_name == 'push'
+        strategy:
+            matrix:
+                service: ${{ fromJson(needs.detect-changes.outputs.services-without-build) }}
+            fail-fast: false
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@v4
+
+            - name: Setup Node.js
+              uses: actions/setup-node@v4
+              with:
+                  node-version: ${{ env.NODE_VERSION }}
+                  cache: "npm"
+
+            - name: Restore shared cache
+              uses: actions/cache@v4
+              with:
+                  path: |
+                      packages/shared/dist
+                      packages/shared/node_modules
+                      node_modules
+                      node_modules/.prisma
+                  key: shared-${{ hashFiles('packages/shared/package-lock.json', 'package-lock.json') }}-${{ github.sha }}
 
             - name: Set up Docker Buildx
               uses: docker/setup-buildx-action@v3
@@ -263,15 +381,27 @@ jobs:
     deploy-notification:
         name: Deployment Notification
         runs-on: ubuntu-latest
-        needs: [detect-changes, docker-build-push]
-        if: always() && needs.detect-changes.outputs.services != '[]' && github.event_name == 'push'
+        needs:
+            [
+                detect-changes,
+                docker-build-push-with-build,
+                docker-build-push-without-build,
+            ]
+        if: always() && needs.detect-changes.outputs.has-changes == 'true' && github.event_name == 'push'
         steps:
             - name: Deployment Status
               run: |
-                  if [ "${{ needs.docker-build-push.result }}" = "success" ]; then
+                  BUILD_WITH_RESULT="${{ needs.docker-build-push-with-build.result }}"
+                  BUILD_WITHOUT_RESULT="${{ needs.docker-build-push-without-build.result }}"
+
+                  # Considérer comme succès si au moins un job a réussi ou si le job n'était pas nécessaire (skipped)
+                  if [[ ($BUILD_WITH_RESULT == "success" || $BUILD_WITH_RESULT == "skipped") && ($BUILD_WITHOUT_RESULT == "success" || $BUILD_WITHOUT_RESULT == "skipped") ]]; then
                     echo "✅ All services deployed successfully to Docker Hub"
-                    echo "Services deployed: ${{ needs.detect-changes.outputs.services }}"
+                    echo "Services with build: ${{ needs.detect-changes.outputs.services-with-build }}"
+                    echo "Services without build: ${{ needs.detect-changes.outputs.services-without-build }}"
                   else
                     echo "❌ Deployment failed"
+                    echo "Build with result: $BUILD_WITH_RESULT"
+                    echo "Build without result: $BUILD_WITHOUT_RESULT"
                     exit 1
                   fi

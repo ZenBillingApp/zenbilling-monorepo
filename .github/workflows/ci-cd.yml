@@ -165,6 +165,7 @@ jobs:
           npm ci
 
       - name: Generate Prisma client
+        if: matrix.service != 'api_gateway'
         run: |
           cd packages/shared
           npm run prisma:generate

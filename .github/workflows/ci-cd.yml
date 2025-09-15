@@ -127,6 +127,7 @@ jobs:
             packages/shared/dist
             packages/shared/node_modules
             node_modules
+            node_modules/.prisma
           key: shared-${{ hashFiles('packages/shared/package-lock.json', 'package-lock.json') }}-${{ github.sha }}
 
   test-and-build:
@@ -155,12 +156,22 @@ jobs:
             packages/shared/dist
             packages/shared/node_modules
             node_modules
+            node_modules/.prisma
           key: shared-${{ hashFiles('packages/shared/package-lock.json', 'package-lock.json') }}-${{ github.sha }}
 
       - name: Install service dependencies
         run: |
           cd packages/${{ matrix.service }}
           npm ci
+
+      - name: Generate Prisma client for tests
+        run: |
+          cd packages/shared
+          npm run prisma:generate
+          # Verify client was generated
+          echo "Checking Prisma client generation..."
+          ls -la ../../node_modules/.prisma/ || echo "Prisma client not found in root node_modules"
+          ls -la ../shared/node_modules/.prisma/ || echo "Prisma client not found in shared node_modules"
 
       - name: Run tests (if test suite exists)
         run: |

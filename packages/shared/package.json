@@ -6,7 +6,8 @@
     "scripts": {
         "build": "tsc",
         "dev": "tsc --watch",
-        "prisma:generate": "prisma generate --schema=./prisma/schema.prisma"
+        "prisma:generate": "prisma generate --schema=./prisma/schema.prisma",
+        "prisma:migrate": "prisma migrate dev --schema=./prisma/schema.prisma"
     },
     "dependencies": {
         "@better-fetch/fetch": "^1.1.18",

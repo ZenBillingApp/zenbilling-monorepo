@@ -5,6 +5,16 @@ on:
     branches: [main, develop]
   pull_request:
     branches: [main, develop]
+  workflow_dispatch:
+    inputs:
+      force_deploy_all:
+        description: 'Force deployment of all services'
+        required: false
+        default: 'false'
+        type: choice
+        options:
+          - 'false'
+          - 'true'
 
 env:
   REGISTRY: docker.io
@@ -61,8 +71,8 @@ jobs:
             fi
           done
 
-          # If shared changed, test all services
-          if [ "$SHARED_CHANGED" = "true" ]; then
+          # If shared changed or force deploy all is true, test all services
+          if [ "$SHARED_CHANGED" = "true" ] || [ "${{ github.event.inputs.force_deploy_all }}" = "true" ]; then
             SERVICES="ai_service,auth_service,company_service,customer_service,dashboard_service,email_service,invoice_service,pdf_service,product_service,quote_service,stripe_service,api_gateway"
           fi
 

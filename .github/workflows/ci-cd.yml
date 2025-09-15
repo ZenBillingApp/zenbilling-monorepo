@@ -121,7 +121,7 @@ jobs:
           npm run prisma:generate
 
       - name: Cache shared build
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: |
             packages/shared/dist
@@ -149,7 +149,7 @@ jobs:
           cache: 'npm'
 
       - name: Restore shared cache
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: |
             packages/shared/dist
@@ -178,7 +178,7 @@ jobs:
 
       - name: Upload test coverage
         if: matrix.service != 'api_gateway'
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: coverage-${{ matrix.service }}
           path: packages/${{ matrix.service }}/coverage/
@@ -236,7 +236,7 @@ jobs:
           output: 'trivy-results-${{ matrix.service }}.sarif'
 
       - name: Upload Trivy scan results
-        uses: github/codeql-action/upload-sarif@v2
+        uses: github/codeql-action/upload-sarif@v3
         if: always()
         with:
           sarif_file: 'trivy-results-${{ matrix.service }}.sarif'

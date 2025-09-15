@@ -10,7 +10,7 @@
     "start": "ts-node src/app.ts",
     "build": "tsc",
     "dev": "ts-node-dev --respawn --transpile-only src/app.ts",
-    "serve": "node dist/index.js",
+    "serve": "node dist/index.js"
   },
   "dependencies": {
     "@zenbilling/shared": "1.0.0",

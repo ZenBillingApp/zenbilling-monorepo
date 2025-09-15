@@ -13,7 +13,7 @@
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "prisma:studio": "prisma studio",
-    "serve": "node dist/index.js",
+    "serve": "node dist/index.js"
   },
   "dependencies": {
     "@zenbilling/shared": "1.0.0",

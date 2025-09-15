@@ -4,7 +4,7 @@ import {
     TextGenerationRequest,
     AISuggestionsRequest,
     AIResponse,
-} from "@zenbilling/shared/src/interfaces/AI.interface";
+} from "@zenbilling/shared";
 import dotenv from "dotenv";
 
 dotenv.config();

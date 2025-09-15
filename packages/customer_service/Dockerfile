@@ -3,23 +3,23 @@ FROM node:20-alpine AS builder
 
 WORKDIR /app
 
+# Copy root package files for workspace setup
+COPY package*.json ./
+COPY lerna.json ./
+
+# Copy all packages for workspace resolution
+COPY packages/ ./packages/
+
+# Install all dependencies using workspaces
+RUN npm install
+
 # Build shared package first
-COPY packages/shared/package*.json ./packages/shared/
 WORKDIR /app/packages/shared
-RUN if [ -f package-lock.json ]; then npm ci; else npm install; fi
-COPY packages/shared/tsconfig.json ./
-COPY packages/shared/src/ ./src/
-COPY packages/shared/prisma/ ./prisma/
 RUN npm run prisma:generate
 RUN npm run build
 
-# Build the service
-WORKDIR /app
-COPY packages/customer_service/package*.json ./packages/customer_service/
-COPY packages/customer_service/tsconfig.json ./packages/customer_service/
+# Build the customer service
 WORKDIR /app/packages/customer_service
-RUN if [ -f package-lock.json ]; then npm ci; else npm install; fi
-COPY packages/customer_service/src/ ./src/
 RUN npm run build
 
 # Production stage
@@ -30,17 +30,23 @@ WORKDIR /app
 # Install curl for healthcheck
 RUN apk add --no-cache curl
 
-# Copy service package.json and install production deps
-COPY packages/customer_service/package*.json ./
-RUN if [ -f package-lock.json ]; then npm ci --only=production; else npm install --only=production; fi && npm cache clean --force
+# Copy root package files and install workspaces
+COPY package*.json ./
+COPY lerna.json ./
+COPY packages/shared/package*.json ./packages/shared/
+COPY packages/customer_service/package*.json ./packages/customer_service/
+
+# Install only production dependencies for workspaces
+RUN npm ci --only=production --workspaces && npm cache clean --force
 
 # Copy built service
-COPY --from=builder /app/packages/customer_service/dist ./dist
+COPY --from=builder /app/packages/customer_service/dist ./packages/customer_service/dist
 
-# Copy built shared package
-COPY --from=builder /app/packages/shared/dist ./node_modules/@zenbilling/shared/dist
-COPY --from=builder /app/packages/shared/package.json ./node_modules/@zenbilling/shared/package.json
-COPY --from=builder /app/packages/shared/node_modules/@prisma/client ./node_modules/@prisma/client
+# Copy built shared package (entire directory)
+COPY --from=builder /app/packages/shared ./packages/shared
+
+# Copy the entire generated Prisma client from builder
+COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
 
 # Create non-root user
 RUN addgroup -g 1001 -S nodejs && \
@@ -55,4 +61,5 @@ EXPOSE 3009
 HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
   CMD curl -f http://localhost:3009/health || exit 1
 
+WORKDIR /app/packages/customer_service
 CMD ["node", "dist/app.js"]

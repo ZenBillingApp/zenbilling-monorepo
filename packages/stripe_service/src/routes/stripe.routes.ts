@@ -1,6 +1,6 @@
 import { Router } from "express";
 import * as stripeController from "../controllers/stripe.controller";
-import { authMiddleware } from "@zenbilling/shared/src/middlewares/auth.middleware";
+import { authMiddleware } from "@zenbilling/shared";
 
 const router = Router();
 

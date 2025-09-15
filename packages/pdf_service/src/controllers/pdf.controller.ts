@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import { PdfService } from "../services/pdf.service";
-import logger from "@zenbilling/shared/src/utils/logger";
+import { logger } from "@zenbilling/shared";
 
 export class PdfController {
     static async generateInvoicePdf(req: Request, res: Response) {

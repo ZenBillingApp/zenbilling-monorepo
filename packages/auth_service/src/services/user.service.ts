@@ -1,10 +1,10 @@
 import {
     IUpdateUserRequest,
     IUserResponse,
-} from "@zenbilling/shared/src/interfaces/User.interface";
-import { CustomError } from "@zenbilling/shared/src/utils/customError";
-import logger from "@zenbilling/shared/src/utils/logger";
-import prisma from "@zenbilling/shared/src/libs/prisma";
+} from "@zenbilling/shared";
+import { CustomError } from "@zenbilling/shared";
+import { logger } from "@zenbilling/shared";
+import { prisma } from "@zenbilling/shared";
 import { Prisma } from "@prisma/client";
 
 export class UserService {

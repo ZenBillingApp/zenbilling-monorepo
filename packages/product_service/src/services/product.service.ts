@@ -2,15 +2,15 @@ import {
     ICreateProductRequest,
     IUpdateProductRequest,
     IProductQueryParams,
-} from "@zenbilling/shared/src/interfaces/Product.request.interface";
-import { ProductUnit } from "@zenbilling/shared/src/interfaces/Product.interface";
-import { CustomError } from "@zenbilling/shared/src/utils/customError";
-import logger from "@zenbilling/shared/src/utils/logger";
-import prisma from "@zenbilling/shared/src/libs/prisma";
+} from "@zenbilling/shared";
+import { ProductUnit } from "@zenbilling/shared";
+import { CustomError } from "@zenbilling/shared";
+import { logger } from "@zenbilling/shared";
+import { prisma } from "@zenbilling/shared";
 import {
     IProduct,
     VatRate,
-} from "@zenbilling/shared/src/interfaces/Product.interface";
+} from "@zenbilling/shared";
 import { Prisma, PrismaClient } from "@prisma/client";
 
 export class ProductService {

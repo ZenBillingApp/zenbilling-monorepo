@@ -19,7 +19,9 @@
   "author": "",
   "license": "ISC",
   "type": "commonjs",
-  "dependencies": {},
+  "dependencies": {
+    "dotenv": "^17.2.2"
+  },
   "devDependencies": {
     "lerna": "^8.2.3",
     "typescript": "^5.9.2"

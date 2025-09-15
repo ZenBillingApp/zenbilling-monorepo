@@ -1,16 +1,16 @@
 import {
     ICreateCompanyRequest,
     IUpdateCompanyRequest,
-} from "@zenbilling/shared/src/interfaces/Company.request.interface";
-import prisma from "@zenbilling/shared/src/libs/prisma";
+} from "@zenbilling/shared";
+import { prisma } from "@zenbilling/shared";
 import {
     ICompany,
     LegalForm,
-} from "@zenbilling/shared/src/interfaces/Company.interface";
-import { IUser } from "@zenbilling/shared/src/interfaces/User.interface";
-import { CustomError } from "@zenbilling/shared/src/utils/customError";
-import logger from "@zenbilling/shared/src/utils/logger";
-import { PrismaClient, Prisma } from "@zenbilling/shared/src/libs/prisma";
+} from "@zenbilling/shared";
+import { IUser } from "@zenbilling/shared";
+import { CustomError } from "@zenbilling/shared";
+import { logger } from "@zenbilling/shared";
+import { PrismaClient, Prisma } from "@zenbilling/shared";
 
 export class CompanyService {
     private static readonly availableLegalForms: LegalForm[] = [

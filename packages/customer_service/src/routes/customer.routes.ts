@@ -1,11 +1,11 @@
 import { Router } from "express";
 import { CustomerController } from "../controllers/customer.controller";
-import { authMiddleware } from "@zenbilling/shared/src/middlewares/auth.middleware";
-import { validateRequest } from "@zenbilling/shared/src/middlewares/validation.middleware";
+import { authMiddleware } from "@zenbilling/shared";
+import { validateRequest } from "@zenbilling/shared";
 import {
     createCustomerSchema,
     updateCustomerSchema,
-} from "@zenbilling/shared/src/validations/customer.validation";
+} from "@zenbilling/shared";
 
 const router = Router();
 

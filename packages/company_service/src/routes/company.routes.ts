@@ -1,8 +1,8 @@
 import { Router } from "express";
 import { CompanyController } from "../controllers/company.controller";
-import { validateRequest } from "@zenbilling/shared/src/middlewares/validation.middleware";
-import { companySchema } from "@zenbilling/shared/src/validations/company.validation";
-import { authMiddleware } from "@zenbilling/shared/src/middlewares/auth.middleware";
+import { validateRequest } from "@zenbilling/shared";
+import { companySchema } from "@zenbilling/shared";
+import { authMiddleware } from "@zenbilling/shared";
 
 const router = Router();
 

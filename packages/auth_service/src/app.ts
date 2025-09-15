@@ -4,7 +4,7 @@ import { auth } from "./lib/auth";
 import cors from "cors";
 import dotenv from "dotenv";
 import userRoutes from "./routes/user.routes";
-import prisma from "@zenbilling/shared/src/libs/prisma";
+import { prisma } from "@zenbilling/shared";
 
 dotenv.config();
 

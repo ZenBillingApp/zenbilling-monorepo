@@ -1,6 +1,6 @@
 import { ProductUnit, VatRate } from "./Product.interface";
 import { Decimal } from "@prisma/client/runtime/library";
-export type InvoiceStatus = "pending" | "sent" | "paid" | "cancelled" | "late";
+import { InvoiceStatus } from "./Invoice.interface";
 export type PaymentMethod = "cash" | "credit_card" | "bank_transfer";
 
 export interface IInvoiceQueryParams {
@@ -22,7 +22,7 @@ export interface IInvoiceQueryParams {
     sortOrder?: "ASC" | "DESC";
 }
 
-export interface IInvoiceItem {
+export interface ICreateInvoiceItem {
     product_id?: string | null;
     name?: string;
     description?: string | null;
@@ -37,7 +37,7 @@ export interface ICreateInvoiceRequest {
     customer_id: string;
     invoice_date: Date;
     due_date: Date;
-    items: IInvoiceItem[];
+    items: ICreateInvoiceItem[];
     conditions?: string;
     late_payment_penalty?: string;
 }

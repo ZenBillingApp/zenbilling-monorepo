@@ -1,14 +1,14 @@
 import { Response } from "express";
 import { InvoiceService } from "../services/invoice.service";
 // import { PdfService } from "../services/pdf.service";
-import { AuthRequest } from "@zenbilling/shared/src/interfaces/Auth.interface";
-import { ApiResponse } from "@zenbilling/shared/src/utils/apiResponse";
-import { CustomError } from "@zenbilling/shared/src/utils/customError";
+import { AuthRequest } from "@zenbilling/shared";
+import { ApiResponse } from "@zenbilling/shared";
+import { CustomError } from "@zenbilling/shared";
 import {
     IInvoiceQueryParams,
     ISendInvoiceWithPaymentLinkRequest,
-} from "@zenbilling/shared/src/interfaces/Invoice.request.interface";
-import logger from "@zenbilling/shared/src/utils/logger";
+} from "@zenbilling/shared";
+import { logger } from "@zenbilling/shared";
 import axios from "axios";
 
 export class InvoiceController {

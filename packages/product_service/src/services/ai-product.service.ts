@@ -5,7 +5,7 @@ import {
     GenerateDescriptionResponse,
     GenerateDescriptionSuggestionsRequest,
     GenerateDescriptionSuggestionsResponse,
-} from "@zenbilling/shared/src/interfaces/AI.interface";
+} from "@zenbilling/shared";
 
 export class AIProductService {
     private aiClient: AIClient;

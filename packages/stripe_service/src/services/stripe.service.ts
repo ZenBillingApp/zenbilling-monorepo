@@ -1,5 +1,5 @@
 import stripe from "../libs/stripe";
-import logger from "@zenbilling/shared/src/utils/logger";
+import { logger } from "@zenbilling/shared";
 
 export class StripeService {
     /**

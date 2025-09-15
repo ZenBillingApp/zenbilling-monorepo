@@ -1,7 +1,7 @@
 import * as SibApiV3Sdk from "@getbrevo/brevo";
 import { IncomingMessage } from "http";
-import logger from "@zenbilling/shared/src/utils/logger";
-import { CustomError } from "@zenbilling/shared/src/utils/customError";
+import { logger } from "@zenbilling/shared";
+import { CustomError } from "@zenbilling/shared";
 
 export class EmailService {
     private apiInstance: SibApiV3Sdk.TransactionalEmailsApi;

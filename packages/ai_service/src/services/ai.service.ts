@@ -4,7 +4,7 @@ import {
     ChatCompletionRequest,
     ChatCompletionResponse,
     TextGenerationRequest,
-} from "@zenbilling/shared/src/interfaces/AI.interface";
+} from "@zenbilling/shared";
 
 export class AIService {
     private openai = OpenAIConfig.getInstance();

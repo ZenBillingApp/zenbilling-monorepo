@@ -1,13 +1,13 @@
 import { Router } from "express";
 import { InvoiceController } from "../controllers/invoice.controller";
-import { authMiddleware } from "@zenbilling/shared/src/middlewares/auth.middleware";
-import { validateRequest } from "@zenbilling/shared/src/middlewares/validation.middleware";
+import { authMiddleware } from "@zenbilling/shared";
+import { validateRequest } from "@zenbilling/shared";
 import {
     createInvoiceSchema,
     updateInvoiceSchema,
     createPaymentSchema,
     sendInvoiceWithPaymentLinkSchema,
-} from "@zenbilling/shared/src/validations/invoice.validation";
+} from "@zenbilling/shared";
 
 const router = Router();
 

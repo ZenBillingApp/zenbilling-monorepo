@@ -1,8 +1,8 @@
 import { Request, Response } from "express";
 import { UserService } from "../services/user.service";
-import { IUser } from "@zenbilling/shared/src/interfaces/User.interface";
-import { ApiResponse } from "@zenbilling/shared/src/utils/apiResponse";
-import logger from "@zenbilling/shared/src/utils/logger";
+import { IUser } from "@zenbilling/shared";
+import { ApiResponse } from "@zenbilling/shared";
+import { logger } from "@zenbilling/shared";
 
 interface AuthRequest extends Request {
     user?: IUser;

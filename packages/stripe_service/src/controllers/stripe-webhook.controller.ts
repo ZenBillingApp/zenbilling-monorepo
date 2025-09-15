@@ -1,7 +1,7 @@
 import { Request, Response } from "express";
 import dotenv from "dotenv";
-import prisma from "@zenbilling/shared/src/libs/prisma";
-import logger from "@zenbilling/shared/src/utils/logger";
+import { prisma } from "@zenbilling/shared";
+import { logger } from "@zenbilling/shared";
 import stripe from "../libs/stripe";
 import Stripe from "stripe";
 

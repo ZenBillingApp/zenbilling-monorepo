@@ -1,10 +1,10 @@
 import { Response } from "express";
 import { CustomerService } from "../services/customer.service";
-import { AuthRequest } from "@zenbilling/shared/src/interfaces/Auth.interface";
-import { ApiResponse } from "@zenbilling/shared/src/utils/apiResponse";
-import { CustomError } from "@zenbilling/shared/src/utils/customError";
-import { ICustomerQueryParams } from "@zenbilling/shared/src/interfaces/Customer.request.interface";
-import logger from "@zenbilling/shared/src/utils/logger";
+import { AuthRequest } from "@zenbilling/shared";
+import { ApiResponse } from "@zenbilling/shared";
+import { CustomError } from "@zenbilling/shared";
+import { ICustomerQueryParams } from "@zenbilling/shared";
+import { logger } from "@zenbilling/shared";
 
 export class CustomerController {
     public static async createCustomer(req: AuthRequest, res: Response) {

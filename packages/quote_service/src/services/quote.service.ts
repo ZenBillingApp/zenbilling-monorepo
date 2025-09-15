@@ -2,22 +2,22 @@ import {
     ICreateQuoteRequest,
     IUpdateQuoteRequest,
     IQuoteQueryParams,
-} from "@zenbilling/shared/src/interfaces/Quote.request.interface";
-import { CustomError } from "@zenbilling/shared/src/utils/customError";
+} from "@zenbilling/shared";
+import { CustomError } from "@zenbilling/shared";
 // import { PdfService } from "./pdf.service";
 // import emailService from "./email.service";
-import { IQuote } from "@zenbilling/shared/src/interfaces/Quote.interface";
+import { IQuote } from "@zenbilling/shared";
 import {
     IProduct,
     vatRateToNumber,
-} from "@zenbilling/shared/src/interfaces/Product.interface";
-import logger from "@zenbilling/shared/src/utils/logger";
+} from "@zenbilling/shared";
+import { logger } from "@zenbilling/shared";
 import {
     Prisma,
     PrismaClient,
     Decimal,
-} from "@zenbilling/shared/src/libs/prisma";
-import prisma from "@zenbilling/shared/src/libs/prisma";
+} from "@zenbilling/shared";
+import { prisma } from "@zenbilling/shared";
 import axios from "axios";
 
 export class QuoteService {

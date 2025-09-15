@@ -2,11 +2,11 @@ import {
     ICreateCustomerRequest,
     IUpdateCustomerRequest,
     ICustomerQueryParams,
-} from "@zenbilling/shared/src/interfaces/Customer.request.interface";
-import { CustomError } from "@zenbilling/shared/src/utils/customError";
-import logger from "@zenbilling/shared/src/utils/logger";
-import prisma from "@zenbilling/shared/src/libs/prisma";
-import { ICustomer } from "@zenbilling/shared/src/interfaces/Customer.interface";
+} from "@zenbilling/shared";
+import { CustomError } from "@zenbilling/shared";
+import { logger } from "@zenbilling/shared";
+import { prisma } from "@zenbilling/shared";
+import { ICustomer } from "@zenbilling/shared";
 import { Prisma, PrismaClient } from "@prisma/client";
 
 export class CustomerService {

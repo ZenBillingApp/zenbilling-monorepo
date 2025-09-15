@@ -1,4 +1,4 @@
-# Production image pour Express Gateway
+# Production image for Express Gateway
 FROM node:20-alpine AS production
 
 WORKDIR /app
@@ -6,15 +6,17 @@ WORKDIR /app
 # Install curl for healthcheck
 RUN apk add --no-cache curl
 
-# Copy package files from correct context
-COPY packages/api_gateway/package*.json ./
+# Copy root package files and install workspaces
+COPY package*.json ./
+COPY lerna.json ./
+COPY packages/api_gateway/package*.json ./packages/api_gateway/
 
-# Install dependencies
-RUN if [ -f package-lock.json ]; then npm ci --only=production; else npm install --only=production; fi && npm cache clean --force
+# Install only production dependencies for workspaces
+RUN npm ci --only=production --workspaces && npm cache clean --force
 
-# Copy application files from correct context
-COPY packages/api_gateway/server.js ./
-COPY packages/api_gateway/config/ ./config/
+# Copy application files
+COPY packages/api_gateway/server.js ./packages/api_gateway/
+COPY packages/api_gateway/config/ ./packages/api_gateway/config/
 
 # Create non-root user for security
 RUN addgroup -g 1001 -S nodejs && \
@@ -29,4 +31,5 @@ EXPOSE 8080
 HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
   CMD curl -f http://localhost:8080/health || exit 1
 
+WORKDIR /app/packages/api_gateway
 CMD ["node", "server.js"]

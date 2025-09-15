@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import { EmailService } from "../services/email.service";
-import { ApiResponse } from "@zenbilling/shared/src/utils/apiResponse";
+import { ApiResponse } from "@zenbilling/shared";
 
 export class EmailController {
     public static async sendEmail(req: Request, res: Response) {

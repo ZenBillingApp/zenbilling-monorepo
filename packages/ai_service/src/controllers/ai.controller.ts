@@ -1,7 +1,7 @@
 import { Request, Response } from "express";
 import { AIService } from "../services/ai.service";
-import { ApiResponse } from "@zenbilling/shared/src/utils/apiResponse";
-import { ChatMessage } from "@zenbilling/shared/src/interfaces/AI.interface";
+import { ApiResponse } from "@zenbilling/shared";
+import { ChatMessage } from "@zenbilling/shared";
 
 export class AIController {
     private aiService = new AIService();

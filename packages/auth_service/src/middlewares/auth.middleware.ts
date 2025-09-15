@@ -1,9 +1,9 @@
 import { Request, Response, NextFunction } from "express";
 import { auth } from "../lib/auth";
-import { IUser } from "@zenbilling/shared/src/interfaces/User.interface";
-import { ApiResponse } from "@zenbilling/shared/src/utils/apiResponse";
-import logger from "@zenbilling/shared/src/utils/logger";
-import prisma from "@zenbilling/shared/src/libs/prisma";
+import { IUser } from "@zenbilling/shared";
+import { ApiResponse } from "@zenbilling/shared";
+import { logger } from "@zenbilling/shared";
+import { prisma } from "@zenbilling/shared";
 
 interface AuthRequest extends Request {
     user?: IUser;

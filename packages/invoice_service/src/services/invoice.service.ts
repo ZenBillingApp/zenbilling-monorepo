@@ -4,22 +4,22 @@ import {
     ICreatePaymentRequest,
     IInvoiceQueryParams,
     ISendInvoiceWithPaymentLinkRequest,
-} from "@zenbilling/shared/src/interfaces/Invoice.request.interface";
-import { IInvoice } from "@zenbilling/shared/src/interfaces/Invoice.interface";
-import { CustomError } from "@zenbilling/shared/src/utils/customError";
-import logger from "@zenbilling/shared/src/utils/logger";
-import prisma from "@zenbilling/shared/src/libs/prisma";
+} from "@zenbilling/shared";
+import { IInvoice } from "@zenbilling/shared";
+import { CustomError } from "@zenbilling/shared";
+import { logger } from "@zenbilling/shared";
+import { prisma } from "@zenbilling/shared";
 import {
     IProduct,
     ProductUnit,
     vatRateToNumber,
-} from "@zenbilling/shared/src/interfaces/Product.interface";
-import { IPayment } from "@zenbilling/shared/src/interfaces/Payment.interface";
+} from "@zenbilling/shared";
+import { IPayment } from "@zenbilling/shared";
 import {
     Prisma,
     PrismaClient,
     Decimal,
-} from "@zenbilling/shared/src/libs/prisma";
+} from "@zenbilling/shared";
 import axios from "axios";
 
 export class InvoiceService {

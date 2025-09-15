@@ -1,9 +1,9 @@
 import { Response } from "express";
 import stripeService from "../services/stripe.service";
-import prisma from "@zenbilling/shared/src/libs/prisma";
-import logger from "@zenbilling/shared/src/utils/logger";
-import { AuthRequest } from "@zenbilling/shared/src/interfaces/Auth.interface";
-import { ApiResponse } from "@zenbilling/shared/src/utils/apiResponse";
+import { prisma } from "@zenbilling/shared";
+import { logger } from "@zenbilling/shared";
+import { AuthRequest } from "@zenbilling/shared";
+import { ApiResponse } from "@zenbilling/shared";
 import {
     AccountLinkResponse,
     AccountStatusResponse,
@@ -15,7 +15,7 @@ import {
     PaymentResponse,
     PaymentWithEmailResponse,
     SkipStripeSetupResponse,
-} from "@zenbilling/shared/src/interfaces/stripe.interface";
+} from "@zenbilling/shared";
 
 export const createConnectAccount = async (req: AuthRequest, res: Response) => {
     try {

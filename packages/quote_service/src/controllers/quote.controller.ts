@@ -1,10 +1,10 @@
 import { Response } from "express";
 import { QuoteService } from "../services/quote.service";
-import { AuthRequest } from "@zenbilling/shared/src/interfaces/Auth.interface";
-import { ApiResponse } from "@zenbilling/shared/src/utils/apiResponse";
-import { CustomError } from "@zenbilling/shared/src/utils/customError";
-import { IQuoteQueryParams } from "@zenbilling/shared/src/interfaces/Quote.request.interface";
-import logger from "@zenbilling/shared/src/utils/logger";
+import { AuthRequest } from "@zenbilling/shared";
+import { ApiResponse } from "@zenbilling/shared";
+import { CustomError } from "@zenbilling/shared";
+import { IQuoteQueryParams } from "@zenbilling/shared";
+import { logger } from "@zenbilling/shared";
 import axios from "axios";
 
 export class QuoteController {

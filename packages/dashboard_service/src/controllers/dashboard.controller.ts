@@ -1,9 +1,9 @@
 import { Response } from "express";
 import { DashboardService } from "../services/dashboard.service";
-import { AuthRequest } from "@zenbilling/shared/src/interfaces/Auth.interface";
-import { ApiResponse } from "@zenbilling/shared/src/utils/apiResponse";
-import { CustomError } from "@zenbilling/shared/src/utils/customError";
-import logger from "@zenbilling/shared/src/utils/logger";
+import { AuthRequest } from "@zenbilling/shared";
+import { ApiResponse } from "@zenbilling/shared";
+import { CustomError } from "@zenbilling/shared";
+import { logger } from "@zenbilling/shared";
 
 const dashboardService = new DashboardService();
 

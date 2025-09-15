@@ -1,9 +1,9 @@
 import { Response } from "express";
 import { CompanyService } from "../services/company.service";
-import { ApiResponse } from "@zenbilling/shared/src/utils/apiResponse";
-import { CustomError } from "@zenbilling/shared/src/utils/customError";
-import logger from "@zenbilling/shared/src/utils/logger";
-import { AuthRequest } from "@zenbilling/shared/src/interfaces/Auth.interface";
+import { ApiResponse } from "@zenbilling/shared";
+import { CustomError } from "@zenbilling/shared";
+import { logger } from "@zenbilling/shared";
+import { AuthRequest } from "@zenbilling/shared";
 
 export class CompanyController {
     public static async createCompany(req: AuthRequest, res: Response) {

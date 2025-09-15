@@ -2,11 +2,11 @@ import puppeteer from "puppeteer";
 import * as handlebars from "handlebars";
 import * as fs from "fs";
 import * as path from "path";
-import logger from "@zenbilling/shared/src/utils/logger";
-import { ICompany } from "@zenbilling/shared/src/interfaces/Company.interface";
-import { IInvoice } from "@zenbilling/shared/src/interfaces/Invoice.interface";
-import { vatRateToNumber } from "@zenbilling/shared/src/interfaces/Product.interface";
-import { IQuote } from "@zenbilling/shared/src/interfaces/Quote.interface";
+import { logger } from "@zenbilling/shared";
+import { ICompany } from "@zenbilling/shared";
+import { IInvoice } from "@zenbilling/shared";
+import { vatRateToNumber } from "@zenbilling/shared";
+import { IQuote } from "@zenbilling/shared";
 
 interface HandlebarsContext {
     [key: string]: any;

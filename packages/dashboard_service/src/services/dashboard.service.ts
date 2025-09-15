@@ -1,4 +1,4 @@
-import prisma from "@zenbilling/shared/src/libs/prisma";
+import { prisma } from "@zenbilling/shared";
 import { startOfMonth, endOfMonth, startOfYear, endOfYear } from "date-fns";
 import { InvoiceStatus, QuoteStatus } from "@prisma/client";
 import {
@@ -6,7 +6,7 @@ import {
     TopCustomer,
     InvoiceStatusCount,
     QuoteStatusCount,
-} from "@zenbilling/shared/src/interfaces/dashboard.interface";
+} from "@zenbilling/shared";
 
 export class DashboardService {
     async getMonthlyRevenue(userId: string): Promise<number> {

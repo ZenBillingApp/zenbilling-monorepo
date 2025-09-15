@@ -179,8 +179,8 @@ jobs:
   docker-build-push:
     name: Build and Push Docker Images
     runs-on: ubuntu-latest
-    needs: [detect-changes, build]
-    if: always() && needs.detect-changes.outputs.services != '[]' && github.event_name == 'push' && (needs.build.result == 'success' || needs.build.result == 'skipped')
+    needs: [detect-changes]
+    if: needs.detect-changes.outputs.services != '[]' && github.event_name == 'push'
     strategy:
       matrix:
         service: ${{ fromJson(needs.detect-changes.outputs.services) }}

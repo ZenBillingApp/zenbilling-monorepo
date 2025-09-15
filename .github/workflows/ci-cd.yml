@@ -171,6 +171,7 @@ jobs:
           npm run prisma:generate
 
       - name: Build service
+        if: matrix.service != 'api_gateway'
         run: |
           cd packages/${{ matrix.service }}
           npm run build

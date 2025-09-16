@@ -9,34 +9,34 @@ cors:
     credentials: true
 apiEndpoints:
     health:
-        host: localhost
+        host: "*"
         paths: ["/", "/health"]
     auth:
-        host: localhost
+        host: "*"
         paths: ["/api/auth*", "/api/user*"]
     company:
-        host: localhost
+        host: "*"
         paths: ["/api/company*"]
     stripe:
-        host: localhost
+        host: "*"
         paths: ["/api/stripe*"]
     dashboard:
-        host: localhost
+        host: "*"
         paths: ["/api/dashboard*"]
     invoice:
-        host: localhost
+        host: "*"
         paths: ["/api/invoice*"]
     quote:
-        host: localhost
+        host: "*"
         paths: ["/api/quote*"]
     product:
-        host: localhost
+        host: "*"
         paths: ["/api/product*"]
     customer:
-        host: localhost
+        host: "*"
         paths: ["/api/customer*"]
     ai:
-        host: localhost
+        host: "*"
         paths: ["/api/ai*"]
 serviceEndpoints:
     auth_service:

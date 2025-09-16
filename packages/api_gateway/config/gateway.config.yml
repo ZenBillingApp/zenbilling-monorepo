@@ -97,9 +97,6 @@ pipelines:
         apiEndpoints:
             - auth
         policies:
-            - cors:
-                  - action:
-                        # Utilise la configuration CORS globale définie en haut
             - proxy:
                   - action:
                         serviceEndpoint: auth_service
@@ -109,9 +106,6 @@ pipelines:
         apiEndpoints:
             - company
         policies:
-            - cors:
-                  - action:
-                        # Utilise la configuration CORS globale
             - proxy:
                   - action:
                         serviceEndpoint: company_service
@@ -121,8 +115,6 @@ pipelines:
         apiEndpoints:
             - stripe
         policies:
-            - cors:
-                  - action:
             - proxy:
                   - action:
                         serviceEndpoint: stripe_service
@@ -132,8 +124,6 @@ pipelines:
         apiEndpoints:
             - dashboard
         policies:
-            - cors:
-                  - action:
             - proxy:
                   - action:
                         serviceEndpoint: dashboard_service
@@ -143,8 +133,6 @@ pipelines:
         apiEndpoints:
             - invoice
         policies:
-            - cors:
-                  - action:
             - proxy:
                   - action:
                         serviceEndpoint: invoice_service
@@ -154,8 +142,6 @@ pipelines:
         apiEndpoints:
             - quote
         policies:
-            - cors:
-                  - action:
             - proxy:
                   - action:
                         serviceEndpoint: quote_service
@@ -165,8 +151,6 @@ pipelines:
         apiEndpoints:
             - product
         policies:
-            - cors:
-                  - action:
             - proxy:
                   - action:
                         serviceEndpoint: product_service
@@ -176,8 +160,6 @@ pipelines:
         apiEndpoints:
             - customer
         policies:
-            - cors:
-                  - action:
             - proxy:
                   - action:
                         serviceEndpoint: customer_service
@@ -187,8 +169,6 @@ pipelines:
         apiEndpoints:
             - ai
         policies:
-            - cors:
-                  - action:
             - proxy:
                   - action:
                         serviceEndpoint: ai_service

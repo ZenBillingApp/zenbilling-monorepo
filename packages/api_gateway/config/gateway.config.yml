@@ -1,10 +1,10 @@
 http:
-    port: 8080
+    port: "${PORT:-8080}"
 admin:
     port: 9876
     host: localhost
 cors:
-    origin: ["http://localhost:3000", "http://localhost:8080"]
+    origin: ["${CLIENT_URL:-http://localhost:3000}", "${API_GATEWAY_URL:-http://localhost:8080}"]
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"]
     credentials: true
 apiEndpoints:
@@ -37,23 +37,23 @@ apiEndpoints:
         paths: ["/api/ai*"]
 serviceEndpoints:
     auth_service:
-        url: "http://localhost:3001"
+        url: "${AUTH_SERVICE_URL:-http://localhost:3001}"
     company_service:
-        url: "http://localhost:3002"
+        url: "${COMPANY_SERVICE_URL:-http://localhost:3002}"
     stripe_service:
-        url: "http://localhost:3003"
+        url: "${STRIPE_SERVICE_URL:-http://localhost:3003}"
     dashboard_service:
-        url: "http://localhost:3004"
+        url: "${DASHBOARD_SERVICE_URL:-http://localhost:3004}"
     invoice_service:
-        url: "http://localhost:3005"
+        url: "${INVOICE_SERVICE_URL:-http://localhost:3005}"
     quote_service:
-        url: "http://localhost:3006"
+        url: "${QUOTE_SERVICE_URL:-http://localhost:3006}"
     product_service:
-        url: "http://localhost:3008"
+        url: "${PRODUCT_SERVICE_URL:-http://localhost:3008}"
     customer_service:
-        url: "http://localhost:3009"
+        url: "${CUSTOMER_SERVICE_URL:-http://localhost:3009}"
     ai_service:
-        url: "http://localhost:3011"
+        url: "${AI_SERVICE_URL:-http://localhost:3011}"
 policies:
     - basic-auth
     - cors

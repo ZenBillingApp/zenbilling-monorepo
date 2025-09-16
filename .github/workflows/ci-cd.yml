@@ -194,9 +194,102 @@ jobs:
             #   with:
             #     sarif_file: 'trivy-results-${{ matrix.service }}.sarif'
 
-    deploy-summary:
+    trigger-coolify-deployment:
         runs-on: ubuntu-latest
         needs: [detect-changes, build-and-push]
+        if: github.event_name != 'pull_request' && fromJSON(needs.detect-changes.outputs.services)[0] != null
+        strategy:
+            matrix:
+                service: ${{ fromJSON(needs.detect-changes.outputs.services) }}
+        steps:
+            - name: Determine environment
+              id: env
+              run: |
+                  if [[ "${{ github.ref_name }}" == "main" ]]; then
+                    echo "environment=PROD" >> $GITHUB_OUTPUT
+                    echo "env_name=Production" >> $GITHUB_OUTPUT
+                  elif [[ "${{ github.ref_name }}" == "develop" ]]; then
+                    echo "environment=DEV" >> $GITHUB_OUTPUT
+                    echo "env_name=Development" >> $GITHUB_OUTPUT
+                  else
+                    echo "environment=DEV" >> $GITHUB_OUTPUT
+                    echo "env_name=Development" >> $GITHUB_OUTPUT
+                  fi
+
+            - name: Trigger Coolify Deployment for ${{ matrix.service }} (${{ steps.env.outputs.env_name }})
+              run: |
+                  # Coolify webhook endpoint pour chaque service selon l'environnement
+                  SERVICE_UPPER=$(echo ${{ matrix.service }} | tr '[:lower:]' '[:upper:]')
+                  WEBHOOK_SECRET_NAME="COOLIFY_WEBHOOK_${SERVICE_UPPER}_${{ steps.env.outputs.environment }}"
+                  TOKEN_SECRET_NAME="COOLIFY_API_TOKEN_${{ steps.env.outputs.environment }}"
+
+                  WEBHOOK_URL="${!WEBHOOK_SECRET_NAME}"
+                  API_TOKEN="${!TOKEN_SECRET_NAME}"
+
+                  echo "🔍 Looking for webhook: ${WEBHOOK_SECRET_NAME}"
+                  echo "🔍 Looking for token: ${TOKEN_SECRET_NAME}"
+
+                  if [[ -n "$WEBHOOK_URL" && -n "$API_TOKEN" ]]; then
+                    echo "🚀 Triggering Coolify deployment for ${{ matrix.service }} in ${{ steps.env.outputs.env_name }}..."
+
+                    # Déclencher le déploiement via GET request
+                    response=$(curl -w "%{http_code}" -s -o /dev/null \
+                      --request GET \
+                      --header "Authorization: Bearer $API_TOKEN" \
+                      "$WEBHOOK_URL")
+
+                    if [[ "$response" -eq 200 ]]; then
+                      echo "✅ Successfully triggered deployment for ${{ matrix.service }} in ${{ steps.env.outputs.env_name }}"
+                    else
+                      echo "❌ Failed to trigger deployment for ${{ matrix.service }} in ${{ steps.env.outputs.env_name }} (HTTP: $response)"
+                      exit 1
+                    fi
+                  else
+                    echo "⚠️  Missing Coolify configuration for ${{ matrix.service }} in ${{ steps.env.outputs.env_name }}"
+                    if [[ -z "$WEBHOOK_URL" ]]; then
+                      echo "   Missing secret: ${WEBHOOK_SECRET_NAME}"
+                    fi
+                    if [[ -z "$API_TOKEN" ]]; then
+                      echo "   Missing secret: ${TOKEN_SECRET_NAME}"
+                    fi
+                    echo "Please add these secrets in GitHub repository settings"
+                  fi
+              env:
+                  # Production environment webhooks
+                  COOLIFY_WEBHOOK_API_GATEWAY_PROD: ${{ secrets.COOLIFY_WEBHOOK_API_GATEWAY_PROD }}
+                  COOLIFY_WEBHOOK_AUTH_SERVICE_PROD: ${{ secrets.COOLIFY_WEBHOOK_AUTH_SERVICE_PROD }}
+                  COOLIFY_WEBHOOK_COMPANY_SERVICE_PROD: ${{ secrets.COOLIFY_WEBHOOK_COMPANY_SERVICE_PROD }}
+                  COOLIFY_WEBHOOK_STRIPE_SERVICE_PROD: ${{ secrets.COOLIFY_WEBHOOK_STRIPE_SERVICE_PROD }}
+                  COOLIFY_WEBHOOK_DASHBOARD_SERVICE_PROD: ${{ secrets.COOLIFY_WEBHOOK_DASHBOARD_SERVICE_PROD }}
+                  COOLIFY_WEBHOOK_INVOICE_SERVICE_PROD: ${{ secrets.COOLIFY_WEBHOOK_INVOICE_SERVICE_PROD }}
+                  COOLIFY_WEBHOOK_QUOTE_SERVICE_PROD: ${{ secrets.COOLIFY_WEBHOOK_QUOTE_SERVICE_PROD }}
+                  COOLIFY_WEBHOOK_EMAIL_SERVICE_PROD: ${{ secrets.COOLIFY_WEBHOOK_EMAIL_SERVICE_PROD }}
+                  COOLIFY_WEBHOOK_PRODUCT_SERVICE_PROD: ${{ secrets.COOLIFY_WEBHOOK_PRODUCT_SERVICE_PROD }}
+                  COOLIFY_WEBHOOK_CUSTOMER_SERVICE_PROD: ${{ secrets.COOLIFY_WEBHOOK_CUSTOMER_SERVICE_PROD }}
+                  COOLIFY_WEBHOOK_PDF_SERVICE_PROD: ${{ secrets.COOLIFY_WEBHOOK_PDF_SERVICE_PROD }}
+                  COOLIFY_WEBHOOK_AI_SERVICE_PROD: ${{ secrets.COOLIFY_WEBHOOK_AI_SERVICE_PROD }}
+
+                  # Development environment webhooks
+                  COOLIFY_WEBHOOK_API_GATEWAY_DEV: ${{ secrets.COOLIFY_WEBHOOK_API_GATEWAY_DEV }}
+                  COOLIFY_WEBHOOK_AUTH_SERVICE_DEV: ${{ secrets.COOLIFY_WEBHOOK_AUTH_SERVICE_DEV }}
+                  COOLIFY_WEBHOOK_COMPANY_SERVICE_DEV: ${{ secrets.COOLIFY_WEBHOOK_COMPANY_SERVICE_DEV }}
+                  COOLIFY_WEBHOOK_STRIPE_SERVICE_DEV: ${{ secrets.COOLIFY_WEBHOOK_STRIPE_SERVICE_DEV }}
+                  COOLIFY_WEBHOOK_DASHBOARD_SERVICE_DEV: ${{ secrets.COOLIFY_WEBHOOK_DASHBOARD_SERVICE_DEV }}
+                  COOLIFY_WEBHOOK_INVOICE_SERVICE_DEV: ${{ secrets.COOLIFY_WEBHOOK_INVOICE_SERVICE_DEV }}
+                  COOLIFY_WEBHOOK_QUOTE_SERVICE_DEV: ${{ secrets.COOLIFY_WEBHOOK_QUOTE_SERVICE_DEV }}
+                  COOLIFY_WEBHOOK_EMAIL_SERVICE_DEV: ${{ secrets.COOLIFY_WEBHOOK_EMAIL_SERVICE_DEV }}
+                  COOLIFY_WEBHOOK_PRODUCT_SERVICE_DEV: ${{ secrets.COOLIFY_WEBHOOK_PRODUCT_SERVICE_DEV }}
+                  COOLIFY_WEBHOOK_CUSTOMER_SERVICE_DEV: ${{ secrets.COOLIFY_WEBHOOK_CUSTOMER_SERVICE_DEV }}
+                  COOLIFY_WEBHOOK_PDF_SERVICE_DEV: ${{ secrets.COOLIFY_WEBHOOK_PDF_SERVICE_DEV }}
+                  COOLIFY_WEBHOOK_AI_SERVICE_DEV: ${{ secrets.COOLIFY_WEBHOOK_AI_SERVICE_DEV }}
+
+                  # API Tokens per environment
+                  COOLIFY_API_TOKEN_PROD: ${{ secrets.COOLIFY_API_TOKEN_PROD }}
+                  COOLIFY_API_TOKEN_DEV: ${{ secrets.COOLIFY_API_TOKEN_DEV }}
+
+    deploy-summary:
+        runs-on: ubuntu-latest
+        needs: [detect-changes, build-and-push, trigger-coolify-deployment]
         if: always()
         steps:
             - name: Deployment Summary
@@ -223,3 +316,14 @@ jobs:
                   echo "- \`develop\` (develop branch)" >> $GITHUB_STEP_SUMMARY
                   echo "- \`${{ github.ref_name }}-${{ github.sha }}\` (this build)" >> $GITHUB_STEP_SUMMARY
                   echo "🖥️ **Platform**: linux/amd64 (optimized for Coolify self-hosted)" >> $GITHUB_STEP_SUMMARY
+
+                  if [[ "${{ github.event_name }}" != "pull_request" ]]; then
+                    echo "" >> $GITHUB_STEP_SUMMARY
+                    if [[ "${{ github.ref_name }}" == "main" ]]; then
+                      echo "🔄 **Coolify Deployments**: Triggered automatically in **Production** for changed services" >> $GITHUB_STEP_SUMMARY
+                    elif [[ "${{ github.ref_name }}" == "develop" ]]; then
+                      echo "🔄 **Coolify Deployments**: Triggered automatically in **Development** for changed services" >> $GITHUB_STEP_SUMMARY
+                    else
+                      echo "🔄 **Coolify Deployments**: Triggered automatically in **Development** for changed services" >> $GITHUB_STEP_SUMMARY
+                    fi
+                  fi

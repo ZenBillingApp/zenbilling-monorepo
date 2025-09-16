@@ -8,6 +8,9 @@ cors:
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"]
     credentials: true
 apiEndpoints:
+    health:
+        host: localhost
+        paths: ["/", "/health"]
     auth:
         host: localhost
         paths: ["/api/auth*", "/api/user*"]
@@ -64,6 +67,13 @@ policies:
     - proxy
     - rate-limit
 pipelines:
+    health:
+        apiEndpoints:
+            - health
+        policies:
+            - expression:
+                  - action:
+                        jscode: 'req.egContext.res.json({ status: "OK", message: "ZenBilling API Gateway is running", timestamp: new Date().toISOString() })'
     auth:
         apiEndpoints:
             - auth

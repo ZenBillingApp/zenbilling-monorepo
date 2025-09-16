@@ -1,6 +1,9 @@
 import { betterAuth } from "better-auth";
 import { nextCookies } from "better-auth/next-js";
 import { prismaAdapter } from "better-auth/adapters/prisma";
+import dotenv from "dotenv";
+
+dotenv.config();
 
 import { prisma } from "@zenbilling/shared";
 
@@ -24,11 +27,11 @@ export const auth = betterAuth({
             },
         },
     },
-    baseURL: process.env.BETTER_AUTH_URL || "http://localhost:8080",
+    baseURL: process.env.BETTER_AUTH_URL || "http://localhost:3001",
     secretKey: process.env.BETTER_AUTH_SECRET,
     trustedOrigins: [
         process.env.CLIENT_URL || "http://localhost:3000",
-        process.env.API_GATEWAY_URL || "http://localhost:8080"
+        process.env.API_GATEWAY_URL || "http://localhost:8080",
     ],
     advanced: {
         crossSubDomainCookies: {

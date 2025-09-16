@@ -87,7 +87,7 @@ jobs:
 
           # Convert to JSON array
           if [[ -n "$CHANGED_SERVICES" ]]; then
-            SERVICES_JSON=$(echo $CHANGED_SERVICES | tr ' ' '\n' | jq -R . | jq -s .)
+            SERVICES_JSON=$(echo "$CHANGED_SERVICES" | tr ' ' '\n' | grep -v '^$' | jq -R . | jq -s -c .)
           else
             SERVICES_JSON="[]"
           fi

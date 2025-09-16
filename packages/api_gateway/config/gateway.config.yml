@@ -73,7 +73,12 @@ pipelines:
         policies:
             - expression:
                   - action:
-                        jscode: 'req.egContext.res.json({ status: "OK", message: "ZenBilling API Gateway is running", timestamp: new Date().toISOString() })'
+                        jscode: |
+                          req.egContext.res.status(200).json({
+                            status: "OK",
+                            message: "ZenBilling API Gateway is running",
+                            timestamp: new Date().toISOString()
+                          });
     auth:
         apiEndpoints:
             - auth

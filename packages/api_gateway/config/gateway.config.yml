@@ -82,10 +82,24 @@ pipelines:
         policies:
             - cors:
                   - action:
-                        origin: ["${CLIENT_URL:-http://localhost:3000}", "${API_GATEWAY_URL:-http://localhost:8080}"]
+                        origin:
+                            [
+                                "${CLIENT_URL:-http://localhost:3000}",
+                                "${API_GATEWAY_URL:-http://localhost:8080}",
+                                "https://zenbilling-dev.dynamicwebforge.fr",
+                                "https://zenbillingapi-dev.dynamicwebforge.fr",
+                            ]
                         credentials: true
-                        methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"]
-                        allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With", "Accept", "Origin"]
+                        methods:
+                            ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"]
+                        allowedHeaders:
+                            [
+                                "Content-Type",
+                                "Authorization",
+                                "X-Requested-With",
+                                "Accept",
+                                "Origin",
+                            ]
             - proxy:
                   - action:
                         serviceEndpoint: auth_service
@@ -97,10 +111,24 @@ pipelines:
         policies:
             - cors:
                   - action:
-                        origin: ["${CLIENT_URL:-http://localhost:3000}", "${API_GATEWAY_URL:-http://localhost:8080}"]
+                        origin:
+                            [
+                                "${CLIENT_URL:-http://localhost:3000}",
+                                "${API_GATEWAY_URL:-http://localhost:8080}",
+                                "https://zenbilling-dev.dynamicwebforge.fr",
+                                "https://zenbillingapi-dev.dynamicwebforge.fr",
+                            ]
                         credentials: true
-                        methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"]
-                        allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With", "Accept", "Origin"]
+                        methods:
+                            ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"]
+                        allowedHeaders:
+                            [
+                                "Content-Type",
+                                "Authorization",
+                                "X-Requested-With",
+                                "Accept",
+                                "Origin",
+                            ]
             - proxy:
                   - action:
                         serviceEndpoint: company_service
@@ -112,10 +140,24 @@ pipelines:
         policies:
             - cors:
                   - action:
-                        origin: ["${CLIENT_URL:-http://localhost:3000}", "${API_GATEWAY_URL:-http://localhost:8080}"]
+                        origin:
+                            [
+                                "${CLIENT_URL:-http://localhost:3000}",
+                                "${API_GATEWAY_URL:-http://localhost:8080}",
+                                "https://zenbilling-dev.dynamicwebforge.fr",
+                                "https://zenbillingapi-dev.dynamicwebforge.fr",
+                            ]
                         credentials: true
-                        methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"]
-                        allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With", "Accept", "Origin"]
+                        methods:
+                            ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"]
+                        allowedHeaders:
+                            [
+                                "Content-Type",
+                                "Authorization",
+                                "X-Requested-With",
+                                "Accept",
+                                "Origin",
+                            ]
             - proxy:
                   - action:
                         serviceEndpoint: stripe_service
@@ -127,10 +169,24 @@ pipelines:
         policies:
             - cors:
                   - action:
-                        origin: ["${CLIENT_URL:-http://localhost:3000}", "${API_GATEWAY_URL:-http://localhost:8080}"]
+                        origin:
+                            [
+                                "${CLIENT_URL:-http://localhost:3000}",
+                                "${API_GATEWAY_URL:-http://localhost:8080}",
+                                "https://zenbilling-dev.dynamicwebforge.fr",
+                                "https://zenbillingapi-dev.dynamicwebforge.fr",
+                            ]
                         credentials: true
-                        methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"]
-                        allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With", "Accept", "Origin"]
+                        methods:
+                            ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"]
+                        allowedHeaders:
+                            [
+                                "Content-Type",
+                                "Authorization",
+                                "X-Requested-With",
+                                "Accept",
+                                "Origin",
+                            ]
             - proxy:
                   - action:
                         serviceEndpoint: dashboard_service
@@ -142,10 +198,24 @@ pipelines:
         policies:
             - cors:
                   - action:
-                        origin: ["${CLIENT_URL:-http://localhost:3000}", "${API_GATEWAY_URL:-http://localhost:8080}"]
+                        origin:
+                            [
+                                "${CLIENT_URL:-http://localhost:3000}",
+                                "${API_GATEWAY_URL:-http://localhost:8080}",
+                                "https://zenbilling-dev.dynamicwebforge.fr",
+                                "https://zenbillingapi-dev.dynamicwebforge.fr",
+                            ]
                         credentials: true
-                        methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"]
-                        allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With", "Accept", "Origin"]
+                        methods:
+                            ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"]
+                        allowedHeaders:
+                            [
+                                "Content-Type",
+                                "Authorization",
+                                "X-Requested-With",
+                                "Accept",
+                                "Origin",
+                            ]
             - proxy:
                   - action:
                         serviceEndpoint: invoice_service
@@ -157,10 +227,24 @@ pipelines:
         policies:
             - cors:
                   - action:
-                        origin: ["${CLIENT_URL:-http://localhost:3000}", "${API_GATEWAY_URL:-http://localhost:8080}"]
+                        origin:
+                            [
+                                "${CLIENT_URL:-http://localhost:3000}",
+                                "${API_GATEWAY_URL:-http://localhost:8080}",
+                                "https://zenbilling-dev.dynamicwebforge.fr",
+                                "https://zenbillingapi-dev.dynamicwebforge.fr",
+                            ]
                         credentials: true
-                        methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"]
-                        allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With", "Accept", "Origin"]
+                        methods:
+                            ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"]
+                        allowedHeaders:
+                            [
+                                "Content-Type",
+                                "Authorization",
+                                "X-Requested-With",
+                                "Accept",
+                                "Origin",
+                            ]
             - proxy:
                   - action:
                         serviceEndpoint: quote_service
@@ -172,10 +256,24 @@ pipelines:
         policies:
             - cors:
                   - action:
-                        origin: ["${CLIENT_URL:-http://localhost:3000}", "${API_GATEWAY_URL:-http://localhost:8080}"]
+                        origin:
+                            [
+                                "${CLIENT_URL:-http://localhost:3000}",
+                                "${API_GATEWAY_URL:-http://localhost:8080}",
+                                "https://zenbilling-dev.dynamicwebforge.fr",
+                                "https://zenbillingapi-dev.dynamicwebforge.fr",
+                            ]
                         credentials: true
-                        methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"]
-                        allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With", "Accept", "Origin"]
+                        methods:
+                            ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"]
+                        allowedHeaders:
+                            [
+                                "Content-Type",
+                                "Authorization",
+                                "X-Requested-With",
+                                "Accept",
+                                "Origin",
+                            ]
             - proxy:
                   - action:
                         serviceEndpoint: product_service
@@ -187,10 +285,24 @@ pipelines:
         policies:
             - cors:
                   - action:
-                        origin: ["${CLIENT_URL:-http://localhost:3000}", "${API_GATEWAY_URL:-http://localhost:8080}"]
+                        origin:
+                            [
+                                "${CLIENT_URL:-http://localhost:3000}",
+                                "${API_GATEWAY_URL:-http://localhost:8080}",
+                                "https://zenbilling-dev.dynamicwebforge.fr",
+                                "https://zenbillingapi-dev.dynamicwebforge.fr",
+                            ]
                         credentials: true
-                        methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"]
-                        allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With", "Accept", "Origin"]
+                        methods:
+                            ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"]
+                        allowedHeaders:
+                            [
+                                "Content-Type",
+                                "Authorization",
+                                "X-Requested-With",
+                                "Accept",
+                                "Origin",
+                            ]
             - proxy:
                   - action:
                         serviceEndpoint: customer_service
@@ -202,10 +314,24 @@ pipelines:
         policies:
             - cors:
                   - action:
-                        origin: ["${CLIENT_URL:-http://localhost:3000}", "${API_GATEWAY_URL:-http://localhost:8080}"]
+                        origin:
+                            [
+                                "${CLIENT_URL:-http://localhost:3000}",
+                                "${API_GATEWAY_URL:-http://localhost:8080}",
+                                "https://zenbilling-dev.dynamicwebforge.fr",
+                                "https://zenbillingapi-dev.dynamicwebforge.fr",
+                            ]
                         credentials: true
-                        methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"]
-                        allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With", "Accept", "Origin"]
+                        methods:
+                            ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"]
+                        allowedHeaders:
+                            [
+                                "Content-Type",
+                                "Authorization",
+                                "X-Requested-With",
+                                "Accept",
+                                "Origin",
+                            ]
             - proxy:
                   - action:
                         serviceEndpoint: ai_service

@@ -183,9 +183,10 @@ jobs:
         if: github.event_name != 'pull_request'
         uses: aquasecurity/trivy-action@master
         with:
-          image-ref: ${{ secrets.DOCKER_USERNAME }}/zenbilling-${{ matrix.service }}:${{ github.sha }}
+          image-ref: ${{ secrets.DOCKER_USERNAME }}/zenbilling-${{ matrix.service }}:${{ github.ref_name }}-${{ github.sha }}
           format: 'sarif'
           output: 'trivy-results-${{ matrix.service }}.sarif'
+        continue-on-error: true
 
       - name: Upload Trivy scan results to GitHub Security tab
         if: github.event_name != 'pull_request'

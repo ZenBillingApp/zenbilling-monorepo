@@ -80,6 +80,12 @@ pipelines:
         apiEndpoints:
             - auth
         policies:
+            - cors:
+                  - action:
+                        origin: ["${CLIENT_URL:-http://localhost:3000}", "${API_GATEWAY_URL:-http://localhost:8080}"]
+                        credentials: true
+                        methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"]
+                        allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With", "Accept", "Origin"]
             - proxy:
                   - action:
                         serviceEndpoint: auth_service
@@ -89,6 +95,12 @@ pipelines:
         apiEndpoints:
             - company
         policies:
+            - cors:
+                  - action:
+                        origin: ["${CLIENT_URL:-http://localhost:3000}", "${API_GATEWAY_URL:-http://localhost:8080}"]
+                        credentials: true
+                        methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"]
+                        allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With", "Accept", "Origin"]
             - proxy:
                   - action:
                         serviceEndpoint: company_service
@@ -98,6 +110,12 @@ pipelines:
         apiEndpoints:
             - stripe
         policies:
+            - cors:
+                  - action:
+                        origin: ["${CLIENT_URL:-http://localhost:3000}", "${API_GATEWAY_URL:-http://localhost:8080}"]
+                        credentials: true
+                        methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"]
+                        allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With", "Accept", "Origin"]
             - proxy:
                   - action:
                         serviceEndpoint: stripe_service
@@ -107,6 +125,12 @@ pipelines:
         apiEndpoints:
             - dashboard
         policies:
+            - cors:
+                  - action:
+                        origin: ["${CLIENT_URL:-http://localhost:3000}", "${API_GATEWAY_URL:-http://localhost:8080}"]
+                        credentials: true
+                        methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"]
+                        allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With", "Accept", "Origin"]
             - proxy:
                   - action:
                         serviceEndpoint: dashboard_service
@@ -116,6 +140,12 @@ pipelines:
         apiEndpoints:
             - invoice
         policies:
+            - cors:
+                  - action:
+                        origin: ["${CLIENT_URL:-http://localhost:3000}", "${API_GATEWAY_URL:-http://localhost:8080}"]
+                        credentials: true
+                        methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"]
+                        allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With", "Accept", "Origin"]
             - proxy:
                   - action:
                         serviceEndpoint: invoice_service
@@ -125,6 +155,12 @@ pipelines:
         apiEndpoints:
             - quote
         policies:
+            - cors:
+                  - action:
+                        origin: ["${CLIENT_URL:-http://localhost:3000}", "${API_GATEWAY_URL:-http://localhost:8080}"]
+                        credentials: true
+                        methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"]
+                        allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With", "Accept", "Origin"]
             - proxy:
                   - action:
                         serviceEndpoint: quote_service
@@ -134,6 +170,12 @@ pipelines:
         apiEndpoints:
             - product
         policies:
+            - cors:
+                  - action:
+                        origin: ["${CLIENT_URL:-http://localhost:3000}", "${API_GATEWAY_URL:-http://localhost:8080}"]
+                        credentials: true
+                        methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"]
+                        allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With", "Accept", "Origin"]
             - proxy:
                   - action:
                         serviceEndpoint: product_service
@@ -143,6 +185,12 @@ pipelines:
         apiEndpoints:
             - customer
         policies:
+            - cors:
+                  - action:
+                        origin: ["${CLIENT_URL:-http://localhost:3000}", "${API_GATEWAY_URL:-http://localhost:8080}"]
+                        credentials: true
+                        methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"]
+                        allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With", "Accept", "Origin"]
             - proxy:
                   - action:
                         serviceEndpoint: customer_service
@@ -152,6 +200,12 @@ pipelines:
         apiEndpoints:
             - ai
         policies:
+            - cors:
+                  - action:
+                        origin: ["${CLIENT_URL:-http://localhost:3000}", "${API_GATEWAY_URL:-http://localhost:8080}"]
+                        credentials: true
+                        methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"]
+                        allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With", "Accept", "Origin"]
             - proxy:
                   - action:
                         serviceEndpoint: ai_service

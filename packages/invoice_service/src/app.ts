@@ -11,15 +11,15 @@ const port = process.env.PORT || 3005;
 // Configure CORS middleware
 app.use(
     cors({
-        origin: ["http://localhost:3000", "http://localhost:8080"],
+        origin: [process.env.CLIENT_URL!, process.env.API_GATEWAY_URL!],
         methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
         credentials: true,
     })
 );
 
 // Parse JSON bodies with increased limit for PDF processing
-app.use(express.json({ limit: '50mb' }));
-app.use(express.urlencoded({ limit: '50mb', extended: true }));
+app.use(express.json({ limit: "50mb" }));
+app.use(express.urlencoded({ limit: "50mb", extended: true }));
 
 app.use("/api/invoice", invoiceRoutes);
 

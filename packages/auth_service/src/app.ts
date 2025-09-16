@@ -4,7 +4,6 @@ import { auth } from "./lib/auth";
 import cors from "cors";
 import dotenv from "dotenv";
 import userRoutes from "./routes/user.routes";
-import { prisma } from "@zenbilling/shared";
 
 dotenv.config();
 
@@ -14,7 +13,7 @@ const port = process.env.PORT || 3001;
 // Configure CORS middleware
 app.use(
     cors({
-        origin: ["http://localhost:3000", "http://localhost:8080"],
+        origin: [process.env.CLIENT_URL!, process.env.API_GATEWAY_URL!],
         methods: ["GET", "POST", "PUT", "DELETE"],
         credentials: true,
     })

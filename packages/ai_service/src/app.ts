@@ -20,7 +20,7 @@ app.use(
 // Configure CORS middleware
 app.use(
     cors({
-        origin: ["http://localhost:3000", "http://localhost:8080"],
+        origin: [process.env.CLIENT_URL!, process.env.API_GATEWAY_URL!],
         methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
         credentials: true,
     })

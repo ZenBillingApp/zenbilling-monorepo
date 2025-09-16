@@ -26,7 +26,10 @@ export const auth = betterAuth({
     },
     baseURL: process.env.BETTER_AUTH_URL || "http://localhost:8080",
     secretKey: process.env.BETTER_AUTH_SECRET,
-    trustedOrigins: [process.env.CLIENT_URL || "http://localhost:3000"],
+    trustedOrigins: [
+        process.env.CLIENT_URL || "http://localhost:3000",
+        process.env.API_GATEWAY_URL || "http://localhost:8080"
+    ],
     advanced: {
         crossSubDomainCookies: {
             enabled: true,

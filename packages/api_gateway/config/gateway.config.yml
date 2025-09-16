@@ -4,8 +4,8 @@ admin:
     port: 9876
     host: localhost
 cors:
-    origin: ["${CLIENT_URL:-http://localhost:3000}", "${API_GATEWAY_URL:-http://localhost:8080}"]
-    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"]
+    origin: "*"
+    # methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH", "HEAD",]
     credentials: true
 apiEndpoints:
     health:
@@ -74,11 +74,11 @@ pipelines:
             - expression:
                   - action:
                         jscode: |
-                          req.egContext.res.status(200).json({
-                            status: "OK",
-                            message: "ZenBilling API Gateway is running",
-                            timestamp: new Date().toISOString()
-                          });
+                            req.egContext.res.status(200).json({
+                              status: "OK",
+                              message: "ZenBilling API Gateway is running",
+                              timestamp: new Date().toISOString()
+                            });
     auth:
         apiEndpoints:
             - auth

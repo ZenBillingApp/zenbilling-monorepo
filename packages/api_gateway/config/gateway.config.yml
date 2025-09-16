@@ -88,7 +88,6 @@ pipelines:
         apiEndpoints:
             - auth
         policies:
-            - cors
             - proxy:
                   - action:
                         serviceEndpoint: auth_service
@@ -98,7 +97,6 @@ pipelines:
         apiEndpoints:
             - company
         policies:
-            - cors
             - proxy:
                   - action:
                         serviceEndpoint: company_service
@@ -108,7 +106,6 @@ pipelines:
         apiEndpoints:
             - stripe
         policies:
-            - cors
             - proxy:
                   - action:
                         serviceEndpoint: stripe_service
@@ -118,7 +115,6 @@ pipelines:
         apiEndpoints:
             - dashboard
         policies:
-            - cors
             - proxy:
                   - action:
                         serviceEndpoint: dashboard_service
@@ -128,7 +124,6 @@ pipelines:
         apiEndpoints:
             - invoice
         policies:
-            - cors
             - proxy:
                   - action:
                         serviceEndpoint: invoice_service
@@ -138,7 +133,6 @@ pipelines:
         apiEndpoints:
             - quote
         policies:
-            - cors
             - proxy:
                   - action:
                         serviceEndpoint: quote_service
@@ -148,7 +142,6 @@ pipelines:
         apiEndpoints:
             - product
         policies:
-            - cors
             - proxy:
                   - action:
                         serviceEndpoint: product_service
@@ -158,7 +151,6 @@ pipelines:
         apiEndpoints:
             - customer
         policies:
-            - cors
             - proxy:
                   - action:
                         serviceEndpoint: customer_service
@@ -168,7 +160,6 @@ pipelines:
         apiEndpoints:
             - ai
         policies:
-            - cors
             - proxy:
                   - action:
                         serviceEndpoint: ai_service

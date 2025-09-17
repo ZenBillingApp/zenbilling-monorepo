@@ -1,5 +1,5 @@
 # Build stage
-FROM node:20-alpine AS builder
+FROM node:lts-slim AS builder
 
 WORKDIR /app
 
@@ -23,12 +23,41 @@ WORKDIR /app/packages/pdf_service
 RUN npm run build
 
 # Production stage
-FROM node:20-alpine AS production
+FROM node:lts-slim
 
 WORKDIR /app
 
-# Install curl for healthcheck
-RUN apk add --no-cache curl
+# Install necessary libraries for Puppeteer
+RUN apt-get update && apt-get install -y \
+    curl \
+    libglib2.0-0 \
+    libnss3 \
+    libx11-xcb1 \
+    libxcomposite1 \
+    libxcursor1 \
+    libxdamage1 \
+    libxi6 \
+    libxtst6 \
+    libxrandr2 \
+    libasound2 \
+    libatk1.0-0 \
+    libatk-bridge2.0-0 \
+    libcups2 \
+    libdbus-1-3 \
+    libdrm2 \
+    libgbm1 \
+    libnspr4 \
+    libpango-1.0-0 \
+    libpangocairo-1.0-0 \
+    libx11-6 \
+    libxext6 \
+    libxfixes3 \
+    libxrender1 \
+    libxshmfence1 \
+    xdg-utils \
+    fonts-liberation \
+    libxkbcommon0 \
+    && rm -rf /var/lib/apt/lists/*
 
 # Copy root package files and install workspaces
 COPY package*.json ./
@@ -58,11 +87,11 @@ RUN addgroup -g 1001 -S nodejs && \
 
 USER nodejs
 
-EXPOSE 3010
+EXPOSE 3007
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
-  CMD curl -f http://localhost:3010/health || exit 1
+  CMD curl -f http://localhost:3007/health || exit 1
 
 WORKDIR /app/packages/pdf_service
 CMD ["node", "dist/app.js"]

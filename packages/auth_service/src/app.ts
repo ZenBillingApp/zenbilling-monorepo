@@ -10,23 +10,38 @@ dotenv.config();
 const app = express();
 const port = process.env.PORT || 3001;
 
-// Configure CORS middleware
-app.use(
-    cors({
-        origin: [
-            "http://localhost:3000",
-            "https://zenbilling-dev.dynamicwebforge.fr",
-            "https://zenbillingapi-dev.dynamicwebforge.fr",
-        ],
-        methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
-        credentials: true,
-    })
-);
+// Configure CORS middleware FIRST
+const corsOptions = {
+    origin: [
+        "http://localhost:3000",
+        "https://zenbilling-dev.dynamicwebforge.fr",
+        "https://zenbillingapi-dev.dynamicwebforge.fr",
+    ],
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
+    credentials: true,
+    allowedHeaders: [
+        "Content-Type",
+        "Authorization",
+        "X-Requested-With",
+        "Accept",
+        "Origin",
+        "Cache-Control",
+        "Pragma",
+    ],
+    exposedHeaders: ["Set-Cookie"],
+    optionsSuccessStatus: 200,
+    preflightContinue: false, // Important pour gérer les preflight
+};
 
-// Routes d'authentification Better Auth
-app.all("/api/auth/*splat", toNodeHandler(auth));
+app.use(cors(corsOptions));
 
-// Parse JSON bodies
+// Handler explicite pour les requêtes OPTIONS sur les routes auth
+app.options("/api/auth/*", cors(corsOptions));
+
+// Routes d'authentification Better Auth (AVANT express.json())
+app.all("/api/auth/*", toNodeHandler(auth));
+
+// Parse JSON bodies AFTER Better Auth handler
 app.use(express.json());
 
 // Routes utilisateur protégées

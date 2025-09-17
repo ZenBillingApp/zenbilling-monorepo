@@ -1,6 +1,8 @@
 import { Router } from "express";
 import * as stripeController from "../controllers/stripe.controller";
 import { authMiddleware } from "@zenbilling/shared";
+import express from "express";
+import { handleWebhook } from "../controllers/stripe-webhook.controller";
 
 const router = Router();
 
@@ -66,15 +68,15 @@ router.post("/create-checkout-session", stripeController.createCheckoutSession);
 // );
 
 /**
-//  * @route POST /api/stripe/webhook
-//  * @desc Webhook pour les événements Stripe
-//  * @access Public
-//  */
-// router.post(
-//     "/webhook",
-//     express.raw({ type: "application/json" }),
-//     handleWebhook
-// );
+ * @route POST /api/stripe/webhook
+ * @desc Webhook pour les événements Stripe
+ * @access Public
+ */
+router.post(
+    "/webhook",
+    express.raw({ type: "application/json" }),
+    handleWebhook
+);
 
 /**
  * @route GET /api/stripe/dashboard-link

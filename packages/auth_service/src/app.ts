@@ -11,11 +11,7 @@ const app = express();
 const port = process.env.PORT || 3001;
 
 const corsOptions = {
-    origin: [
-        "http://localhost:3000",
-        "https://zenbilling-dev.dynamicwebforge.fr",
-        "https://zenbillingapi-dev.dynamicwebforge.fr",
-    ],
+    origin: [process.env.CLIENT_URL!, process.env.API_GATEWAY_URL!],
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
     credentials: true,
 };

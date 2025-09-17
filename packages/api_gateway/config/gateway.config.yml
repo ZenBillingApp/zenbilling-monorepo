@@ -56,7 +56,6 @@ serviceEndpoints:
         url: "${AI_SERVICE_URL:-http://localhost:3011}"
 policies:
     - basic-auth
-    - cors
     - expression
     - key-auth
     - log

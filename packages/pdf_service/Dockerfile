@@ -42,6 +42,9 @@ RUN npm ci --only=production --workspaces && npm cache clean --force
 # Copy built service
 COPY --from=builder /app/packages/pdf_service/dist ./packages/pdf_service/dist
 
+# Copy templates directory
+COPY --from=builder /app/packages/pdf_service/src/templates ./packages/pdf_service/dist/templates
+
 # Copy built shared package (entire directory)
 COPY --from=builder /app/packages/shared ./packages/shared
 

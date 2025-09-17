@@ -1,5 +1,5 @@
 # Build stage
-FROM node:lts-slim AS builder
+FROM node:20-alpine AS builder
 
 WORKDIR /app
 
@@ -23,41 +23,24 @@ WORKDIR /app/packages/pdf_service
 RUN npm run build
 
 # Production stage
-FROM node:lts-slim
+FROM node:20-alpine
 
 WORKDIR /app
 
-# Install necessary libraries for Puppeteer
-RUN apt-get update && apt-get install -y \
+# Install dependencies for Puppeteer on Alpine
+RUN apk add --no-cache \
     curl \
-    libglib2.0-0 \
-    libnss3 \
-    libx11-xcb1 \
-    libxcomposite1 \
-    libxcursor1 \
-    libxdamage1 \
-    libxi6 \
-    libxtst6 \
-    libxrandr2 \
-    libasound2 \
-    libatk1.0-0 \
-    libatk-bridge2.0-0 \
-    libcups2 \
-    libdbus-1-3 \
-    libdrm2 \
-    libgbm1 \
-    libnspr4 \
-    libpango-1.0-0 \
-    libpangocairo-1.0-0 \
-    libx11-6 \
-    libxext6 \
-    libxfixes3 \
-    libxrender1 \
-    libxshmfence1 \
-    xdg-utils \
-    fonts-liberation \
-    libxkbcommon0 \
-    && rm -rf /var/lib/apt/lists/*
+    chromium \
+    nss \
+    freetype \
+    freetype-dev \
+    harfbuzz \
+    ca-certificates \
+    ttf-freefont \
+    && rm -rf /var/cache/apk/*
+
+# Tell Puppeteer to use the installed Chromium
+ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium-browser
 
 # Copy root package files and install workspaces
 COPY package*.json ./
@@ -81,8 +64,8 @@ COPY --from=builder /app/packages/shared ./packages/shared
 COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
 
 # Create non-root user
-RUN groupadd -g 1001 nodejs && \
-    useradd -r -u 1001 -g nodejs nodejs && \
+RUN addgroup -g 1001 -S nodejs && \
+    adduser -S nodejs -u 1001 && \
     chown -R nodejs:nodejs /app
 
 USER nodejs

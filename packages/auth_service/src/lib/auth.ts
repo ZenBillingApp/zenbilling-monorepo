@@ -32,6 +32,8 @@ export const auth = betterAuth({
     trustedOrigins: [
         process.env.CLIENT_URL || "http://localhost:3000",
         process.env.API_GATEWAY_URL || "http://localhost:8080",
+        "https://zenbilling-dev.dynamicwebforge.fr",
+        "https://zenbillingapi-dev.dynamicwebforge.fr",
     ],
     advanced: {
         crossSubDomainCookies: {

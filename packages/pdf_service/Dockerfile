@@ -81,8 +81,8 @@ COPY --from=builder /app/packages/shared ./packages/shared
 COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
 
 # Create non-root user
-RUN addgroup -g 1001 -S nodejs && \
-    adduser -S nodejs -u 1001 && \
+RUN groupadd -g 1001 nodejs && \
+    useradd -r -u 1001 -g nodejs nodejs && \
     chown -R nodejs:nodejs /app
 
 USER nodejs

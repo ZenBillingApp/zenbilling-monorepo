@@ -10,7 +10,6 @@ dotenv.config();
 const app = express();
 const port = process.env.PORT || 3001;
 
-// Configure CORS middleware FIRST
 const corsOptions = {
     origin: [
         "http://localhost:3000",
@@ -35,13 +34,10 @@ const corsOptions = {
 
 app.use(cors(corsOptions));
 
-// Handler explicite pour les requêtes OPTIONS sur les routes auth
-app.options("/api/auth/*", cors(corsOptions));
+// Routes d'authentification Better Auth
+app.all("/api/auth/*splat", toNodeHandler(auth));
 
-// Routes d'authentification Better Auth (AVANT express.json())
-app.all("/api/auth/*", toNodeHandler(auth));
-
-// Parse JSON bodies AFTER Better Auth handler
+// Parse JSON bodies
 app.use(express.json());
 
 // Routes utilisateur protégées

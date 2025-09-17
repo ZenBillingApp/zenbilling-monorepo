@@ -18,18 +18,6 @@ const corsOptions = {
     ],
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
     credentials: true,
-    allowedHeaders: [
-        "Content-Type",
-        "Authorization",
-        "X-Requested-With",
-        "Accept",
-        "Origin",
-        "Cache-Control",
-        "Pragma",
-    ],
-    exposedHeaders: ["Set-Cookie"],
-    optionsSuccessStatus: 200,
-    preflightContinue: false, // Important pour gérer les preflight
 };
 
 app.use(cors(corsOptions));

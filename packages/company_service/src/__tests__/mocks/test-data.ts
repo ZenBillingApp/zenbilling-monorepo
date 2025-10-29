@@ -1,67 +1,79 @@
-import { ICompany, IUser, ICreateCompanyRequest, IUpdateCompanyRequest } from "@zenbilling/shared";
+import {
+    ICompany,
+    IUser,
+    ICreateCompanyRequest,
+    IUpdateCompanyRequest,
+} from "@zenbilling/shared";
+import { Decimal } from "@prisma/client/runtime/library";
 
 // Mock company data
 export const mockCompany: ICompany = {
     company_id: "company-123",
-    legal_name: "Test Company SAS",
-    brand_name: "Test Company",
+    name: "Test Company SAS",
     legal_form: "SAS",
     siret: "12345678901234",
     siren: "123456789",
+    tva_intra: "12345678901234",
+    tva_applicable: true,
+    RCS_number: "12345678901234",
+    RCS_city: "Test City",
+    capital: new Decimal(1000000),
     address: "123 Test Street",
     city: "Test City",
     postal_code: "12345",
     country: "France",
-    phone: "+33123456789",
     email: "contact@testcompany.com",
+    phone: "+33123456789",
     website: "https://testcompany.com",
-    description: "Test company description",
-    logo_url: "https://example.com/logo.png",
-    created_at: new Date("2024-01-01"),
-    updated_at: new Date("2024-01-01"),
+    createdAt: new Date("2024-01-01"),
+    updatedAt: new Date("2024-01-01"),
 };
 
 // Mock user data
 export const mockUser: IUser = {
     id: "user-123",
-    first_name: "John",
-    last_name: "Doe",
+    name: "John Doe",
     email: "john.doe@example.com",
-    phone: "+33123456789",
-    company_id: "company-123",
+    emailVerified: true,
     onboarding_completed: true,
     onboarding_step: "FINISH",
-    stripe_account_id: "acct_test123",
     stripe_onboarded: true,
-    created_at: new Date("2024-01-01"),
-    updated_at: new Date("2024-01-01"),
+    createdAt: new Date(),
+    updatedAt: new Date(),
+    first_name: "John",
+    last_name: "Doe",
 };
 
 // Mock create company request
 export const mockCreateCompanyRequest: ICreateCompanyRequest = {
-    legal_name: "New Company SAS",
-    brand_name: "New Company",
+    name: "New Company SAS",
     legal_form: "SAS",
     siret: "98765432109876",
     siren: "987654321",
+    tva_applicable: true,
+    RCS_number: "98765432109876",
+    RCS_city: "New City",
+    capital: new Decimal(1000000),
     address: "456 New Street",
     city: "New City",
     postal_code: "54321",
     country: "France",
-    phone: "+33987654321",
     email: "contact@newcompany.com",
     website: "https://newcompany.com",
-    description: "New company description",
-    logo_url: "https://example.com/new-logo.png",
 };
 
 // Mock update company request
 export const mockUpdateCompanyRequest: IUpdateCompanyRequest = {
-    legal_name: "Updated Company SAS",
-    brand_name: "Updated Company",
+    name: "Updated Company SAS",
+    legal_form: "SAS",
+    siret: "98765432109876",
+    siren: "987654321",
+    tva_applicable: true,
+    RCS_number: "98765432109876",
+    RCS_city: "New City",
+    capital: new Decimal(1000000),
     phone: "+33111222333",
     email: "updated@company.com",
-    description: "Updated company description",
 };
 
 // Mock users list

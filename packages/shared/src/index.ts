@@ -26,9 +26,13 @@ export { default as logger } from "./utils/logger";
 export { CustomError } from "./utils/customError";
 
 // Export du client Prisma et types
-export { default as prisma } from "./libs/prisma";
-export { PrismaClient, Prisma } from "./libs/prisma";
+export { default as prisma } from "./lib/prisma";
+export { PrismaClient, Prisma } from "./lib/prisma";
 export { Decimal } from "@prisma/client/runtime/library";
+
+// Export des librairies
+export { betterFetch } from "@better-fetch/fetch";
+export { auth } from "./lib/auth";
 
 // Export des middlewares
 export { authMiddleware } from "./middlewares/auth.middleware";

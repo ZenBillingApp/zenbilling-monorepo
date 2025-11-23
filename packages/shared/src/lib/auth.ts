@@ -1,11 +1,7 @@
 import { betterAuth } from "better-auth";
 import { nextCookies } from "better-auth/next-js";
 import { prismaAdapter } from "better-auth/adapters/prisma";
-import dotenv from "dotenv";
-
-dotenv.config();
-
-import { prisma } from "@zenbilling/shared";
+import prisma from "./prisma";
 
 export const auth = betterAuth({
     database: prismaAdapter(prisma, {

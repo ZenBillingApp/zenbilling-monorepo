@@ -1,19 +1,13 @@
 import { Request, Response, NextFunction } from "express";
+import { auth } from "../lib/auth";
 import { IUser } from "../interfaces/User.interface";
 import { ApiResponse } from "../utils/apiResponse";
 import logger from "../utils/logger";
-import prisma from "../libs/prisma";
-import { betterFetch } from "@better-fetch/fetch";
-import { AuthRequest } from "../interfaces/Auth.interface";
+import prisma from "../lib/prisma";
 
-type Session = {
-    id: string;
-    userId: string;
-    expiresAt: Date;
-    ipAddress: string;
-    userAgent: string;
-    user: IUser;
-};
+interface AuthRequest extends Request {
+    user?: IUser;
+}
 
 export async function authMiddleware(
     req: Request,
@@ -21,15 +15,10 @@ export async function authMiddleware(
     next: NextFunction
 ): Promise<void> {
     try {
-        const { data: session } = await betterFetch<Session>(
-            "/api/auth/get-session",
-            {
-                baseURL: process.env.AUTH_SERVICE_URL || "",
-                headers: {
-                    cookie: req.headers.cookie || "",
-                },
-            }
-        );
+        // Vérifier si la session existe via Better Auth
+        const session = await auth.api.getSession({
+            headers: req.headers as any,
+        });
 
         if (!session) {
             logger.warn("No session found");
@@ -37,20 +26,8 @@ export async function authMiddleware(
             return;
         }
 
-        if (!session.user) {
-            logger.warn("No user found in session");
-            ApiResponse.error(
-                res,
-                401,
-                "Non autorisé - Utilisateur introuvable"
-            );
-            return;
-        }
-
-        console.log(session.user.id);
-
-        if (!session.user.id) {
-            logger.warn("No user id found in session");
+        if (!session) {
+            logger.warn("User not found for session");
             ApiResponse.error(
                 res,
                 401,
@@ -83,7 +60,6 @@ export async function authMiddleware(
         );
         next();
     } catch (error) {
-        console.log(error);
         logger.error({ error }, "Authentication middleware error");
         ApiResponse.error(res, 401, "Non autorisé - Token invalide");
     }

@@ -1,6 +1,6 @@
 import express from "express";
 import { toNodeHandler } from "better-auth/node";
-import { auth } from "./lib/auth";
+import { auth } from "@zenbilling/shared";
 import cors from "cors";
 import dotenv from "dotenv";
 import userRoutes from "./routes/user.routes";

@@ -63,11 +63,7 @@ export const createConnectAccount = async (req: AuthRequest, res: Response) => {
             response
         );
     } catch (error) {
-        console.log(error);
-        logger.error(
-            "Erreur lors de la création du compte Stripe Connect:",
-            error
-        );
+        logger.error({ err: error }, "Erreur lors de la création du compte Stripe Connect");
         return ApiResponse.error(
             res,
             500,
@@ -115,7 +111,7 @@ export const createAccountLink = async (req: AuthRequest, res: Response) => {
             response
         );
     } catch (error) {
-        logger.error("Erreur lors de la création du lien Stripe:", error);
+        logger.error({ err: error }, "Erreur lors de la création du lien Stripe");
         return ApiResponse.error(
             res,
             500,
@@ -182,10 +178,7 @@ export const getAccountStatus = async (req: AuthRequest, res: Response) => {
             response
         );
     } catch (error) {
-        logger.error(
-            "Erreur lors de la récupération du statut du compte Stripe:",
-            error
-        );
+        logger.error({ err: error }, "Erreur lors de la récupération du statut du compte Stripe");
         return ApiResponse.error(
             res,
             500,
@@ -251,7 +244,7 @@ export const createPayment = async (req: AuthRequest, res: Response) => {
             response
         );
     } catch (error) {
-        logger.error("Erreur lors de la création du paiement:", error);
+        logger.error({ err: error }, "Erreur lors de la création du paiement");
         return ApiResponse.error(
             res,
             500,
@@ -306,7 +299,7 @@ export const createCheckoutSession = async (req: AuthRequest, res: Response) => 
             }
         );
     } catch (error) {
-        logger.error("Erreur lors de la création de la session de paiement:", error);
+        logger.error({ err: error }, "Erreur lors de la création de la session de paiement");
         return ApiResponse.error(
             res,
             500,
@@ -505,10 +498,7 @@ export const createDashboardLink = async (req: AuthRequest, res: Response) => {
             response
         );
     } catch (error) {
-        logger.error(
-            "Erreur lors de la génération du lien vers le dashboard Stripe:",
-            error
-        );
+        logger.error({ err: error }, "Erreur lors de la génération du lien vers le dashboard Stripe");
         return ApiResponse.error(
             res,
             500,
@@ -559,10 +549,7 @@ export const skipStripeSetup = async (req: AuthRequest, res: Response) => {
             response
         );
     } catch (error) {
-        logger.error(
-            "Erreur lors du report de la configuration Stripe:",
-            error
-        );
+        logger.error({ err: error }, "Erreur lors du report de la configuration Stripe");
         return ApiResponse.error(
             res,
             500,

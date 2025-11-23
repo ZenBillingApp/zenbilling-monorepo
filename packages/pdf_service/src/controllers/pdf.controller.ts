@@ -8,10 +8,7 @@ export class PdfController {
             const { invoice, company } = req.body;
 
             if (!invoice || !company) {
-                logger.error("Données manquantes pour la génération du PDF", {
-                    invoice: !!invoice,
-                    company: !!company,
-                });
+                logger.error({ invoice: !!invoice, company: !!company }, "Données manquantes pour la génération du PDF");
                 return res.status(400).json({
                     error: "Les données de facture et d'entreprise sont requises",
                 });
@@ -64,10 +61,7 @@ export class PdfController {
             const { quote, company } = req.body;
 
             if (!quote || !company) {
-                logger.error("Données manquantes pour la génération du PDF", {
-                    quote: !!quote,
-                    company: !!company,
-                });
+                logger.error({ quote: !!quote, company: !!company }, "Données manquantes pour la génération du PDF");
                 return res.status(400).json({
                     error: "Les données de devis et d'entreprise sont requises",
                 });

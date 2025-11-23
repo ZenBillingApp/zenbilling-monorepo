@@ -24,7 +24,7 @@ export class StripeService {
 
             return account;
         } catch (error) {
-            logger.error("Error creating Stripe Connect account:", error);
+            logger.error({ err: error }, "Error creating Stripe Connect account");
             throw error;
         }
     }
@@ -50,7 +50,7 @@ export class StripeService {
 
             return accountLink;
         } catch (error) {
-            logger.error("Error creating account link:", error);
+            logger.error({ err: error }, "Error creating account link");
             throw error;
         }
     }
@@ -64,7 +64,7 @@ export class StripeService {
             const account = await stripe.accounts.retrieve(accountId);
             return account;
         } catch (error) {
-            logger.error("Error retrieving Stripe Connect account:", error);
+            logger.error({ err: error }, "Error retrieving Stripe Connect account");
             throw error;
         }
     }
@@ -99,7 +99,7 @@ export class StripeService {
 
             return paymentIntent;
         } catch (error) {
-            logger.error("Error creating payment intent:", error);
+            logger.error({ err: error }, "Error creating payment intent");
             throw error;
         }
     }
@@ -127,7 +127,7 @@ export class StripeService {
 
             return transfer;
         } catch (error) {
-            logger.error("Error creating transfer:", error);
+            logger.error({ err: error }, "Error creating transfer");
             throw error;
         }
     }
@@ -192,7 +192,7 @@ export class StripeService {
 
             return session;
         } catch (error) {
-            logger.error("Error creating checkout session:", error);
+            logger.error({ err: error }, "Error creating checkout session");
             throw error;
         }
     }
@@ -207,7 +207,7 @@ export class StripeService {
             const loginLink = await stripe.accounts.createLoginLink(accountId);
             return loginLink;
         } catch (error) {
-            logger.error("Error creating Stripe login link:", error);
+            logger.error({ err: error }, "Error creating Stripe login link");
             throw error;
         }
     }

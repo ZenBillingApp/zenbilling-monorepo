@@ -28,10 +28,7 @@ app.use(
 
 // Logging des requêtes
 app.use((req, res, next) => {
-    logger.info(`${req.method} ${req.path}`, {
-        ip: req.ip,
-        userAgent: req.get("User-Agent"),
-    });
+    logger.info({ ip: req.ip, userAgent: req.get("User-Agent") }, `${req.method} ${req.path}`);
     next();
 });
 
@@ -60,7 +57,7 @@ app.use(
         res: express.Response,
         _next: express.NextFunction
     ) => {
-        logger.error("Erreur non gérée:", error);
+        logger.error({ err: error }, "Erreur non gérée");
         res.status(500).json({
             success: false,
             message: "Erreur interne du serveur",

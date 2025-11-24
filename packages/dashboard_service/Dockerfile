@@ -7,10 +7,18 @@ WORKDIR /app
 COPY package*.json ./
 COPY lerna.json ./
 
-# Copy all packages for workspace resolution
-COPY packages/ ./packages/
+# Copy shared package
+COPY packages/shared/package*.json ./packages/shared/
+COPY packages/shared/prisma ./packages/shared/prisma/
+COPY packages/shared/src ./packages/shared/src/
+COPY packages/shared/tsconfig.json ./packages/shared/
 
-# Install all dependencies using workspaces
+# Copy dashboard_service package
+COPY packages/dashboard_service/package*.json ./packages/dashboard_service/
+COPY packages/dashboard_service/src ./packages/dashboard_service/src/
+COPY packages/dashboard_service/tsconfig.json ./packages/dashboard_service/
+
+# Install dependencies
 RUN npm install
 
 # Build shared package first

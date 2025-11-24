@@ -7,10 +7,18 @@ WORKDIR /app
 COPY package*.json ./
 COPY lerna.json ./
 
-# Copy all packages for workspace resolution
-COPY packages/ ./packages/
+# Copy shared package
+COPY packages/shared/package*.json ./packages/shared/
+COPY packages/shared/prisma ./packages/shared/prisma/
+COPY packages/shared/src ./packages/shared/src/
+COPY packages/shared/tsconfig.json ./packages/shared/
 
-# Install all dependencies using workspaces
+# Copy product_service package
+COPY packages/product_service/package*.json ./packages/product_service/
+COPY packages/product_service/src ./packages/product_service/src/
+COPY packages/product_service/tsconfig.json ./packages/product_service/
+
+# Install dependencies
 RUN npm install
 
 # Build shared package first

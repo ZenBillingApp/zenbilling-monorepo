@@ -229,11 +229,24 @@ jobs:
                 image-ref: ${{ secrets.DOCKER_USERNAME }}/zenbilling-${{ matrix.service }}:${{ github.ref_name }}-${{ github.sha }}
                 format: 'sarif'
                 output: 'trivy-results-${{ matrix.service }}.sarif'
+              env:
+                TRIVY_USERNAME: ${{ secrets.DOCKER_USERNAME }}
+                TRIVY_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
               continue-on-error: true
 
+            - name: Check Trivy results
+              id: check-trivy
+              if: github.event_name != 'pull_request'
+              run: |
+                if [[ -f "trivy-results-${{ matrix.service }}.sarif" && -s "trivy-results-${{ matrix.service }}.sarif" ]]; then
+                  echo "exists=true" >> $GITHUB_OUTPUT
+                else
+                  echo "exists=false" >> $GITHUB_OUTPUT
+                fi
+
             - name: Upload Trivy scan results to GitHub Security tab
-              if: github.event_name != 'pull_request' && hashFiles('trivy-results-${{ matrix.service }}.sarif') != ''
-              uses: github/codeql-action/upload-sarif@v3
+              if: github.event_name != 'pull_request' && steps.check-trivy.outputs.exists == 'true'
+              uses: github/codeql-action/upload-sarif@v4
               with:
                 sarif_file: 'trivy-results-${{ matrix.service }}.sarif'
 

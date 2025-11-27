@@ -1,3 +1,4 @@
+
 generator client {
   provider = "prisma-client-js"
 }
@@ -184,7 +185,10 @@ model Session {
   userId    String
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  activeOrganizationId String?
+
   @@map("session")
+  @@index([userId])
 }
 
 model Account {
@@ -204,6 +208,7 @@ model Account {
   user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("account")
+  @@index([userId])
 }
 
 model Verification {
@@ -215,6 +220,7 @@ model Verification {
   updatedAt  DateTime?
 
   @@map("verification")
+  @@index([identifier])
 }
 
 model User {
@@ -239,6 +245,9 @@ model User {
   accounts             Account[]
   sessions             Session[]
   Company              Company?       @relation(fields: [companyCompany_id], references: [company_id])
+
+  members     Member[]
+  invitations Invitation[]
 
   @@map("user")
 }
@@ -296,9 +305,9 @@ enum ProductUnit {
   ml
   m
   cm
-  m2    @map("m²")
-  cm2   @map("cm²")
-  m3    @map("m³")
+  m2 @map("m²")
+  cm2 @map("cm²")
+  m3 @map("m³")
   h
   jour
   mois
@@ -306,9 +315,70 @@ enum ProductUnit {
 }
 
 enum VatRate {
-  ZERO      @map("0.00")
+  ZERO @map("0.00")
   REDUCED_1 @map("2.10")
   REDUCED_2 @map("5.50")
   REDUCED_3 @map("10.00")
-  STANDARD  @map("20.00")
+  STANDARD @map("20.00")
+}
+
+model Organization {
+  id          String       @id
+  name        String
+  slug        String
+  logo        String?
+  createdAt   DateTime
+  metadata    String?
+  members     Member[]
+  invitations Invitation[]
+
+  siret          String
+  tva_intra      String?
+  tva_applicable Boolean
+  RCS_number     String
+  RCS_city       String
+  capital        Int?
+  siren          String
+  legal_form     String
+  address        String
+  postal_code    String
+  city           String
+  country        String  @default("France")
+  email          String?
+  phone          String?
+  website        String?
+
+  @@unique([slug])
+  @@map("organization")
+}
+
+model Member {
+  id             String       @id
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  userId         String
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role           String       @default("member")
+  createdAt      DateTime
+
+  @@index([organizationId])
+  @@index([userId])
+  @@map("member")
+}
+
+model Invitation {
+  id             String       @id
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  email          String
+  role           String?
+  status         String       @default("pending")
+  expiresAt      DateTime
+  createdAt      DateTime     @default(now())
+  inviterId      String
+  user           User         @relation(fields: [inviterId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@index([email])
+  @@map("invitation")
 }

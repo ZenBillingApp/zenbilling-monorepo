@@ -348,6 +348,9 @@ model Organization {
   phone          String?
   website        String?
 
+  stripe_account_id String?
+  stripe_onboarded  Boolean? @default(false)
+
   @@unique([slug])
   @@map("organization")
 }

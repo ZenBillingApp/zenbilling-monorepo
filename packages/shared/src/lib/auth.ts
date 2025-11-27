@@ -122,6 +122,16 @@ const organizationFieldsSchema = z.object({
         .max(255, "L'URL du site web ne peut pas dépasser 255 caractères")
         .optional()
         .nullable(),
+    stripe_account_id: z
+        .string()
+        .max(255, "L'ID du compte Stripe ne peut pas dépasser 255 caractères")
+        .optional()
+        .nullable(),
+    stripe_onboarded: z
+        .boolean({
+            invalid_type_error: "stripe_onboarded doit être un booléen",
+        })
+        .default(false),
 });
 
 export const auth = betterAuth({
@@ -305,6 +315,23 @@ export const auth = betterAuth({
                             required: false,
                             validator: {
                                 input: organizationFieldsSchema.shape.website,
+                            },
+                        },
+                        stripe_account_id: {
+                            type: "string",
+                            required: false,
+                            validator: {
+                                input: organizationFieldsSchema.shape
+                                    .stripe_account_id,
+                            },
+                        },
+                        stripe_onboarded: {
+                            type: "boolean",
+                            required: false,
+                            defaultValue: false,
+                            validator: {
+                                input: organizationFieldsSchema.shape
+                                    .stripe_onboarded,
                             },
                         },
                     },

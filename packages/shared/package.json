@@ -15,7 +15,7 @@
         "@supabase/supabase-js": "^2.53.0",
         "@types/pino": "^7.0.4",
         "axios": "^1.13.2",
-        "better-auth": "^1.4.1",
+        "better-auth": "^1.4.3",
         "express": "^5.1.0",
         "joi": "^17.13.3",
         "node-cron": "^4.2.1",

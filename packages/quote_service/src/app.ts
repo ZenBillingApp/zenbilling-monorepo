@@ -24,5 +24,5 @@ app.use(express.urlencoded({ limit: "50mb", extended: true }));
 app.use("/api/quote", quoteRoutes);
 
 app.listen(port, () => {
-    console.log(`Example app listening on port ${port}`);
+    console.log(`Quote service listening on port ${port}`);
 });

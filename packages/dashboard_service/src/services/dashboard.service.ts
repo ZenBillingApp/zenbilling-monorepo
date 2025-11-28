@@ -9,13 +9,13 @@ import {
 } from "@zenbilling/shared";
 
 export class DashboardService {
-    async getMonthlyRevenue(userId: string): Promise<number> {
+    async getMonthlyRevenue(organizationId: string): Promise<number> {
         const startDate = startOfMonth(new Date());
         const endDate = endOfMonth(new Date());
 
         const revenue = await prisma.invoice.aggregate({
             where: {
-                user_id: userId,
+                organization_id: organizationId,
                 invoice_date: {
                     gte: startDate,
                     lte: endDate,
@@ -30,13 +30,13 @@ export class DashboardService {
         return Number(revenue._sum?.amount_including_tax || 0);
     }
 
-    async getYearlyRevenue(userId: string): Promise<number> {
+    async getYearlyRevenue(organizationId: string): Promise<number> {
         const startDate = startOfYear(new Date());
         const endDate = endOfYear(new Date());
 
         const revenue = await prisma.invoice.aggregate({
             where: {
-                user_id: userId,
+                organization_id: organizationId,
                 invoice_date: {
                     gte: startDate,
                     lte: endDate,
@@ -51,31 +51,31 @@ export class DashboardService {
         return Number(revenue._sum?.amount_including_tax || 0);
     }
 
-    async getPendingInvoices(userId: string): Promise<number> {
+    async getPendingInvoices(organizationId: string): Promise<number> {
         return prisma.invoice.count({
             where: {
-                user_id: userId,
+                organization_id: organizationId,
                 status: InvoiceStatus.pending,
             },
         });
     }
 
-    async getOverdueInvoices(userId: string): Promise<number> {
+    async getOverdueInvoices(organizationId: string): Promise<number> {
         return prisma.invoice.count({
             where: {
-                user_id: userId,
+                organization_id: organizationId,
                 status: InvoiceStatus.late,
             },
         });
     }
 
     async getTopCustomers(
-        userId: string,
+        organizationId: string,
         limit: number = 5
     ): Promise<TopCustomer[]> {
         const customers = await prisma.customer.findMany({
             where: {
-                user_id: userId,
+                organization_id: organizationId,
             },
             include: {
                 _count: {
@@ -145,12 +145,12 @@ export class DashboardService {
     }
 
     async getInvoiceStatusDistribution(
-        userId: string
+        organizationId: string
     ): Promise<InvoiceStatusCount[]> {
         const distribution = await prisma.invoice.groupBy({
             by: ["status"],
             where: {
-                user_id: userId,
+                organization_id: organizationId,
             },
             _count: true,
         });
@@ -176,13 +176,13 @@ export class DashboardService {
         }));
     }
 
-    async getMonthlyQuotes(userId: string): Promise<number> {
+    async getMonthlyQuotes(organizationId: string): Promise<number> {
         const startDate = startOfMonth(new Date());
         const endDate = endOfMonth(new Date());
 
         return prisma.quote.count({
             where: {
-                user_id: userId,
+                organization_id: organizationId,
                 quote_date: {
                     gte: startDate,
                     lte: endDate,
@@ -191,13 +191,13 @@ export class DashboardService {
         });
     }
 
-    async getYearlyQuotes(userId: string): Promise<number> {
+    async getYearlyQuotes(organizationId: string): Promise<number> {
         const startDate = startOfYear(new Date());
         const endDate = endOfYear(new Date());
 
         return prisma.quote.count({
             where: {
-                user_id: userId,
+                organization_id: organizationId,
                 quote_date: {
                     gte: startDate,
                     lte: endDate,
@@ -206,31 +206,31 @@ export class DashboardService {
         });
     }
 
-    async getPendingQuotes(userId: string): Promise<number> {
+    async getPendingQuotes(organizationId: string): Promise<number> {
         return prisma.quote.count({
             where: {
-                user_id: userId,
+                organization_id: organizationId,
                 status: QuoteStatus.sent,
             },
         });
     }
 
-    async getAcceptedQuotes(userId: string): Promise<number> {
+    async getAcceptedQuotes(organizationId: string): Promise<number> {
         return prisma.quote.count({
             where: {
-                user_id: userId,
+                organization_id: organizationId,
                 status: QuoteStatus.accepted,
             },
         });
     }
 
     async getQuoteStatusDistribution(
-        userId: string
+        organizationId: string
     ): Promise<QuoteStatusCount[]> {
         const distribution = await prisma.quote.groupBy({
             by: ["status"],
             where: {
-                user_id: userId,
+                organization_id: organizationId,
             },
             _count: true,
         });
@@ -256,17 +256,17 @@ export class DashboardService {
         }));
     }
 
-    async getQuoteToInvoiceRatio(userId: string): Promise<number> {
+    async getQuoteToInvoiceRatio(organizationId: string): Promise<number> {
         const [quotes, invoices] = await Promise.all([
             prisma.quote.count({
                 where: {
-                    user_id: userId,
+                    organization_id: organizationId,
                     status: QuoteStatus.accepted,
                 },
             }),
             prisma.invoice.count({
                 where: {
-                    user_id: userId,
+                    organization_id: organizationId,
                     status: InvoiceStatus.paid,
                 },
             }),
@@ -275,7 +275,7 @@ export class DashboardService {
         return invoices > 0 ? Number((quotes / invoices).toFixed(2)) : 0;
     }
 
-    async getAllMetrics(userId: string): Promise<DashboardMetrics> {
+    async getAllMetrics(organizationId: string): Promise<DashboardMetrics> {
         const [
             monthlyRevenue,
             yearlyRevenue,
@@ -290,18 +290,18 @@ export class DashboardService {
             quoteStatusDistribution,
             quoteToInvoiceRatio,
         ] = await Promise.all([
-            this.getMonthlyRevenue(userId),
-            this.getYearlyRevenue(userId),
-            this.getPendingInvoices(userId),
-            this.getOverdueInvoices(userId),
-            this.getTopCustomers(userId),
-            this.getInvoiceStatusDistribution(userId),
-            this.getMonthlyQuotes(userId),
-            this.getYearlyQuotes(userId),
-            this.getPendingQuotes(userId),
-            this.getAcceptedQuotes(userId),
-            this.getQuoteStatusDistribution(userId),
-            this.getQuoteToInvoiceRatio(userId),
+            this.getMonthlyRevenue(organizationId),
+            this.getYearlyRevenue(organizationId),
+            this.getPendingInvoices(organizationId),
+            this.getOverdueInvoices(organizationId),
+            this.getTopCustomers(organizationId),
+            this.getInvoiceStatusDistribution(organizationId),
+            this.getMonthlyQuotes(organizationId),
+            this.getYearlyQuotes(organizationId),
+            this.getPendingQuotes(organizationId),
+            this.getAcceptedQuotes(organizationId),
+            this.getQuoteStatusDistribution(organizationId),
+            this.getQuoteToInvoiceRatio(organizationId),
         ]);
 
         return {

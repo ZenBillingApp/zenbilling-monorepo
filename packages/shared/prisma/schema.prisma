@@ -1,4 +1,3 @@
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -9,51 +8,47 @@ datasource db {
 }
 
 model Company {
-  company_id     String     @id @default(uuid())
-  name           String     @db.VarChar(100)
-  siret          String     @unique @db.VarChar(14)
-  tva_intra      String?    @db.VarChar(13)
+  company_id     String    @id @default(uuid())
+  name           String    @db.VarChar(100)
+  siret          String    @unique @db.VarChar(14)
+  tva_intra      String?   @db.VarChar(13)
   tva_applicable Boolean
-  RCS_number     String     @db.VarChar(100)
-  RCS_city       String     @db.VarChar(100)
-  capital        Decimal?   @db.Decimal(10, 2)
-  siren          String     @unique @db.VarChar(9)
+  RCS_number     String    @db.VarChar(100)
+  RCS_city       String    @db.VarChar(100)
+  capital        Decimal?  @db.Decimal(10, 2)
+  siren          String    @unique @db.VarChar(9)
   legal_form     LegalForm
-  address        String     @db.VarChar(255)
-  postal_code    String     @db.VarChar(10)
-  city           String     @db.VarChar(100)
-  country        String     @default("France") @db.VarChar(100)
-  email          String?    @db.VarChar(100)
-  phone          String?    @db.VarChar(20)
-  website        String?    @db.VarChar(255)
-  createdAt      DateTime   @default(now()) @map("createdAt")
-  updatedAt      DateTime   @updatedAt @map("updatedAt")
-  customers      Customer[]
-  invoices       Invoice[]
-  products       Product[]
-  quotes         Quote[]
+  address        String    @db.VarChar(255)
+  postal_code    String    @db.VarChar(10)
+  city           String    @db.VarChar(100)
+  country        String    @default("France") @db.VarChar(100)
+  email          String?   @db.VarChar(100)
+  phone          String?   @db.VarChar(20)
+  website        String?   @db.VarChar(255)
+  createdAt      DateTime  @default(now()) @map("createdAt")
+  updatedAt      DateTime  @updatedAt @map("updatedAt")
   users          User[]
 }
 
 model Customer {
-  customer_id String              @id @default(uuid())
-  user_id     String
-  company_id  String
-  type        CustomerType        @default(individual)
-  email       String?             @db.VarChar(100)
-  phone       String?             @db.VarChar(20)
-  address     String?             @db.VarChar(100)
-  city        String?             @db.VarChar(50)
-  postal_code String?             @db.VarChar(20)
-  country     String              @default("France") @db.VarChar(50)
-  createdAt   DateTime            @default(now()) @map("createdAt")
-  updatedAt   DateTime            @updatedAt @map("updatedAt")
-  business    BusinessCustomer?
-  company     Company             @relation(fields: [company_id], references: [company_id], onDelete: Cascade)
-  user        User                @relation(fields: [user_id], references: [id], onDelete: Cascade)
-  individual  IndividualCustomer?
-  invoices    Invoice[]
-  quotes      Quote[]
+  customer_id     String              @id @default(uuid())
+  user_id         String
+  organization_id String
+  type            CustomerType        @default(individual)
+  email           String?             @db.VarChar(100)
+  phone           String?             @db.VarChar(20)
+  address         String?             @db.VarChar(100)
+  city            String?             @db.VarChar(50)
+  postal_code     String?             @db.VarChar(20)
+  country         String              @default("France") @db.VarChar(50)
+  createdAt       DateTime            @default(now()) @map("createdAt")
+  updatedAt       DateTime            @updatedAt @map("updatedAt")
+  business        BusinessCustomer?
+  organization    Organization        @relation(fields: [organization_id], references: [id], onDelete: Cascade)
+  user            User                @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  individual      IndividualCustomer?
+  invoices        Invoice[]
+  quotes          Quote[]
 }
 
 model BusinessCustomer {
@@ -75,7 +70,7 @@ model IndividualCustomer {
 
 model Product {
   product_id          String        @id @default(uuid())
-  company_id          String
+  organization_id     String
   name                String        @db.VarChar(100)
   description         String?
   price_excluding_tax Decimal       @db.Decimal(10, 2)
@@ -84,15 +79,15 @@ model Product {
   createdAt           DateTime      @default(now()) @map("createdAt")
   updatedAt           DateTime      @updatedAt @map("updatedAt")
   invoice_items       InvoiceItem[]
-  company             Company       @relation(fields: [company_id], references: [company_id], onDelete: Cascade)
   quote_items         QuoteItem[]
+  organization        Organization  @relation(fields: [organization_id], references: [id], onDelete: Cascade)
 }
 
 model Invoice {
   invoice_id           String        @id @default(uuid())
+  organization_id      String
   customer_id          String
   user_id              String
-  company_id           String?
   invoice_number       String        @unique @db.VarChar(50)
   invoice_date         DateTime      @db.Date
   due_date             DateTime      @db.Date
@@ -104,7 +99,7 @@ model Invoice {
   late_payment_penalty String?
   createdAt            DateTime      @default(now()) @map("createdAt")
   updatedAt            DateTime      @updatedAt @map("updatedAt")
-  company              Company?      @relation(fields: [company_id], references: [company_id], onDelete: Cascade)
+  organization         Organization  @relation(fields: [organization_id], references: [id], onDelete: Cascade)
   customer             Customer      @relation(fields: [customer_id], references: [customer_id], onDelete: Cascade)
   user                 User          @relation(fields: [user_id], references: [id], onDelete: Cascade)
   items                InvoiceItem[]
@@ -139,24 +134,24 @@ model Payment {
 }
 
 model Quote {
-  quote_id             String      @id @default(uuid())
+  quote_id             String       @id @default(uuid())
   customer_id          String
   user_id              String
-  company_id           String?
-  quote_number         String      @unique @db.VarChar(50)
-  quote_date           DateTime    @db.Date
-  validity_date        DateTime    @db.Date
-  amount_excluding_tax Decimal     @db.Decimal(10, 2)
-  tax                  Decimal     @db.Decimal(10, 2)
-  amount_including_tax Decimal     @db.Decimal(10, 2)
+  organization_id      String
+  quote_number         String       @unique @db.VarChar(50)
+  quote_date           DateTime     @db.Date
+  validity_date        DateTime     @db.Date
+  amount_excluding_tax Decimal      @db.Decimal(10, 2)
+  tax                  Decimal      @db.Decimal(10, 2)
+  amount_including_tax Decimal      @db.Decimal(10, 2)
   status               QuoteStatus
-  conditions           String?     @db.VarChar(1000)
+  conditions           String?      @db.VarChar(1000)
   notes                String?
-  createdAt            DateTime    @default(now()) @map("createdAt")
-  updatedAt            DateTime    @updatedAt @map("updatedAt")
-  company              Company?    @relation(fields: [company_id], references: [company_id], onDelete: Cascade)
-  customer             Customer    @relation(fields: [customer_id], references: [customer_id], onDelete: Cascade)
-  user                 User        @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  createdAt            DateTime     @default(now()) @map("createdAt")
+  updatedAt            DateTime     @updatedAt @map("updatedAt")
+  organization         Organization @relation(fields: [organization_id], references: [id], onDelete: Cascade)
+  customer             Customer     @relation(fields: [customer_id], references: [customer_id], onDelete: Cascade)
+  user                 User         @relation(fields: [user_id], references: [id], onDelete: Cascade)
   items                QuoteItem[]
 }
 
@@ -187,8 +182,8 @@ model Session {
 
   activeOrganizationId String?
 
-  @@map("session")
   @@index([userId])
+  @@map("session")
 }
 
 model Account {
@@ -207,8 +202,8 @@ model Account {
   updatedAt             DateTime
   user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@map("account")
   @@index([userId])
+  @@map("account")
 }
 
 model Verification {
@@ -219,8 +214,8 @@ model Verification {
   createdAt  DateTime?
   updatedAt  DateTime?
 
-  @@map("verification")
   @@index([identifier])
+  @@map("verification")
 }
 
 model User {
@@ -305,9 +300,9 @@ enum ProductUnit {
   ml
   m
   cm
-  m2 @map("m²")
-  cm2 @map("cm²")
-  m3 @map("m³")
+  m2    @map("m²")
+  cm2   @map("cm²")
+  m3    @map("m³")
   h
   jour
   mois
@@ -315,11 +310,11 @@ enum ProductUnit {
 }
 
 enum VatRate {
-  ZERO @map("0.00")
+  ZERO      @map("0.00")
   REDUCED_1 @map("2.10")
   REDUCED_2 @map("5.50")
   REDUCED_3 @map("10.00")
-  STANDARD @map("20.00")
+  STANDARD  @map("20.00")
 }
 
 model Organization {
@@ -349,7 +344,11 @@ model Organization {
   website        String?
 
   stripe_account_id String?
-  stripe_onboarded  Boolean? @default(false)
+  stripe_onboarded  Boolean?   @default(false)
+  customers         Customer[]
+  products          Product[]
+  invoices          Invoice[]
+  quotes            Quote[]
 
   @@unique([slug])
   @@map("organization")

@@ -14,8 +14,10 @@ export class DashboardController {
                 return ApiResponse.error(res, 401, "Non autorisé");
             }
 
-            const userId = req.user.id;
-            const metrics = await dashboardService.getAllMetrics(userId);
+            const organizationId = req.organization.id;
+            const metrics = await dashboardService.getAllMetrics(
+                organizationId
+            );
 
             return ApiResponse.success(
                 res,

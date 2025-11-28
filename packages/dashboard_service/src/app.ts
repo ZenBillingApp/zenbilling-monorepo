@@ -23,5 +23,5 @@ app.use(express.json());
 app.use("/api/dashboard", dashboardRoutes);
 
 app.listen(port, () => {
-    console.log(`Example app listening on port ${port}`);
+    console.log(`Dashboard service listening on port ${port}`);
 });

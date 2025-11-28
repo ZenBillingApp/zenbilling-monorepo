@@ -9,22 +9,14 @@ import { IInvoice } from "@zenbilling/shared";
 import { CustomError } from "@zenbilling/shared";
 import { logger } from "@zenbilling/shared";
 import { prisma } from "@zenbilling/shared";
-import {
-    IProduct,
-    ProductUnit,
-    vatRateToNumber,
-} from "@zenbilling/shared";
+import { IProduct, ProductUnit, vatRateToNumber } from "@zenbilling/shared";
 import { IPayment } from "@zenbilling/shared";
-import {
-    Prisma,
-    PrismaClient,
-    Decimal,
-} from "@zenbilling/shared";
+import { Prisma, PrismaClient, Decimal } from "@zenbilling/shared";
 import axios from "axios";
 
 export class InvoiceService {
     private static generateInvoiceNumber(
-        companyId: string,
+        organizationId: string,
         date: Date
     ): string {
         const year = date.getFullYear();
@@ -32,15 +24,18 @@ export class InvoiceService {
         const random = Math.floor(Math.random() * 1000)
             .toString()
             .padStart(3, "0");
-        const shortId = companyId.substring(0, 6);
+        const shortId = organizationId.substring(0, 6);
         const invoiceNumber = `FACT-${shortId}-${year}${month}-${random}`;
-        logger.debug({ companyId, invoiceNumber }, "Numéro de facture généré");
+        logger.debug(
+            { organizationId, invoiceNumber },
+            "Numéro de facture généré"
+        );
         return invoiceNumber;
     }
 
     private static async validateProducts(
         productIds: string[],
-        companyId: string,
+        organizationId: string,
         tx: Prisma.TransactionClient | PrismaClient = prisma
     ): Promise<Map<string, IProduct>> {
         const uniqueProductIds = Array.from(new Set(productIds));
@@ -49,7 +44,7 @@ export class InvoiceService {
         const products = await tx.product.findMany({
             where: {
                 product_id: { in: uniqueProductIds },
-                company_id: companyId,
+                organization_id: organizationId,
             },
         });
 
@@ -65,13 +60,13 @@ export class InvoiceService {
 
     private static async validateInvoiceAccess(
         invoiceId: string,
-        companyId: string,
+        organizationId: string,
         tx: Prisma.TransactionClient | PrismaClient = prisma
     ): Promise<IInvoice> {
         const invoice = await tx.invoice.findUnique({
             where: {
                 invoice_id: invoiceId,
-                company_id: companyId,
+                organization_id: organizationId,
             },
         });
 
@@ -84,10 +79,10 @@ export class InvoiceService {
 
     public static async createInvoice(
         userId: string,
-        companyId: string,
+        organizationId: string,
         invoiceData: ICreateInvoiceRequest
     ): Promise<IInvoice> {
-        logger.info({ userId, companyId }, "Début de création de facture");
+        logger.info({ userId, organizationId }, "Début de création de facture");
 
         try {
             return await prisma.$transaction(
@@ -102,7 +97,7 @@ export class InvoiceService {
 
                     const productsMap = await this.validateProducts(
                         productIds as string[],
-                        companyId,
+                        organizationId,
                         tx
                     );
 
@@ -111,9 +106,9 @@ export class InvoiceService {
                         data: {
                             customer_id: invoiceData.customer_id,
                             user_id: userId,
-                            company_id: companyId,
+                            organization_id: organizationId,
                             invoice_number: this.generateInvoiceNumber(
-                                companyId,
+                                organizationId,
                                 new Date(invoiceData.invoice_date)
                             ),
                             invoice_date: invoiceData.invoice_date,
@@ -172,7 +167,8 @@ export class InvoiceService {
                                             const newProduct =
                                                 await tx.product.create({
                                                     data: {
-                                                        company_id: companyId,
+                                                        organization_id:
+                                                            organizationId,
                                                         name: item.name,
                                                         description:
                                                             item.description ||
@@ -224,7 +220,7 @@ export class InvoiceService {
                                     individual: true,
                                 },
                             },
-                            company: true,
+                            organization: true,
                         },
                     });
 
@@ -232,7 +228,7 @@ export class InvoiceService {
                         {
                             invoiceId: invoice.invoice_id,
                             userId,
-                            companyId,
+                            organizationId,
                             amount: totalExcludingTax.plus(totalTax).toFixed(2),
                         },
                         "Facture créée avec succès"
@@ -243,7 +239,7 @@ export class InvoiceService {
             );
         } catch (error) {
             logger.error(
-                { error, userId, companyId },
+                { error, userId, organizationId },
                 "Erreur lors de la création de la facture"
             );
             if (error instanceof CustomError) {
@@ -258,7 +254,7 @@ export class InvoiceService {
 
     public static async updateInvoice(
         invoiceId: string,
-        companyId: string,
+        organizationId: string,
         updateData: IUpdateInvoiceRequest
     ): Promise<IInvoice> {
         try {
@@ -266,7 +262,7 @@ export class InvoiceService {
                 async (tx: Prisma.TransactionClient | PrismaClient) => {
                     const invoice = await this.validateInvoiceAccess(
                         invoiceId,
-                        companyId,
+                        organizationId,
                         tx
                     );
 
@@ -302,7 +298,7 @@ export class InvoiceService {
                                     individual: true,
                                 },
                             },
-                            company: true,
+                            organization: true,
                         },
                     });
 
@@ -322,12 +318,12 @@ export class InvoiceService {
 
     public static async getInvoiceWithDetails(
         invoiceId: string,
-        companyId: string
+        organizationId: string
     ): Promise<IInvoice> {
         const invoice = await prisma.invoice.findUnique({
             where: {
                 invoice_id: invoiceId,
-                company_id: companyId,
+                organization_id: organizationId,
             },
             include: {
                 items: {
@@ -343,7 +339,7 @@ export class InvoiceService {
                     },
                 },
                 user: true,
-                company: true,
+                organization: true,
             },
         });
 
@@ -356,13 +352,13 @@ export class InvoiceService {
 
     public static async deleteInvoice(
         invoiceId: string,
-        companyId: string
+        organizationId: string
     ): Promise<void> {
         try {
             await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
                 const invoice = await this.validateInvoiceAccess(
                     invoiceId,
-                    companyId,
+                    organizationId,
                     tx
                 );
 
@@ -389,7 +385,7 @@ export class InvoiceService {
     }
 
     public static async getCompanyInvoices(
-        companyId: string,
+        organizationId: string,
         queryParams: IInvoiceQueryParams = {}
     ): Promise<{
         invoices: IInvoice[];
@@ -419,7 +415,7 @@ export class InvoiceService {
         } = queryParams;
 
         const offset = (page - 1) * limit;
-        const whereClause: any = { company_id: companyId };
+        const whereClause: any = { organization_id: organizationId };
 
         // Filtre par statut
         if (status) {
@@ -525,7 +521,7 @@ export class InvoiceService {
                             individual: true,
                         },
                     },
-                    company: true,
+                    organization: true,
                 },
                 orderBy: {
                     [sortBy]: sortOrder.toLowerCase(),
@@ -539,7 +535,7 @@ export class InvoiceService {
         ]);
 
         // Requête pour obtenir le comptage par statut
-        const companyWhereClause = { company_id: companyId };
+        const organizationWhereClause = { organization_id: organizationId };
         const [
             pendingCount,
             paidCount,
@@ -550,36 +546,36 @@ export class InvoiceService {
         ] = await prisma.$transaction([
             prisma.invoice.count({
                 where: {
-                    ...companyWhereClause,
+                    ...organizationWhereClause,
                     status: "pending",
                 },
             }),
             prisma.invoice.count({
                 where: {
-                    ...companyWhereClause,
+                    ...organizationWhereClause,
                     status: "paid",
                 },
             }),
             prisma.invoice.count({
                 where: {
-                    ...companyWhereClause,
+                    ...organizationWhereClause,
                     status: "cancelled",
                 },
             }),
             prisma.invoice.count({
                 where: {
-                    ...companyWhereClause,
+                    ...organizationWhereClause,
                     status: "sent",
                 },
             }),
             prisma.invoice.count({
                 where: {
-                    ...companyWhereClause,
+                    ...organizationWhereClause,
                     status: "late",
                 },
             }),
             prisma.invoice.count({
-                where: companyWhereClause,
+                where: organizationWhereClause,
             }),
         ]);
 
@@ -602,7 +598,7 @@ export class InvoiceService {
 
     public static async createPayment(
         invoiceId: string,
-        companyId: string,
+        organizationId: string,
         paymentData: ICreatePaymentRequest
     ): Promise<IPayment> {
         try {
@@ -610,7 +606,7 @@ export class InvoiceService {
                 async (tx: Prisma.TransactionClient) => {
                     const invoice = await this.validateInvoiceAccess(
                         invoiceId,
-                        companyId,
+                        organizationId,
                         tx
                     );
 
@@ -679,18 +675,18 @@ export class InvoiceService {
 
     public static async sendInvoiceByEmail(
         invoiceId: string,
-        companyId: string,
+        organizationId: string,
         userId: string
     ): Promise<void> {
         logger.info(
-            { invoiceId, companyId, userId },
+            { invoiceId, organizationId, userId },
             "Début d'envoi de facture par email"
         );
         try {
             // Récupérer la facture avec tous les détails
             const invoice = await this.getInvoiceWithDetails(
                 invoiceId,
-                companyId
+                organizationId
             );
             if (!invoice.customer?.email) {
                 throw new CustomError("Le client n'a pas d'adresse email", 400);
@@ -709,7 +705,7 @@ export class InvoiceService {
                 `${process.env.PDF_SERVICE_URL}/api/pdf/invoice`,
                 {
                     invoice: invoice,
-                    company: invoice.company,
+                    organization: invoice.organization,
                 },
                 {
                     responseType: "arraybuffer",
@@ -761,7 +757,7 @@ export class InvoiceService {
                             user.first_name
                         } ${user.last_name}</p>
                         <p style="margin: 5px 0 0 0; color: #666;">${
-                            invoice.company?.name
+                            invoice.organization?.name
                         }</p>
                     </div>
                 </div>
@@ -797,7 +793,7 @@ export class InvoiceService {
             logger.info(
                 {
                     invoiceId,
-                    companyId,
+                    organizationId,
                     userId,
                     customerEmail: invoice.customer?.email,
                 },
@@ -808,7 +804,7 @@ export class InvoiceService {
                 {
                     error,
                     invoiceId,
-                    companyId,
+                    organizationId,
                     userId,
                 },
                 "Erreur lors de l'envoi de la facture par email"
@@ -825,19 +821,19 @@ export class InvoiceService {
 
     public static async sendInvoiceWithPaymentLink(
         invoiceId: string,
-        companyId: string,
+        organizationId: string,
         user: any,
         options: { successUrl?: string; cancelUrl?: string }
     ): Promise<void> {
         logger.info(
-            { invoiceId, companyId, userId: user.id, options },
+            { invoiceId, organizationId, userId: user.id, options },
             "Début d'envoi de facture par email avec lien de paiement"
         );
         try {
             // Récupérer la facture avec tous les détails
             const invoice = await this.getInvoiceWithDetails(
                 invoiceId,
-                companyId
+                organizationId
             );
             if (!invoice.customer?.email) {
                 throw new CustomError("Le client n'a pas d'adresse email", 400);
@@ -848,7 +844,7 @@ export class InvoiceService {
                 `${process.env.PDF_SERVICE_URL}/api/pdf/invoice`,
                 {
                     invoice: invoice,
-                    company: invoice.company,
+                    organization: invoice.organization,
                 },
                 {
                     responseType: "arraybuffer",
@@ -960,7 +956,7 @@ export class InvoiceService {
                             user?.first_name
                         } ${user?.last_name}</p>
                         <p style="margin: 5px 0 0 0; color: #666;">${
-                            invoice.company?.name
+                            invoice.organization?.name
                         }</p>
                     </div>
                 </div>
@@ -998,7 +994,7 @@ export class InvoiceService {
             logger.info(
                 {
                     invoiceId,
-                    companyId,
+                    organizationId,
                     userId: user.id,
                     customerEmail: invoice.customer?.email,
                     paymentLinkCreated: !!paymentLink,
@@ -1010,7 +1006,7 @@ export class InvoiceService {
                 {
                     error,
                     invoiceId,
-                    companyId,
+                    organizationId,
                     userId: user.id,
                 },
                 "Erreur lors de l'envoi de la facture par email avec lien de paiement"
@@ -1246,11 +1242,11 @@ export class InvoiceService {
 
     public static async getCustomerInvoices(
         customerId: string,
-        companyId: string,
+        organizationId: string,
         queryParams: IInvoiceQueryParams = {}
     ): Promise<{ invoices: IInvoice[]; total: number; totalPages: number }> {
         logger.info(
-            { customerId, companyId },
+            { customerId, organizationId },
             "Récupération des factures du client"
         );
         try {
@@ -1270,7 +1266,7 @@ export class InvoiceService {
             const offset = (page - 1) * limit;
             const whereConditions: any = {
                 customer_id: customerId,
-                company_id: companyId,
+                organization_id: organizationId,
                 ...(status && { status }),
                 ...(start_date && {
                     invoice_date: {
@@ -1337,7 +1333,7 @@ export class InvoiceService {
             logger.info(
                 {
                     customerId,
-                    companyId,
+                    organizationId,
                     count: total,
                     page: queryParams.page || 1,
                 },
@@ -1351,7 +1347,7 @@ export class InvoiceService {
             };
         } catch (error) {
             logger.error(
-                { error, customerId, companyId },
+                { error, customerId, organizationId },
                 "Erreur lors de la récupération des factures du client"
             );
             throw new CustomError(

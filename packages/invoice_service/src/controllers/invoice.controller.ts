@@ -15,16 +15,16 @@ export class InvoiceController {
     public static async createInvoice(req: AuthRequest, res: Response) {
         try {
             logger.info({ req: req.body }, "Creating invoice");
-            if (!req.user?.company_id) {
+            if (!req.organization) {
                 return ApiResponse.error(
                     res,
                     401,
-                    "Aucune société associée à l'utilisateur"
+                    "Aucune organisation associée à l'utilisateur"
                 );
             }
             const invoice = await InvoiceService.createInvoice(
-                req.user.id,
-                req.user.company_id,
+                req.user!.id,
+                req.organization.id,
                 req.body
             );
             logger.info({ invoice }, "Invoice created");
@@ -51,16 +51,16 @@ export class InvoiceController {
     public static async getInvoice(req: AuthRequest, res: Response) {
         try {
             logger.info({ req: req.params }, "Getting invoice");
-            if (!req.user?.company_id) {
+            if (!req.organization) {
                 return ApiResponse.error(
                     res,
                     401,
-                    "Aucune société associée à l'utilisateur"
+                    "Aucune organisation associée à l'utilisateur"
                 );
             }
             const invoice = await InvoiceService.getInvoiceWithDetails(
                 req.params.id,
-                req.user.company_id
+                req.organization.id
             );
             logger.info({ invoice }, "Invoice retrieved");
             return ApiResponse.success(
@@ -86,16 +86,16 @@ export class InvoiceController {
     public static async updateInvoice(req: AuthRequest, res: Response) {
         try {
             logger.info({ req: req.params }, "Updating invoice");
-            if (!req.user?.company_id) {
+            if (!req.organization) {
                 return ApiResponse.error(
                     res,
                     401,
-                    "Aucune société associée à l'utilisateur"
+                    "Aucune organisation associée à l'utilisateur"
                 );
             }
             const invoice = await InvoiceService.updateInvoice(
                 req.params.id,
-                req.user.company_id,
+                req.organization.id,
                 req.body
             );
             logger.info({ invoice }, "Invoice updated");
@@ -122,16 +122,16 @@ export class InvoiceController {
     public static async deleteInvoice(req: AuthRequest, res: Response) {
         try {
             logger.info({ req: req.params }, "Deleting invoice");
-            if (!req.user?.company_id) {
+            if (!req.organization) {
                 return ApiResponse.error(
                     res,
                     401,
-                    "Aucune société associée à l'utilisateur"
+                    "Aucune organisation associée à l'utilisateur"
                 );
             }
             await InvoiceService.deleteInvoice(
                 req.params.id,
-                req.user.company_id
+                req.organization.id
             );
             logger.info("Invoice deleted");
             return ApiResponse.success(
@@ -228,16 +228,16 @@ export class InvoiceController {
     public static async createPayment(req: AuthRequest, res: Response) {
         try {
             logger.info({ req: req.params }, "Creating payment");
-            if (!req.user?.company_id) {
+            if (!req.organization) {
                 return ApiResponse.error(
                     res,
                     401,
-                    "Aucune société associée à l'utilisateur"
+                    "Aucune organisation associée à l'utilisateur"
                 );
             }
             const payment = await InvoiceService.createPayment(
                 req.params.id,
-                req.user.company_id,
+                req.organization.id,
                 req.body
             );
             logger.info({ payment }, "Payment created");
@@ -266,21 +266,21 @@ export class InvoiceController {
             logger.info({ req: req.params }, "Downloading invoice PDF");
             const invoiceId = req.params.id;
 
-            if (!req.user?.company_id) {
+            if (!req.organization) {
                 return ApiResponse.error(
                     res,
                     401,
-                    "Aucune société associée à l'utilisateur"
+                    "Aucune organisation associée à l'utilisateur"
                 );
             }
 
             const invoice = await InvoiceService.getInvoiceWithDetails(
                 invoiceId,
-                req.user.company_id
+                req.organization.id
             );
 
             // Vérifier que l'utilisateur a accès à cette facture
-            if (invoice.company_id !== req.user?.company_id) {
+            if (invoice.organization_id !== req.organization.id) {
                 return ApiResponse.error(
                     res,
                     403,
@@ -292,7 +292,7 @@ export class InvoiceController {
                 `${process.env.PDF_SERVICE_URL}/api/pdf/invoice`,
                 {
                     invoice: invoice,
-                    company: invoice.company,
+                    organization: invoice.organization,
                 },
                 {
                     responseType: "arraybuffer",
@@ -343,24 +343,24 @@ export class InvoiceController {
     public static async sendInvoiceByEmail(req: AuthRequest, res: Response) {
         try {
             logger.info({ req: req.params }, "Envoi de facture par email");
-            if (!req.user?.company_id) {
+            if (!req.organization) {
                 return ApiResponse.error(
                     res,
                     401,
-                    "Aucune entreprise associée à l'utilisateur"
+                    "Aucune organisation associée à l'utilisateur"
                 );
             }
 
             await InvoiceService.sendInvoiceByEmail(
                 req.params.id,
-                req.user.company_id,
-                req.user.id
+                req.organization.id,
+                req.user!.id
             );
 
             logger.info(
                 {
                     invoiceId: req.params.id,
-                    userId: req.user.id,
+                    userId: req.user!.id,
                 },
                 "Facture envoyée par email avec succès"
             );
@@ -394,11 +394,11 @@ export class InvoiceController {
                 { req: req.params },
                 "Envoi de facture par email avec lien de paiement"
             );
-            if (!req.user?.company_id) {
+            if (!req.organization) {
                 return ApiResponse.error(
                     res,
                     401,
-                    "Aucune entreprise associée à l'utilisateur"
+                    "Aucune organisation associée à l'utilisateur"
                 );
             }
 
@@ -428,7 +428,7 @@ export class InvoiceController {
 
             await InvoiceService.sendInvoiceWithPaymentLink(
                 req.params.id,
-                req.user.company_id,
+                req.organization.id,
                 req.user,
                 { successUrl, cancelUrl }
             );
@@ -439,7 +439,7 @@ export class InvoiceController {
             logger.info(
                 {
                     invoiceId: req.params.id,
-                    userId: req.user.id,
+                    userId: req.user!.id,
                 },
                 message
             );
@@ -541,11 +541,11 @@ export class InvoiceController {
                 { req: req.params, query: req.query },
                 "Récupération des factures du client"
             );
-            if (!req.user?.company_id) {
+            if (!req.organization) {
                 return ApiResponse.error(
                     res,
                     401,
-                    "Aucune société associée à l'utilisateur"
+                    "Aucune organisation associée à l'utilisateur"
                 );
             }
 
@@ -572,7 +572,7 @@ export class InvoiceController {
 
             const result = await InvoiceService.getCustomerInvoices(
                 req.params.customerId,
-                req.user.company_id,
+                req.organization.id,
                 queryParams
             );
 

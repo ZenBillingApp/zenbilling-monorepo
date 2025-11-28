@@ -25,7 +25,7 @@ export type VatRate =
 
 export interface IProduct {
     product_id: string;
-    company_id: string;
+    organization_id: string;
     name: string;
     description: string | null;
     price_excluding_tax: Decimal;

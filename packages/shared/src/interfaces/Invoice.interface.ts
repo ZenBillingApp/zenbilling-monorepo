@@ -1,7 +1,7 @@
 import { ICustomer } from "./Customer.interface";
 import { IInvoiceItem } from "./InvoiceItem.interface";
 import { IPayment } from "./Payment.interface";
-import { ICompany } from "./Company.interface";
+import { IOrganization } from "./Organization.interface";
 import { IUser } from "./User.interface";
 import { Decimal } from "@prisma/client/runtime/library";
 
@@ -11,7 +11,7 @@ export interface IInvoice {
     invoice_id: string;
     customer_id: string;
     user_id: string;
-    company_id: string | null;
+    organization_id: string;
     invoice_number: string;
     invoice_date: Date;
     due_date: Date;
@@ -25,7 +25,7 @@ export interface IInvoice {
     // Relations
     customer?: ICustomer;
     user?: IUser;
-    company?: ICompany;
+    organization?: IOrganization;
     items?: IInvoiceItem[];
     payments?: IPayment[];
     createdAt: Date;

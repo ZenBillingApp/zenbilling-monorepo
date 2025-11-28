@@ -5,12 +5,15 @@ import { logger } from "@zenbilling/shared";
 export class PdfController {
     static async generateInvoicePdf(req: Request, res: Response) {
         try {
-            const { invoice, company } = req.body;
+            const { invoice, organization } = req.body;
 
-            if (!invoice || !company) {
-                logger.error({ invoice: !!invoice, company: !!company }, "Données manquantes pour la génération du PDF");
+            if (!invoice || !organization) {
+                logger.error(
+                    { invoice: !!invoice, organization: !!organization },
+                    "Données manquantes pour la génération du PDF"
+                );
                 return res.status(400).json({
-                    error: "Les données de facture et d'entreprise sont requises",
+                    error: "Les données de facture et de l'organisation sont requises",
                 });
             }
 
@@ -21,7 +24,7 @@ export class PdfController {
 
             const pdfBuffer = await PdfService.generateInvoicePdf(
                 invoice,
-                company
+                organization
             );
 
             // Configurer les en-têtes pour le PDF
@@ -58,12 +61,15 @@ export class PdfController {
 
     static async generateQuotePdf(req: Request, res: Response) {
         try {
-            const { quote, company } = req.body;
+            const { quote, organization } = req.body;
 
-            if (!quote || !company) {
-                logger.error({ quote: !!quote, company: !!company }, "Données manquantes pour la génération du PDF");
+            if (!quote || !organization) {
+                logger.error(
+                    { quote: !!quote, organization: !!organization },
+                    "Données manquantes pour la génération du PDF"
+                );
                 return res.status(400).json({
-                    error: "Les données de devis et d'entreprise sont requises",
+                    error: "Les données de devis et de l'organisation sont requises",
                 });
             }
 
@@ -72,7 +78,10 @@ export class PdfController {
                 "Génération du PDF de devis"
             );
 
-            const pdfBuffer = await PdfService.generateQuotePdf(quote, company);
+            const pdfBuffer = await PdfService.generateQuotePdf(
+                quote,
+                organization
+            );
 
             // Configurer les en-têtes pour le PDF
             res.setHeader("Content-Type", "application/pdf");

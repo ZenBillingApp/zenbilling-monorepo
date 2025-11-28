@@ -3,7 +3,7 @@ import * as handlebars from "handlebars";
 import * as fs from "fs";
 import * as path from "path";
 import { logger } from "@zenbilling/shared";
-import { ICompany } from "@zenbilling/shared";
+import { IOrganization } from "@zenbilling/shared";
 import { IInvoice } from "@zenbilling/shared";
 import { vatRateToNumber } from "@zenbilling/shared";
 import { IQuote } from "@zenbilling/shared";
@@ -126,7 +126,7 @@ export class PdfService {
 
     public static async generateInvoicePdf(
         invoice: IInvoice,
-        company: ICompany
+        organization: IOrganization
     ): Promise<Buffer> {
         logger.info(
             { invoice_id: invoice.invoice_id },
@@ -150,7 +150,7 @@ export class PdfService {
                 tax: Number(invoice.tax),
                 amount_including_tax: Number(invoice.amount_including_tax),
             },
-            company: company,
+            organization: organization,
             customer: {
                 ...invoice.customer,
                 ...(invoice.customer?.individual || {}),
@@ -215,12 +215,12 @@ export class PdfService {
                 headerTemplate: "<span></span>",
                 footerTemplate: `
           <div style="width: 100%; font-size: 10px; padding: 10px 20px; color: #666; text-align: center;">
-            ${company.name} - ${company.address}, ${company.postal_code} ${
-                    company.city
-                }
+            ${organization.name} - ${organization.address}, ${
+                    organization.postal_code
+                } ${organization.city}
             <br>
-            SIRET: ${company.siret || "N/A"} - TVA Intracommunautaire: ${
-                    company.tva_intra || "N/A"
+            SIRET: ${organization.siret || "N/A"} - TVA Intracommunautaire: ${
+                    organization.tva_intra || "N/A"
                 }
             <br>
             Page <span class="pageNumber"></span> sur <span class="totalPages"></span>
@@ -245,7 +245,7 @@ export class PdfService {
 
     public static async generateQuotePdf(
         quote: IQuote,
-        company: ICompany
+        organization: IOrganization
     ): Promise<Buffer> {
         logger.info(
             { quote_id: quote.quote_id },
@@ -268,7 +268,7 @@ export class PdfService {
                 tax: Number(quote.tax),
                 amount_including_tax: Number(quote.amount_including_tax),
             },
-            company: company,
+            organization: organization,
             customer: {
                 ...quote.customer,
                 ...(quote.customer?.individual || {}),
@@ -333,12 +333,12 @@ export class PdfService {
                 headerTemplate: "<span></span>",
                 footerTemplate: `
           <div style="width: 100%; font-size: 10px; padding: 10px 20px; color: #666; text-align: center;">
-            ${company.name} - ${company.address}, ${company.postal_code} ${
-                    company.city
-                }
+            ${organization.name} - ${organization.address}, ${
+                    organization.postal_code
+                } ${organization.city}
             <br>
-            SIRET: ${company.siret || "N/A"} - TVA Intracommunautaire: ${
-                    company.tva_intra || "N/A"
+            SIRET: ${organization.siret || "N/A"} - TVA Intracommunautaire: ${
+                    organization.tva_intra || "N/A"
                 }
             <br>
             Page <span class="pageNumber"></span> sur <span class="totalPages"></span>

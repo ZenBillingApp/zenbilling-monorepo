@@ -23,5 +23,5 @@ app.use(express.json());
 app.use("/api/pdf", pdfRoutes);
 
 app.listen(port, () => {
-    console.log(`Example app listening on port ${port}`);
+    console.log(`PDF service listening on port ${port}`);
 });

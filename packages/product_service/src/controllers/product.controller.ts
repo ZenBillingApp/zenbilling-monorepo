@@ -54,16 +54,16 @@ export class ProductController {
     public static async createProduct(req: AuthRequest, res: Response) {
         try {
             logger.info({ req: req.body }, "Creating product");
-            if (!req.user?.company_id) {
+            if (!req.organization) {
                 return ApiResponse.error(
                     res,
                     401,
-                    "Aucune entreprise associée à l'utilisateur"
+                    "Aucune organisation associée à l'utilisateur"
                 );
             }
 
             const product = await ProductService.createProduct(
-                req.user.company_id,
+                req.organization.id,
                 req.body
             );
             logger.info({ product }, "Product created");
@@ -93,17 +93,17 @@ export class ProductController {
     public static async updateProduct(req: AuthRequest, res: Response) {
         try {
             logger.info({ req: req.body }, "Updating product");
-            if (!req.user?.company_id) {
+            if (!req.organization) {
                 return ApiResponse.error(
                     res,
                     401,
-                    "Aucune entreprise associée à l'utilisateur"
+                    "Aucune organisation associée à l'utilisateur"
                 );
             }
 
             const product = await ProductService.updateProduct(
                 req.params.id,
-                req.user.company_id,
+                req.organization.id,
                 req.body
             );
             logger.info({ product }, "Product updated");
@@ -133,17 +133,17 @@ export class ProductController {
     public static async deleteProduct(req: AuthRequest, res: Response) {
         try {
             logger.info({ req: req.params }, "Deleting product");
-            if (!req.user?.company_id) {
+            if (!req.organization) {
                 return ApiResponse.error(
                     res,
                     401,
-                    "Aucune entreprise associée à l'utilisateur"
+                    "Aucune organisation associée à l'utilisateur"
                 );
             }
 
             await ProductService.deleteProduct(
                 req.params.id,
-                req.user.company_id
+                req.organization.id
             );
             logger.info("Product deleted");
             return ApiResponse.success(
@@ -168,17 +168,17 @@ export class ProductController {
     public static async getProduct(req: AuthRequest, res: Response) {
         try {
             logger.info({ req: req.params }, "Getting product");
-            if (!req.user?.company_id) {
+            if (!req.organization) {
                 return ApiResponse.error(
                     res,
                     401,
-                    "Aucune entreprise associée à l'utilisateur"
+                    "Aucune organisation associée à l'utilisateur"
                 );
             }
 
             const product = await ProductService.getProduct(
                 req.params.id,
-                req.user.company_id
+                req.organization.id
             );
             logger.info({ product }, "Product retrieved");
             return ApiResponse.success(
@@ -204,11 +204,11 @@ export class ProductController {
     public static async getCompanyProducts(req: AuthRequest, res: Response) {
         try {
             logger.info({ req: req.query }, "Getting company products");
-            if (!req.user?.company_id) {
+            if (!req.organization) {
                 return ApiResponse.error(
                     res,
                     401,
-                    "Aucune entreprise associée à l'utilisateur"
+                    "Aucune organisation associée à l'utilisateur"
                 );
             }
 
@@ -241,7 +241,7 @@ export class ProductController {
             };
 
             const result = await ProductService.getCompanyProducts(
-                req.user.company_id,
+                req.organization.id,
                 queryParams
             );
             logger.info({ result }, "Company products retrieved");

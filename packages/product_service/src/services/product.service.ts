@@ -7,10 +7,7 @@ import { ProductUnit } from "@zenbilling/shared";
 import { CustomError } from "@zenbilling/shared";
 import { logger } from "@zenbilling/shared";
 import { prisma } from "@zenbilling/shared";
-import {
-    IProduct,
-    VatRate,
-} from "@zenbilling/shared";
+import { IProduct, VatRate } from "@zenbilling/shared";
 import { Prisma, PrismaClient } from "@prisma/client";
 
 export class ProductService {
@@ -49,13 +46,13 @@ export class ProductService {
 
     private static async validateProductName(
         name: string,
-        companyId: string,
+        organizationId: string,
         productId?: string,
         tx: Prisma.TransactionClient | PrismaClient = prisma
     ): Promise<void> {
         const whereClause: any = {
             name,
-            company_id: companyId,
+            organization_id: organizationId,
             ...(productId && { product_id: { not: productId } }),
         };
 
@@ -65,7 +62,7 @@ export class ProductService {
 
         if (existingProduct) {
             throw new CustomError(
-                "Un produit avec ce nom existe déjà dans votre entreprise",
+                "Un produit avec ce nom existe déjà dans votre organisation",
                 409
             );
         }
@@ -73,13 +70,13 @@ export class ProductService {
 
     private static async validateProductAccess(
         productId: string,
-        companyId: string,
+        organizationId: string,
         tx: Prisma.TransactionClient | PrismaClient = prisma
     ): Promise<IProduct> {
         const product = await tx.product.findFirst({
             where: {
                 product_id: productId,
-                company_id: companyId,
+                organization_id: organizationId,
             },
         });
 
@@ -91,17 +88,17 @@ export class ProductService {
     }
 
     public static async createProduct(
-        companyId: string,
+        organizationId: string,
         productData: ICreateProductRequest
     ): Promise<IProduct> {
-        logger.info({ companyId }, "Début de création de produit");
+        logger.info({ organizationId }, "Début de création de produit");
 
         try {
             return await prisma.$transaction(
                 async (tx: Prisma.TransactionClient) => {
                     await this.validateProductName(
                         productData.name,
-                        companyId,
+                        organizationId,
                         undefined,
                         tx
                     );
@@ -110,14 +107,14 @@ export class ProductService {
                         data: {
                             ...productData,
                             unit: productData.unit || "unite",
-                            company_id: companyId,
+                            organization_id: organizationId,
                         },
                     });
 
                     logger.info(
                         {
                             productId: product.product_id,
-                            companyId,
+                            organizationId,
                             name: product.name,
                         },
                         "Produit créé avec succès"
@@ -129,7 +126,7 @@ export class ProductService {
         } catch (error) {
             console.log(error);
             logger.error(
-                { error, companyId },
+                { error, organizationId },
                 "Erreur lors de la création du produit"
             );
             if (error instanceof CustomError) {
@@ -141,11 +138,11 @@ export class ProductService {
 
     public static async updateProduct(
         productId: string,
-        companyId: string,
+        organizationId: string,
         updateData: IUpdateProductRequest
     ): Promise<IProduct> {
         logger.info(
-            { productId, companyId },
+            { productId, organizationId },
             "Début de mise à jour du produit"
         );
 
@@ -154,14 +151,14 @@ export class ProductService {
                 async (tx: Prisma.TransactionClient) => {
                     const product = await this.validateProductAccess(
                         productId,
-                        companyId,
+                        organizationId,
                         tx
                     );
 
                     if (updateData.name && updateData.name !== product.name) {
                         await this.validateProductName(
                             updateData.name,
-                            companyId,
+                            organizationId,
                             productId,
                             tx
                         );
@@ -173,7 +170,7 @@ export class ProductService {
                     });
 
                     logger.info(
-                        { productId, companyId },
+                        { productId, organizationId },
                         "Produit mis à jour avec succès"
                     );
                     return updatedProduct;
@@ -181,7 +178,7 @@ export class ProductService {
             );
         } catch (error) {
             logger.error(
-                { error, productId, companyId },
+                { error, productId, organizationId },
                 "Erreur lors de la mise à jour du produit"
             );
             if (error instanceof CustomError) {
@@ -196,10 +193,10 @@ export class ProductService {
 
     public static async deleteProduct(
         productId: string,
-        companyId: string
+        organizationId: string
     ): Promise<void> {
         logger.info(
-            { productId, companyId },
+            { productId, organizationId },
             "Début de suppression du produit"
         );
 
@@ -222,13 +219,13 @@ export class ProductService {
                 });
 
                 logger.info(
-                    { productId, companyId },
+                    { productId, organizationId },
                     "Produit supprimé avec succès"
                 );
             });
         } catch (error) {
             logger.error(
-                { error, productId, companyId },
+                { error, productId, organizationId },
                 "Erreur lors de la suppression du produit"
             );
             if (error instanceof CustomError) {
@@ -243,14 +240,17 @@ export class ProductService {
 
     public static async getProduct(
         productId: string,
-        companyId: string
+        organizationId: string
     ): Promise<IProduct> {
-        const product = await this.validateProductAccess(productId, companyId);
+        const product = await this.validateProductAccess(
+            productId,
+            organizationId
+        );
         return product;
     }
 
     public static async getCompanyProducts(
-        companyId: string,
+        organizationId: string,
         queryParams: IProductQueryParams = {}
     ): Promise<{ products: IProduct[]; total: number; totalPages: number }> {
         const {
@@ -268,7 +268,7 @@ export class ProductService {
         const offset = (page - 1) * limit;
 
         const whereClause: any = {
-            company_id: companyId,
+            organization_id: organizationId,
             ...(search && {
                 OR: [
                     { name: { contains: search, mode: "insensitive" } },

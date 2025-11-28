@@ -1,6 +1,7 @@
 import { OnboardingStep } from "@prisma/client";
 import { IUser } from "./User.interface";
 import { Request } from "express";
+import { IOrganization } from "./Organization.interface";
 
 export interface ILoginRequest {
     email: string;
@@ -38,4 +39,5 @@ export interface ICookieOptions {
 
 export interface AuthRequest extends Request {
     user?: IUser;
+    organization?: IOrganization;
 }

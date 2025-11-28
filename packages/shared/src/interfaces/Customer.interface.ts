@@ -6,7 +6,7 @@ export type CustomerType = "company" | "individual";
 export interface ICustomer {
     customer_id: string;
     user_id: string;
-    company_id: string;
+    organization_id: string;
     type: CustomerType;
     email: string | null;
     phone: string | null;

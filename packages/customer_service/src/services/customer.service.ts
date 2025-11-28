@@ -11,7 +11,7 @@ import { Prisma, PrismaClient } from "@prisma/client";
 
 export class CustomerService {
     private static async validateUniqueFields(
-        companyId: string,
+        organizationId: string,
         email: string | undefined,
         siret: string | undefined,
         siren: string | undefined,
@@ -22,7 +22,7 @@ export class CustomerService {
             const existingEmail = await tx.customer.findFirst({
                 where: {
                     email,
-                    company_id: companyId,
+                    organization_id: organizationId,
                     ...(customerId && { customer_id: { not: customerId } }),
                 },
             });
@@ -37,7 +37,7 @@ export class CustomerService {
         if (siret) {
             const existingSiret = await tx.customer.findFirst({
                 where: {
-                    company_id: companyId,
+                    organization_id: organizationId,
                     business: {
                         siret: siret,
                         ...(customerId && { customer_id: { not: customerId } }),
@@ -58,7 +58,7 @@ export class CustomerService {
         if (siren) {
             const existingSiren = await tx.customer.findFirst({
                 where: {
-                    company_id: companyId,
+                    organization_id: organizationId,
                     business: {
                         siren: siren,
                         ...(customerId && { customer_id: { not: customerId } }),
@@ -79,16 +79,16 @@ export class CustomerService {
 
     public static async createCustomer(
         userId: string,
-        companyId: string,
+        organizationId: string,
         customerData: ICreateCustomerRequest
     ): Promise<ICustomer> {
-        logger.info({ companyId }, "Début de création de client");
+        logger.info({ organizationId }, "Début de création de client");
 
         try {
             return await prisma.$transaction(
                 async (tx: Prisma.TransactionClient) => {
                     await this.validateUniqueFields(
-                        companyId,
+                        organizationId,
                         customerData.email,
                         customerData.type === "company"
                             ? customerData.business?.siret
@@ -104,7 +104,7 @@ export class CustomerService {
                     const customer = await tx.customer.create({
                         data: {
                             user_id: userId,
-                            company_id: companyId,
+                            organization_id: organizationId,
                             type: customerData.type,
                             email: customerData.email,
                             phone: customerData.phone,
@@ -138,7 +138,7 @@ export class CustomerService {
                     logger.info(
                         {
                             customerId: customer.customer_id,
-                            companyId,
+                            organizationId,
                             type: customerData.type,
                         },
                         "Client créé avec succès"
@@ -149,7 +149,7 @@ export class CustomerService {
             );
         } catch (error) {
             logger.error(
-                { error, companyId },
+                { error, organizationId },
                 "Erreur lors de la création du client"
             );
             if (error instanceof CustomError) {
@@ -161,11 +161,11 @@ export class CustomerService {
 
     public static async updateCustomer(
         customerId: string,
-        companyId: string,
+        organizationId: string,
         updateData: IUpdateCustomerRequest
     ): Promise<ICustomer> {
         logger.info(
-            { customerId, companyId },
+            { customerId, organizationId },
             "Début de mise à jour du client"
         );
 
@@ -175,7 +175,7 @@ export class CustomerService {
                     const customer = await tx.customer.findFirst({
                         where: {
                             customer_id: customerId,
-                            company_id: companyId,
+                            organization_id: organizationId,
                         },
                         include: {
                             business: true,
@@ -188,7 +188,7 @@ export class CustomerService {
                     }
 
                     await this.validateUniqueFields(
-                        companyId,
+                        organizationId,
                         updateData.email,
                         updateData.business?.siret,
                         updateData.business?.siren,
@@ -230,7 +230,7 @@ export class CustomerService {
                     });
 
                     logger.info(
-                        { customerId, companyId },
+                        { customerId, organizationId },
                         "Client mis à jour avec succès"
                     );
                     return updatedCustomer;
@@ -238,7 +238,7 @@ export class CustomerService {
             );
         } catch (error) {
             logger.error(
-                { error, customerId, companyId },
+                { error, customerId, organizationId },
                 "Erreur lors de la mise à jour du client"
             );
             if (error instanceof CustomError) {
@@ -253,10 +253,10 @@ export class CustomerService {
 
     public static async deleteCustomer(
         customerId: string,
-        companyId: string
+        organizationId: string
     ): Promise<void> {
         logger.info(
-            { customerId, companyId },
+            { customerId, organizationId },
             "Début de suppression du client"
         );
 
@@ -265,7 +265,7 @@ export class CustomerService {
                 const customer = await tx.customer.findFirst({
                     where: {
                         customer_id: customerId,
-                        company_id: companyId,
+                        organization_id: organizationId,
                     },
                 });
 
@@ -278,13 +278,13 @@ export class CustomerService {
                 });
 
                 logger.info(
-                    { customerId, companyId },
+                    { customerId, organizationId },
                     "Client supprimé avec succès"
                 );
             });
         } catch (error) {
             logger.error(
-                { error, customerId, companyId },
+                { error, customerId, organizationId },
                 "Erreur lors de la suppression du client"
             );
             if (error instanceof CustomError) {
@@ -299,12 +299,12 @@ export class CustomerService {
 
     public static async getCustomerWithDetails(
         customerId: string,
-        companyId: string
+        organizationId: string
     ): Promise<ICustomer> {
         const customer = await prisma.customer.findFirst({
             where: {
                 customer_id: customerId,
-                company_id: companyId,
+                organization_id: organizationId,
             },
             include: {
                 individual: true,
@@ -320,10 +320,13 @@ export class CustomerService {
     }
 
     public static async getCompanyCustomers(
-        companyId: string,
+        organizationId: string,
         queryParams: ICustomerQueryParams = {}
     ): Promise<{ customers: ICustomer[]; total: number; totalPages: number }> {
-        logger.info({ companyId }, "Récupération des clients de l'entreprise");
+        logger.info(
+            { organizationId },
+            "Récupération des clients de l'entreprise"
+        );
         try {
             const {
                 page = 1,
@@ -336,7 +339,7 @@ export class CustomerService {
 
             const offset = (page - 1) * limit;
             const whereConditions: any = {
-                company_id: companyId,
+                organization_id: organizationId,
                 ...(type && { type }),
                 ...(search && {
                     OR: [
@@ -435,7 +438,7 @@ export class CustomerService {
 
             logger.info(
                 {
-                    companyId,
+                    organizationId,
                     count: total,
                     page: queryParams.page || 1,
                 },
@@ -449,7 +452,7 @@ export class CustomerService {
             };
         } catch (error) {
             logger.error(
-                { error, companyId },
+                { error, organizationId },
                 "Erreur lors de la récupération des clients"
             );
             throw new CustomError(

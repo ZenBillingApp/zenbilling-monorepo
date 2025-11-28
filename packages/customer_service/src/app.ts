@@ -23,5 +23,5 @@ app.use(express.json());
 app.use("/api/customer", customerRoutes);
 
 app.listen(port, () => {
-    console.log(`Example app listening on port ${port}`);
+    console.log(`Customer service listening on port ${port}`);
 });

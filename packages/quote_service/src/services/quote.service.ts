@@ -7,35 +7,31 @@ import { CustomError } from "@zenbilling/shared";
 // import { PdfService } from "./pdf.service";
 // import emailService from "./email.service";
 import { IQuote } from "@zenbilling/shared";
-import {
-    IProduct,
-    vatRateToNumber,
-} from "@zenbilling/shared";
+import { IProduct, vatRateToNumber } from "@zenbilling/shared";
 import { logger } from "@zenbilling/shared";
-import {
-    Prisma,
-    PrismaClient,
-    Decimal,
-} from "@zenbilling/shared";
+import { Prisma, PrismaClient, Decimal } from "@zenbilling/shared";
 import { prisma } from "@zenbilling/shared";
 import axios from "axios";
 
 export class QuoteService {
-    private static generateQuoteNumber(companyId: string, date: Date): string {
+    private static generateQuoteNumber(
+        organizationId: string,
+        date: Date
+    ): string {
         const year = date.getFullYear();
         const month = String(date.getMonth() + 1).padStart(2, "0");
         const random = Math.floor(Math.random() * 1000)
             .toString()
             .padStart(3, "0");
-        const shortId = companyId.substring(0, 6);
+        const shortId = organizationId.substring(0, 6);
         const quoteNumber = `DEVIS-${shortId}-${year}${month}-${random}`;
-        logger.debug({ companyId, quoteNumber }, "Numéro de devis généré");
+        logger.debug({ organizationId, quoteNumber }, "Numéro de devis généré");
         return quoteNumber;
     }
 
     private static async validateProducts(
         productIds: (string | undefined)[],
-        companyId: string,
+        organizationId: string,
         tx: Prisma.TransactionClient | PrismaClient = prisma
     ): Promise<Map<string, IProduct>> {
         const uniqueProductIds = Array.from(new Set(productIds));
@@ -48,7 +44,7 @@ export class QuoteService {
                         (id): id is string => id !== undefined
                     ),
                 },
-                company_id: companyId,
+                organization_id: organizationId,
             },
         });
 
@@ -64,13 +60,13 @@ export class QuoteService {
 
     private static async validateQuoteAccess(
         quoteId: string,
-        companyId: string,
+        organizationId: string,
         tx: Prisma.TransactionClient | PrismaClient = prisma
     ): Promise<IQuote> {
         const quote = await tx.quote.findUnique({
             where: {
                 quote_id: quoteId,
-                company_id: companyId,
+                organization_id: organizationId,
             },
         });
 
@@ -83,10 +79,10 @@ export class QuoteService {
 
     public static async createQuote(
         userId: string,
-        companyId: string,
+        organizationId: string,
         quoteData: ICreateQuoteRequest
     ): Promise<IQuote> {
-        logger.info({ userId, companyId }, "Début de création de devis");
+        logger.info({ userId, organizationId }, "Début de création de devis");
 
         try {
             return await prisma.$transaction(
@@ -100,7 +96,7 @@ export class QuoteService {
 
                     const productsMap = await this.validateProducts(
                         productIds,
-                        companyId,
+                        organizationId,
                         tx
                     );
 
@@ -109,9 +105,9 @@ export class QuoteService {
                         data: {
                             customer_id: quoteData.customer_id,
                             user_id: userId,
-                            company_id: companyId,
+                            organization_id: organizationId,
                             quote_number: this.generateQuoteNumber(
-                                companyId,
+                                organizationId,
                                 new Date(quoteData.quote_date)
                             ),
                             quote_date: quoteData.quote_date,
@@ -169,7 +165,8 @@ export class QuoteService {
                                             const newProduct =
                                                 await tx.product.create({
                                                     data: {
-                                                        company_id: companyId,
+                                                        organization_id:
+                                                            organizationId,
                                                         name: item.name,
                                                         description:
                                                             item.description ||
@@ -221,7 +218,7 @@ export class QuoteService {
                                     individual: true,
                                 },
                             },
-                            company: true,
+                            organization: true,
                         },
                     });
 
@@ -229,7 +226,7 @@ export class QuoteService {
                         {
                             quoteId: quote.quote_id,
                             userId,
-                            companyId,
+                            organizationId,
                             amount: totalExcludingTax.plus(totalTax),
                         },
                         "Devis créé avec succès"
@@ -241,7 +238,7 @@ export class QuoteService {
         } catch (error) {
             console.log(error);
             logger.error(
-                { error, userId, companyId },
+                { error, userId, organizationId },
                 "Erreur lors de la création du devis"
             );
             if (error instanceof CustomError) {
@@ -253,17 +250,20 @@ export class QuoteService {
 
     public static async updateQuote(
         quoteId: string,
-        companyId: string,
+        organizationId: string,
         updateData: IUpdateQuoteRequest
     ): Promise<IQuote> {
-        logger.info({ quoteId, companyId }, "Début de mise à jour du devis");
+        logger.info(
+            { quoteId, organizationId },
+            "Début de mise à jour du devis"
+        );
 
         try {
             return await prisma.$transaction(
                 async (tx: Prisma.TransactionClient) => {
                     const quote = await this.validateQuoteAccess(
                         quoteId,
-                        companyId,
+                        organizationId,
                         tx
                     );
 
@@ -303,12 +303,12 @@ export class QuoteService {
                                     individual: true,
                                 },
                             },
-                            company: true,
+                            organization: true,
                         },
                     });
 
                     logger.info(
-                        { quoteId, companyId },
+                        { quoteId, organizationId },
                         "Devis mis à jour avec succès"
                     );
                     return updatedQuote as IQuote;
@@ -316,7 +316,7 @@ export class QuoteService {
             );
         } catch (error) {
             logger.error(
-                { error, quoteId, companyId },
+                { error, quoteId, organizationId },
                 "Erreur lors de la mise à jour du devis"
             );
             if (error instanceof CustomError) {
@@ -331,12 +331,12 @@ export class QuoteService {
 
     public static async getQuoteWithDetails(
         quoteId: string,
-        companyId: string
+        organizationId: string
     ): Promise<IQuote> {
         const quote = await prisma.quote.findUnique({
             where: {
                 quote_id: quoteId,
-                company_id: companyId,
+                organization_id: organizationId,
             },
             include: {
                 items: {
@@ -350,7 +350,7 @@ export class QuoteService {
                         individual: true,
                     },
                 },
-                company: true,
+                organization: true,
                 user: true,
             },
         });
@@ -364,15 +364,18 @@ export class QuoteService {
 
     public static async deleteQuote(
         quoteId: string,
-        companyId: string
+        organizationId: string
     ): Promise<void> {
-        logger.info({ quoteId, companyId }, "Début de suppression du devis");
+        logger.info(
+            { quoteId, organizationId },
+            "Début de suppression du devis"
+        );
 
         try {
             await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
                 const quote = await this.validateQuoteAccess(
                     quoteId,
-                    companyId,
+                    organizationId,
                     tx
                 );
 
@@ -388,13 +391,13 @@ export class QuoteService {
                 });
 
                 logger.info(
-                    { quoteId, companyId },
+                    { quoteId, organizationId },
                     "Devis supprimé avec succès"
                 );
             });
         } catch (error) {
             logger.error(
-                { error, quoteId, companyId },
+                { error, quoteId, organizationId },
                 "Erreur lors de la suppression du devis"
             );
             if (error instanceof CustomError) {
@@ -408,7 +411,7 @@ export class QuoteService {
     }
 
     public static async getCompanyQuotes(
-        companyId: string,
+        organizationId: string,
         queryParams: IQuoteQueryParams = {}
     ): Promise<{
         quotes: IQuote[];
@@ -438,7 +441,7 @@ export class QuoteService {
         } = queryParams;
 
         const offset = (page - 1) * limit;
-        const whereClause: any = { company_id: companyId };
+        const whereClause: any = { organization_id: organizationId };
 
         if (status) {
             whereClause.status = status;
@@ -537,7 +540,7 @@ export class QuoteService {
                             individual: true,
                         },
                     },
-                    company: true,
+                    organization: true,
                     user: true,
                 },
                 orderBy: {
@@ -551,7 +554,7 @@ export class QuoteService {
 
         const totalPages = Math.ceil(total / limit);
 
-        const companyWhereClause = { company_id: companyId };
+        const organizationWhereClause = { organization_id: organizationId };
         const [
             draftCount,
             sentCount,
@@ -562,36 +565,36 @@ export class QuoteService {
         ] = await prisma.$transaction([
             prisma.quote.count({
                 where: {
-                    ...companyWhereClause,
+                    ...organizationWhereClause,
                     status: "draft",
                 },
             }),
             prisma.quote.count({
                 where: {
-                    ...companyWhereClause,
+                    ...organizationWhereClause,
                     status: "sent",
                 },
             }),
             prisma.quote.count({
                 where: {
-                    ...companyWhereClause,
+                    ...organizationWhereClause,
                     status: "accepted",
                 },
             }),
             prisma.quote.count({
                 where: {
-                    ...companyWhereClause,
+                    ...organizationWhereClause,
                     status: "rejected",
                 },
             }),
             prisma.quote.count({
                 where: {
-                    ...companyWhereClause,
+                    ...organizationWhereClause,
                     status: "expired",
                 },
             }),
             prisma.quote.count({
-                where: companyWhereClause,
+                where: organizationWhereClause,
             }),
         ]);
 
@@ -612,16 +615,19 @@ export class QuoteService {
 
     public static async sendQuoteByEmail(
         quoteId: string,
-        companyId: string,
+        organizationId: string,
         user: any
     ): Promise<void> {
         logger.info(
-            { quoteId, companyId, userId: user.id },
+            { quoteId, organizationId, userId: user.id },
             "Début d'envoi de devis par email"
         );
         try {
             // Récupérer le devis avec tous les détails
-            const quote = await this.getQuoteWithDetails(quoteId, companyId);
+            const quote = await this.getQuoteWithDetails(
+                quoteId,
+                organizationId
+            );
             if (!quote.customer?.email) {
                 throw new CustomError("Le client n'a pas d'adresse email", 400);
             }
@@ -631,7 +637,7 @@ export class QuoteService {
                 `${process.env.PDF_SERVICE_URL}/api/pdf/quote`,
                 {
                     quote: quote,
-                    company: quote.company,
+                    organization: quote.organization,
                 },
                 {
                     responseType: "arraybuffer",
@@ -660,19 +666,31 @@ export class QuoteService {
                 <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
                     <div style="text-align: center; margin-bottom: 30px;">
                         <h1 style="color: #333; margin-bottom: 10px;">Devis</h1>
-                        <p style="color: #666; font-size: 16px;">Devis n° ${quote.quote_number}</p>
+                        <p style="color: #666; font-size: 16px;">Devis n° ${
+                            quote.quote_number
+                        }</p>
                     </div>
 
                     <div style="background-color: #f8f9fa; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
                         <p style="margin: 0 0 10px 0;"><strong>Bonjour ${customerName},</strong></p>
-                        <p style="margin: 0 0 15px 0;">Veuillez trouver ci-joint votre devis n° ${quote.quote_number} d'un montant de <strong>${Number(quote.amount_including_tax).toFixed(2)} €</strong>.</p>
-                        <p style="margin: 0 0 10px 0;"><strong>Date de validité :</strong> ${new Date(quote.validity_date).toLocaleDateString("fr-FR")}</p>
+                        <p style="margin: 0 0 15px 0;">Veuillez trouver ci-joint votre devis n° ${
+                            quote.quote_number
+                        } d'un montant de <strong>${Number(
+                quote.amount_including_tax
+            ).toFixed(2)} €</strong>.</p>
+                        <p style="margin: 0 0 10px 0;"><strong>Date de validité :</strong> ${new Date(
+                            quote.validity_date
+                        ).toLocaleDateString("fr-FR")}</p>
                     </div>
 
                     <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #ddd;">
                         <p style="margin: 0 0 5px 0;">Cordialement,</p>
-                        <p style="margin: 0; font-weight: bold;">${user.first_name} ${user.last_name}</p>
-                        <p style="margin: 5px 0 0 0; color: #666;">${quote.company?.name}</p>
+                        <p style="margin: 0; font-weight: bold;">${
+                            user.first_name
+                        } ${user.last_name}</p>
+                        <p style="margin: 5px 0 0 0; color: #666;">${
+                            quote.organization?.name
+                        }</p>
                     </div>
                 </div>
             `;
@@ -684,15 +702,15 @@ export class QuoteService {
                     to: [quote.customer.email],
                     subject: `Devis ${quote.quote_number}`,
                     html: htmlContent,
-                    attachment: pdfBuffer.toString('base64'),
-                    filename: `devis-${quote.quote_number}.pdf`
+                    attachment: pdfBuffer.toString("base64"),
+                    filename: `devis-${quote.quote_number}.pdf`,
                 },
                 {
                     headers: {
                         "Content-Type": "application/json",
                     },
                     maxBodyLength: Infinity,
-                    maxContentLength: Infinity
+                    maxContentLength: Infinity,
                 }
             );
 
@@ -707,7 +725,7 @@ export class QuoteService {
             logger.info(
                 {
                     quoteId,
-                    companyId,
+                    organizationId,
                     userId: user.id,
                     customerEmail: quote.customer?.email,
                 },
@@ -718,7 +736,7 @@ export class QuoteService {
                 {
                     error,
                     quoteId,
-                    companyId,
+                    organizationId,
                     userId: user.id,
                 },
                 "Erreur lors de l'envoi du devis par email"
@@ -769,11 +787,11 @@ export class QuoteService {
 
     public static async getCustomerQuotes(
         customerId: string,
-        companyId: string,
+        organizationId: string,
         queryParams: IQuoteQueryParams = {}
     ): Promise<{ quotes: IQuote[]; total: number; totalPages: number }> {
         logger.info(
-            { customerId, companyId },
+            { customerId, organizationId },
             "Récupération des devis du client"
         );
         try {
@@ -793,7 +811,7 @@ export class QuoteService {
             const offset = (page - 1) * limit;
             const whereConditions: any = {
                 customer_id: customerId,
-                company_id: companyId,
+                organization_id: organizationId,
                 ...(status && { status }),
                 ...(start_date && {
                     quote_date: {
@@ -860,7 +878,7 @@ export class QuoteService {
             logger.info(
                 {
                     customerId,
-                    companyId,
+                    organizationId,
                     count: total,
                     page: queryParams.page || 1,
                 },
@@ -874,7 +892,7 @@ export class QuoteService {
             };
         } catch (error) {
             logger.error(
-                { error, customerId, companyId },
+                { error, customerId, organizationId },
                 "Erreur lors de la récupération des devis du client"
             );
             throw new CustomError(

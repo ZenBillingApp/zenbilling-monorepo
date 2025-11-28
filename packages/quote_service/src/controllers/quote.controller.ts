@@ -11,17 +11,17 @@ export class QuoteController {
     public static async createQuote(req: AuthRequest, res: Response) {
         try {
             logger.info({ req: req.body }, "Creating quote");
-            if (!req.user?.company_id) {
+            if (!req.organization) {
                 return ApiResponse.error(
                     res,
                     401,
-                    "Aucune entreprise associée à l'utilisateur"
+                    "Aucune organisation associée à l'utilisateur"
                 );
             }
 
             const quote = await QuoteService.createQuote(
-                req.user.id,
-                req.user.company_id,
+                req.user!.id,
+                req.organization.id,
                 req.body
             );
             logger.info({ quote }, "Quote created");
@@ -43,17 +43,17 @@ export class QuoteController {
     public static async updateQuote(req: AuthRequest, res: Response) {
         try {
             logger.info({ req: req.body }, "Updating quote");
-            if (!req.user?.company_id) {
+            if (!req.organization) {
                 return ApiResponse.error(
                     res,
                     401,
-                    "Aucune entreprise associée à l'utilisateur"
+                    "Aucune organisation associée à l'utilisateur"
                 );
             }
 
             const quote = await QuoteService.updateQuote(
                 req.params.id,
-                req.user.company_id,
+                req.organization.id,
                 req.body
             );
             logger.info({ quote }, "Quote updated");
@@ -75,15 +75,18 @@ export class QuoteController {
     public static async deleteQuote(req: AuthRequest, res: Response) {
         try {
             logger.info({ req: req.params }, "Deleting quote");
-            if (!req.user?.company_id) {
+            if (!req.organization) {
                 return ApiResponse.error(
                     res,
                     401,
-                    "Aucune entreprise associée à l'utilisateur"
+                    "Aucune organisation associée à l'utilisateur"
                 );
             }
 
-            await QuoteService.deleteQuote(req.params.id, req.user.company_id);
+            await QuoteService.deleteQuote(
+                req.params.id,
+                req.organization.id as string
+            );
             logger.info("Quote deleted");
             return ApiResponse.success(res, 200, "Devis supprimé avec succès");
         } catch (error) {
@@ -98,17 +101,17 @@ export class QuoteController {
     public static async getQuote(req: AuthRequest, res: Response) {
         try {
             logger.info({ req: req.params }, "Getting quote");
-            if (!req.user?.company_id) {
+            if (!req.organization) {
                 return ApiResponse.error(
                     res,
                     401,
-                    "Aucune entreprise associée à l'utilisateur"
+                    "Aucune organisation associée à l'utilisateur"
                 );
             }
 
             const quote = await QuoteService.getQuoteWithDetails(
                 req.params.id,
-                req.user.company_id
+                req.organization.id as string
             );
 
             return ApiResponse.success(
@@ -129,11 +132,11 @@ export class QuoteController {
     public static async getCompanyQuotes(req: AuthRequest, res: Response) {
         try {
             logger.info({ req: req.query }, "Getting company quotes");
-            if (!req.user?.company_id) {
+            if (!req.organization) {
                 return ApiResponse.error(
                     res,
                     401,
-                    "Aucune entreprise associée à l'utilisateur"
+                    "Aucune organisation associée à l'utilisateur"
                 );
             }
 
@@ -173,7 +176,7 @@ export class QuoteController {
             };
 
             const result = await QuoteService.getCompanyQuotes(
-                req.user.company_id,
+                req.organization.id,
                 queryParams
             );
             logger.info({ result }, "Company quotes retrieved");
@@ -208,22 +211,22 @@ export class QuoteController {
             logger.info({ req: req.params }, "Downloading quote pdf");
             const quoteId = req.params.id;
 
-            if (!req.user?.company_id) {
+            if (!req.organization) {
                 return ApiResponse.error(
                     res,
                     401,
-                    "Aucune entreprise associée à l'utilisateur"
+                    "Aucune organisation associée à l'utilisateur"
                 );
             }
 
             const quote = await QuoteService.getQuoteWithDetails(
                 quoteId,
-                req.user.company_id
+                req.organization.id
             );
             logger.info({ quote }, "Quote retrieved");
 
             // Vérifier que l'utilisateur a accès à ce devis
-            if (quote.company_id !== req.user?.company_id) {
+            if (quote.organization_id !== req.organization.id) {
                 return ApiResponse.error(
                     res,
                     403,
@@ -235,7 +238,7 @@ export class QuoteController {
                 `${process.env.PDF_SERVICE_URL}/api/pdf/quote`,
                 {
                     quote: quote,
-                    company: quote.company,
+                    organization: quote.organization,
                 },
                 {
                     responseType: "arraybuffer",
@@ -265,28 +268,28 @@ export class QuoteController {
     public static async sendQuoteByEmail(req: AuthRequest, res: Response) {
         try {
             logger.info({ req: req.params }, "Envoi de devis par email");
-            if (!req.user?.company_id) {
+            if (!req.organization) {
                 return ApiResponse.error(
                     res,
                     401,
-                    "Aucune entreprise associée à l'utilisateur"
+                    "Aucune organisation associée à l'utilisateur"
                 );
             }
 
             await QuoteService.sendQuoteByEmail(
                 req.params.id,
-                req.user.company_id,
+                req.organization.id as string,
                 req.user
             );
 
             logger.info(
                 {
                     quoteId: req.params.id,
-                    userId: req.user.id,
+                    userId: req.user!.id,
                 },
                 "Devis envoyé par email avec succès"
             );
-            
+
             return ApiResponse.success(
                 res,
                 200,
@@ -313,11 +316,11 @@ export class QuoteController {
                 { req: req.params, query: req.query },
                 "Récupération des devis du client"
             );
-            if (!req.user?.company_id) {
+            if (!req.organization) {
                 return ApiResponse.error(
                     res,
                     401,
-                    "Aucune entreprise associée à l'utilisateur"
+                    "Aucune organisation associée à l'utilisateur"
                 );
             }
 
@@ -344,7 +347,7 @@ export class QuoteController {
 
             const result = await QuoteService.getCustomerQuotes(
                 req.params.customerId,
-                req.user.company_id,
+                req.organization!.id,
                 queryParams
             );
 

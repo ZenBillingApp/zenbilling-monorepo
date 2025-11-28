@@ -1,20 +1,19 @@
 import stripe from "../libs/stripe";
-import { logger } from "@zenbilling/shared";
+import { logger, IOrganization } from "@zenbilling/shared";
 
 export class StripeService {
     /**
      * Crée un compte Connect pour un utilisateur
-     * @param email Email de l'utilisateur
-     * @param businessName Nom de l'entreprise
+     * @param organization Organisation
      */
-    async createConnectAccount(email: string, businessName: string) {
+    async createConnectAccount(organization: IOrganization) {
         try {
             const account = await stripe.accounts.create({
                 type: "express",
-                email,
+                email: organization.email,
                 business_type: "company",
                 company: {
-                    name: businessName,
+                    name: organization.name,
                 },
                 capabilities: {
                     card_payments: { requested: true },
@@ -24,7 +23,10 @@ export class StripeService {
 
             return account;
         } catch (error) {
-            logger.error({ err: error }, "Error creating Stripe Connect account");
+            logger.error(
+                { err: error },
+                "Error creating Stripe Connect account"
+            );
             throw error;
         }
     }
@@ -64,7 +66,10 @@ export class StripeService {
             const account = await stripe.accounts.retrieve(accountId);
             return account;
         } catch (error) {
-            logger.error({ err: error }, "Error retrieving Stripe Connect account");
+            logger.error(
+                { err: error },
+                "Error retrieving Stripe Connect account"
+            );
             throw error;
         }
     }

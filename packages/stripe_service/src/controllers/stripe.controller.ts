@@ -19,38 +19,27 @@ import {
 
 export const createConnectAccount = async (req: AuthRequest, res: Response) => {
     try {
-        const userId = req.user?.id;
+        const organization = req.organization;
 
-        // Vérifier si l'utilisateur existe
-        const user = await prisma.user.findUnique({
-            where: { id: userId },
-            include: { Company: true },
-        });
-
-        if (!user) {
-            return ApiResponse.error(res, 404, "Utilisateur non trouvé");
+        if (!organization) {
+            return ApiResponse.error(res, 404, "Organisation non trouvée");
         }
 
         // Vérifier si l'utilisateur a déjà un compte Stripe Connect
-        if (user.stripe_account_id) {
+        if (organization.stripe_account_id) {
             return ApiResponse.error(
                 res,
                 400,
-                "L'utilisateur a déjà un compte Stripe Connect"
+                "L'organisation a déjà un compte Stripe Connect"
             );
         }
 
         // Créer un compte Stripe Connect
-        const businessName =
-            user.Company?.name || `${user.first_name} ${user.last_name}`;
-        const account = await stripeService.createConnectAccount(
-            user.email,
-            businessName
-        );
+        const account = await stripeService.createConnectAccount(organization);
 
         // Mettre à jour l'utilisateur avec l'ID du compte Stripe
-        await prisma.user.update({
-            where: { id: userId },
+        await prisma.organization.update({
+            where: { id: organization.id },
             data: { stripe_account_id: account.id },
         });
 
@@ -63,7 +52,10 @@ export const createConnectAccount = async (req: AuthRequest, res: Response) => {
             response
         );
     } catch (error) {
-        logger.error({ err: error }, "Erreur lors de la création du compte Stripe Connect");
+        logger.error(
+            { err: error },
+            "Erreur lors de la création du compte Stripe Connect"
+        );
         return ApiResponse.error(
             res,
             500,
@@ -74,30 +66,26 @@ export const createConnectAccount = async (req: AuthRequest, res: Response) => {
 
 export const createAccountLink = async (req: AuthRequest, res: Response) => {
     try {
-        const userId = req.user?.id;
+        const organization = req.organization;
         const { refreshUrl, returnUrl }: CreateAccountLinkRequest = req.body;
 
         // Vérifier si l'utilisateur existe
-        const user = await prisma.user.findUnique({
-            where: { id: userId },
-        });
-
-        if (!user) {
-            return ApiResponse.error(res, 404, "Utilisateur non trouvé");
+        if (!organization) {
+            return ApiResponse.error(res, 404, "Organisation non trouvée");
         }
 
         // Vérifier si l'utilisateur a un compte Stripe Connect
-        if (!user.stripe_account_id) {
+        if (!organization.stripe_account_id) {
             return ApiResponse.error(
                 res,
                 400,
-                "L'utilisateur n'a pas de compte Stripe Connect"
+                "L'organisation n'a pas de compte Stripe Connect"
             );
         }
 
         // Créer un lien d'onboarding
         const accountLink = await stripeService.createAccountLink(
-            user.stripe_account_id,
+            organization.stripe_account_id,
             refreshUrl,
             returnUrl
         );
@@ -111,7 +99,10 @@ export const createAccountLink = async (req: AuthRequest, res: Response) => {
             response
         );
     } catch (error) {
-        logger.error({ err: error }, "Erreur lors de la création du lien Stripe");
+        logger.error(
+            { err: error },
+            "Erreur lors de la création du lien Stripe"
+        );
         return ApiResponse.error(
             res,
             500,
@@ -122,30 +113,25 @@ export const createAccountLink = async (req: AuthRequest, res: Response) => {
 
 export const getAccountStatus = async (req: AuthRequest, res: Response) => {
     try {
-        const userId = req.user?.id;
+        const organization = req.organization;
 
         // Vérifier si l'utilisateur existe
-        const user = await prisma.user.findUnique({
-            where: { id: userId },
-            include: { Company: true },
-        });
-
-        if (!user) {
-            return ApiResponse.error(res, 404, "Utilisateur non trouvé");
+        if (!organization) {
+            return ApiResponse.error(res, 404, "Organisation non trouvée");
         }
 
         // Vérifier si l'utilisateur a un compte Stripe Connect
-        if (!user.stripe_account_id) {
+        if (!organization.stripe_account_id) {
             return ApiResponse.error(
                 res,
                 400,
-                "L'utilisateur n'a pas de compte Stripe Connect"
+                "L'organisation n'a pas de compte Stripe Connect"
             );
         }
 
         // Récupérer les détails du compte
         const account = await stripeService.retrieveConnectAccount(
-            user.stripe_account_id
+            organization.stripe_account_id
         );
 
         // Vérifier si l'onboarding est terminé
@@ -153,16 +139,16 @@ export const getAccountStatus = async (req: AuthRequest, res: Response) => {
             account.details_submitted && account.payouts_enabled;
 
         // Mettre à jour le statut d'onboarding dans la base de données si nécessaire
-        if (isOnboarded !== user.stripe_onboarded) {
+        if (isOnboarded !== organization.stripe_onboarded) {
             await prisma.user.update({
-                where: { id: userId },
+                where: { id: organization.id },
                 data: { stripe_onboarded: isOnboarded },
             });
         }
 
         const response: AccountStatusResponse = {
             isOnboarded,
-            accountId: user.stripe_account_id,
+            accountId: organization.stripe_account_id,
             details: {
                 chargesEnabled: account.charges_enabled,
                 payoutsEnabled: account.payouts_enabled,
@@ -178,7 +164,10 @@ export const getAccountStatus = async (req: AuthRequest, res: Response) => {
             response
         );
     } catch (error) {
-        logger.error({ err: error }, "Erreur lors de la récupération du statut du compte Stripe");
+        logger.error(
+            { err: error },
+            "Erreur lors de la récupération du statut du compte Stripe"
+        );
         return ApiResponse.error(
             res,
             500,
@@ -189,12 +178,12 @@ export const getAccountStatus = async (req: AuthRequest, res: Response) => {
 
 export const createPayment = async (req: AuthRequest, res: Response) => {
     try {
-        const userId = req.user?.id;
+        const organization = req.organization;
         const { amount, description, invoiceId }: CreatePaymentRequest =
             req.body;
 
         // Vérifier que tous les champs nécessaires sont présents
-        if (!amount || !description || !userId || !invoiceId) {
+        if (!amount || !description || !organization.id || !invoiceId) {
             return ApiResponse.error(
                 res,
                 400,
@@ -203,20 +192,16 @@ export const createPayment = async (req: AuthRequest, res: Response) => {
         }
 
         // Vérifier si l'utilisateur existe
-        const user = await prisma.user.findUnique({
-            where: { id: userId },
-        });
-
-        if (!user) {
-            return ApiResponse.error(res, 404, "Utilisateur non trouvé");
+        if (!organization) {
+            return ApiResponse.error(res, 404, "Organisation non trouvée");
         }
 
         // Vérifier si l'utilisateur a un compte Stripe Connect
-        if (!user.stripe_account_id || !user.stripe_onboarded) {
+        if (!organization.stripe_account_id || !organization.stripe_onboarded) {
             return ApiResponse.error(
                 res,
                 400,
-                "L'utilisateur n'a pas de compte Stripe Connect configuré"
+                "L'organisation n'a pas de compte Stripe Connect configuré"
             );
         }
 
@@ -228,7 +213,7 @@ export const createPayment = async (req: AuthRequest, res: Response) => {
             amount,
             "eur",
             description,
-            user.stripe_account_id,
+            organization.stripe_account_id,
             applicationFeeAmount
         );
 
@@ -253,7 +238,10 @@ export const createPayment = async (req: AuthRequest, res: Response) => {
     }
 };
 
-export const createCheckoutSession = async (req: AuthRequest, res: Response) => {
+export const createCheckoutSession = async (
+    req: AuthRequest,
+    res: Response
+) => {
     try {
         const {
             amount,
@@ -264,11 +252,19 @@ export const createCheckoutSession = async (req: AuthRequest, res: Response) => 
             invoiceId,
             customerEmail,
             successUrl,
-            cancelUrl
+            cancelUrl,
         } = req.body;
 
         // Vérifier que tous les champs nécessaires sont présents
-        if (!amount || !description || !connectedAccountId || !invoiceId || !customerEmail || !successUrl || !cancelUrl) {
+        if (
+            !amount ||
+            !description ||
+            !connectedAccountId ||
+            !invoiceId ||
+            !customerEmail ||
+            !successUrl ||
+            !cancelUrl
+        ) {
             return ApiResponse.error(
                 res,
                 400,
@@ -295,11 +291,14 @@ export const createCheckoutSession = async (req: AuthRequest, res: Response) => 
             "Session de paiement créée avec succès",
             {
                 sessionId: session.id,
-                url: session.url
+                url: session.url,
             }
         );
     } catch (error) {
-        logger.error({ err: error }, "Erreur lors de la création de la session de paiement");
+        logger.error(
+            { err: error },
+            "Erreur lors de la création de la session de paiement"
+        );
         return ApiResponse.error(
             res,
             500,
@@ -455,28 +454,24 @@ export const createCheckoutSession = async (req: AuthRequest, res: Response) => 
 
 export const createDashboardLink = async (req: AuthRequest, res: Response) => {
     try {
-        const userId = req.user?.id;
+        const organization = req.organization;
 
         // Vérifier si l'utilisateur existe
-        const user = await prisma.user.findUnique({
-            where: { id: userId },
-        });
-
-        if (!user) {
-            return ApiResponse.error(res, 404, "Utilisateur non trouvé");
+        if (!organization) {
+            return ApiResponse.error(res, 404, "Organisation non trouvée");
         }
 
         // Vérifier si l'utilisateur a un compte Stripe Connect
-        if (!user.stripe_account_id) {
+        if (!organization.stripe_account_id) {
             return ApiResponse.error(
                 res,
                 400,
-                "L'utilisateur n'a pas de compte Stripe Connect"
+                "L'organisation n'a pas de compte Stripe Connect"
             );
         }
 
         // Vérifier si le compte est correctement configuré
-        if (!user.stripe_onboarded) {
+        if (!organization.stripe_onboarded) {
             return ApiResponse.error(
                 res,
                 400,
@@ -486,7 +481,7 @@ export const createDashboardLink = async (req: AuthRequest, res: Response) => {
 
         // Générer le lien de connexion au dashboard Stripe
         const loginLink = await stripeService.createLoginLink(
-            user.stripe_account_id
+            organization.stripe_account_id
         );
 
         const response: DashboardLinkResponse = { url: loginLink.url };
@@ -498,7 +493,10 @@ export const createDashboardLink = async (req: AuthRequest, res: Response) => {
             response
         );
     } catch (error) {
-        logger.error({ err: error }, "Erreur lors de la génération du lien vers le dashboard Stripe");
+        logger.error(
+            { err: error },
+            "Erreur lors de la génération du lien vers le dashboard Stripe"
+        );
         return ApiResponse.error(
             res,
             500,
@@ -509,31 +507,27 @@ export const createDashboardLink = async (req: AuthRequest, res: Response) => {
 
 export const skipStripeSetup = async (req: AuthRequest, res: Response) => {
     try {
-        const userId = req.user?.id;
+        const organization = req.organization;
 
         // Vérifier si l'utilisateur existe
-        const user = await prisma.user.findUnique({
-            where: { id: userId },
-        });
-
-        if (!user) {
-            return ApiResponse.error(res, 404, "Utilisateur non trouvé");
+        if (!organization) {
+            return ApiResponse.error(res, 404, "Organisation non trouvée");
         }
 
         // Vérifier que l'utilisateur est bien à l'étape STRIPE_SETUP
-        if (user.onboarding_step !== "STRIPE_SETUP") {
+        if (organization.onboarding_step !== "STRIPE_SETUP") {
             return ApiResponse.error(
                 res,
                 400,
-                "L'utilisateur n'est pas à l'étape de configuration Stripe"
+                "L'organisation n'est pas à l'étape de configuration Stripe"
             );
         }
 
         // Mettre à jour l'utilisateur pour terminer l'onboarding
-        await prisma.user.update({
-            where: { id: userId },
+        await prisma.organization.update({
+            where: { id: organization.id },
             data: {
-                onboarding_step: "FINISH",
+                stripe_onboarded: true,
             },
         });
 
@@ -549,7 +543,10 @@ export const skipStripeSetup = async (req: AuthRequest, res: Response) => {
             response
         );
     } catch (error) {
-        logger.error({ err: error }, "Erreur lors du report de la configuration Stripe");
+        logger.error(
+            { err: error },
+            "Erreur lors du report de la configuration Stripe"
+        );
         return ApiResponse.error(
             res,
             500,

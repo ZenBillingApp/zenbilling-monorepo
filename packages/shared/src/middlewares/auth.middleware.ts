@@ -4,9 +4,11 @@ import { IUser } from "../interfaces/User.interface";
 import { ApiResponse } from "../utils/apiResponse";
 import logger from "../utils/logger";
 import prisma from "../lib/prisma";
+import { IFullOrganization } from "../interfaces/Organization.interface";
 
 interface AuthRequest extends Request {
     user?: IUser;
+    organization?: IFullOrganization;
 }
 
 export async function authMiddleware(
@@ -52,6 +54,20 @@ export async function authMiddleware(
             return;
         }
 
+        const organization = await auth.api.getFullOrganization({
+            headers: req.headers as any,
+        });
+
+        if (!organization) {
+            logger.warn("Organization not found");
+            ApiResponse.error(
+                res,
+                401,
+                "Non autorisé - Organisation introuvable"
+            );
+            return;
+        }
+        (req as AuthRequest).organization = organization as IFullOrganization;
         (req as AuthRequest).user = user;
 
         logger.info(

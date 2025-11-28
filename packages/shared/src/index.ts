@@ -19,6 +19,7 @@ export * from "./interfaces/dashboard.interface";
 export * from "./interfaces/InvoiceItem.interface";
 export * from "./interfaces/Invoice.interface";
 export * from "./interfaces/Invoice.request.interface";
+export * from "./interfaces/Organization.interface";
 
 // Export des utilitaires
 export { ApiResponse } from "./utils/apiResponse";

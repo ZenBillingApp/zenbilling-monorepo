@@ -156,11 +156,11 @@ export class InvoiceController {
     public static async getCompanyInvoices(req: AuthRequest, res: Response) {
         try {
             logger.info({ req: req.query }, "Getting company invoices");
-            if (!req.user?.company_id) {
+            if (!req.organization) {
                 return ApiResponse.error(
                     res,
                     401,
-                    "Aucune entreprise associée à l'utilisateur"
+                    "Aucune organisation associée à l'utilisateur"
                 );
             }
 
@@ -194,7 +194,7 @@ export class InvoiceController {
             };
 
             const result = await InvoiceService.getCompanyInvoices(
-                req.user.company_id,
+                req.organization.id,
                 queryParams
             );
             logger.info({ result }, "Company invoices retrieved");

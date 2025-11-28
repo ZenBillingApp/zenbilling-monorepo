@@ -428,8 +428,8 @@ export class InvoiceController {
 
             await InvoiceService.sendInvoiceWithPaymentLink(
                 req.params.id,
-                req.organization.id,
-                req.user,
+                req.organization,
+                req.user!,
                 { successUrl, cancelUrl }
             );
 

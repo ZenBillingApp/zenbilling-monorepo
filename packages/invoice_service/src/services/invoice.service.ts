@@ -1,17 +1,23 @@
 import {
+    logger,
+    prisma,
+    IOrganization,
+    IUser,
+    Prisma,
+    PrismaClient,
+    Decimal,
+    IProduct,
+    ProductUnit,
+    vatRateToNumber,
+    IPayment,
+    CustomError,
+    IInvoice,
     ICreateInvoiceRequest,
     IUpdateInvoiceRequest,
     ICreatePaymentRequest,
     IInvoiceQueryParams,
     ISendInvoiceWithPaymentLinkRequest,
 } from "@zenbilling/shared";
-import { IInvoice } from "@zenbilling/shared";
-import { CustomError } from "@zenbilling/shared";
-import { logger } from "@zenbilling/shared";
-import { prisma } from "@zenbilling/shared";
-import { IProduct, ProductUnit, vatRateToNumber } from "@zenbilling/shared";
-import { IPayment } from "@zenbilling/shared";
-import { Prisma, PrismaClient, Decimal } from "@zenbilling/shared";
 import axios from "axios";
 
 export class InvoiceService {
@@ -821,19 +827,24 @@ export class InvoiceService {
 
     public static async sendInvoiceWithPaymentLink(
         invoiceId: string,
-        organizationId: string,
-        user: any,
+        organization: IOrganization,
+        user: IUser,
         options: { successUrl?: string; cancelUrl?: string }
     ): Promise<void> {
         logger.info(
-            { invoiceId, organizationId, userId: user.id, options },
+            {
+                invoiceId,
+                organizationId: organization.id,
+                userId: user.id,
+                options,
+            },
             "Début d'envoi de facture par email avec lien de paiement"
         );
         try {
             // Récupérer la facture avec tous les détails
             const invoice = await this.getInvoiceWithDetails(
                 invoiceId,
-                organizationId
+                organization.id
             );
             if (!invoice.customer?.email) {
                 throw new CustomError("Le client n'a pas d'adresse email", 400);
@@ -873,7 +884,10 @@ export class InvoiceService {
             // Créer le lien de paiement Stripe si demandé
             if (options.successUrl && options.cancelUrl) {
                 // Vérifier que l'utilisateur a un compte Stripe configuré
-                if (!user.stripe_account_id || !user.stripe_onboarded) {
+                if (
+                    !organization.stripe_account_id ||
+                    !organization.stripe_onboarded
+                ) {
                     throw new CustomError(
                         "Le compte Stripe n'est pas configuré. Veuillez compléter votre configuration Stripe.",
                         400
@@ -889,7 +903,7 @@ export class InvoiceService {
                         ), // Convertir en centimes
                         currency: "eur",
                         description: `Facture ${invoice.invoice_number}`,
-                        connectedAccountId: user.stripe_account_id,
+                        connectedAccountId: organization.stripe_account_id,
                         applicationFeeAmount: Math.round(
                             Number(invoice.amount_including_tax) * 100 * 0.029
                         ), // 2.9% de frais
@@ -905,11 +919,7 @@ export class InvoiceService {
                     }
                 );
 
-                console.log("stripeResponse", stripeResponse.data);
-
                 paymentLink = stripeResponse.data.data.url;
-
-                console.log("paymentLink", paymentLink);
             }
 
             // Préparer le contenu HTML de l'email
@@ -994,7 +1004,7 @@ export class InvoiceService {
             logger.info(
                 {
                     invoiceId,
-                    organizationId,
+                    organizationId: organization.id,
                     userId: user.id,
                     customerEmail: invoice.customer?.email,
                     paymentLinkCreated: !!paymentLink,
@@ -1006,7 +1016,7 @@ export class InvoiceService {
                 {
                     error,
                     invoiceId,
-                    organizationId,
+                    organizationId: organization.id,
                     userId: user.id,
                 },
                 "Erreur lors de l'envoi de la facture par email avec lien de paiement"

@@ -38,6 +38,7 @@ export { authMiddleware } from "./middlewares/auth.middleware";
 export { validateRequest } from "./middlewares/validation.middleware";
 export { errorHandler } from "./middlewares/error.middleware";
 export { requestLogger } from "./middlewares/logger.middleware";
+export { organizationRequired } from "./middlewares/organizationRequired.middleware";
 
 // Export des validations
 export * from "./validations/ai.validation";

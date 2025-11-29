@@ -16,10 +16,13 @@ import {
     PaymentWithEmailResponse,
     SkipStripeSetupResponse,
 } from "@zenbilling/shared";
+import { IOrganization } from "@zenbilling/shared";
 
 export const createConnectAccount = async (req: AuthRequest, res: Response) => {
     try {
-        const organization = req.organization;
+        const organization = await prisma.organization.findUnique({
+            where: { id: req.organizationId },
+        });
 
         if (!organization) {
             return ApiResponse.error(res, 404, "Organisation non trouvée");
@@ -35,7 +38,9 @@ export const createConnectAccount = async (req: AuthRequest, res: Response) => {
         }
 
         // Créer un compte Stripe Connect
-        const account = await stripeService.createConnectAccount(organization);
+        const account = await stripeService.createConnectAccount(
+            organization as IOrganization
+        );
 
         // Mettre à jour l'utilisateur avec l'ID du compte Stripe
         await prisma.organization.update({
@@ -66,11 +71,13 @@ export const createConnectAccount = async (req: AuthRequest, res: Response) => {
 
 export const createAccountLink = async (req: AuthRequest, res: Response) => {
     try {
-        const organization = req.organization;
+        const organization = await prisma.organization.findUnique({
+            where: { id: req.organizationId },
+        });
         const { refreshUrl, returnUrl }: CreateAccountLinkRequest = req.body;
 
         // Vérifier si l'utilisateur existe
-        if (!organization) {
+        if (!organization || !organization.stripe_account_id) {
             return ApiResponse.error(res, 404, "Organisation non trouvée");
         }
 
@@ -113,7 +120,9 @@ export const createAccountLink = async (req: AuthRequest, res: Response) => {
 
 export const getAccountStatus = async (req: AuthRequest, res: Response) => {
     try {
-        const organization = req.organization;
+        const organization = await prisma.organization.findUnique({
+            where: { id: req.organizationId },
+        });
 
         // Vérifier si l'utilisateur existe
         if (!organization) {
@@ -178,7 +187,9 @@ export const getAccountStatus = async (req: AuthRequest, res: Response) => {
 
 export const createPayment = async (req: AuthRequest, res: Response) => {
     try {
-        const organization = req.organization;
+        const organization = await prisma.organization.findUnique({
+            where: { id: req.organizationId },
+        });
         const { amount, description, invoiceId }: CreatePaymentRequest =
             req.body;
 
@@ -454,7 +465,9 @@ export const createCheckoutSession = async (
 
 export const createDashboardLink = async (req: AuthRequest, res: Response) => {
     try {
-        const organization = req.organization;
+        const organization = await prisma.organization.findUnique({
+            where: { id: req.organizationId },
+        });
 
         // Vérifier si l'utilisateur existe
         if (!organization) {
@@ -507,7 +520,9 @@ export const createDashboardLink = async (req: AuthRequest, res: Response) => {
 
 export const skipStripeSetup = async (req: AuthRequest, res: Response) => {
     try {
-        const organization = req.organization;
+        const organization = await prisma.organization.findUnique({
+            where: { id: req.organizationId },
+        });
 
         // Vérifier si l'utilisateur existe
         if (!organization) {

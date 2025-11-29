@@ -119,7 +119,7 @@ describe("CustomerController", () => {
         });
 
         it("should return 401 when user has no company", async () => {
-            mockRequest.organization = undefined;
+            mockRequest.organizationId = undefined;
 
             await CustomerController.createCustomer(
                 mockRequest as AuthRequest,
@@ -204,7 +204,7 @@ describe("CustomerController", () => {
         });
 
         it("should return 401 when user has no company", async () => {
-            mockRequest.organization = undefined;
+            mockRequest.organizationId = undefined;
 
             await CustomerController.getCustomer(
                 mockRequest as AuthRequest,
@@ -310,7 +310,7 @@ describe("CustomerController", () => {
         });
 
         it("should return 401 when user has no company", async () => {
-            mockRequest.organization = undefined;
+            mockRequest.organizationId = undefined;
 
             await CustomerController.deleteCustomer(
                 mockRequest as AuthRequest,

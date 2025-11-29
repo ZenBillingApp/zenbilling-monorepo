@@ -177,28 +177,6 @@ export const auth = betterAuth({
                 type: "string",
                 required: true,
             },
-            company_id: {
-                type: "string",
-                required: false,
-            },
-            onboarding_completed: {
-                type: "boolean",
-                required: false,
-                defaultValue: false,
-            },
-            onboarding_step: {
-                type: "string",
-                required: false,
-            },
-            stripe_onboarded: {
-                type: "boolean",
-                required: false,
-                defaultValue: false,
-            },
-            stripe_account_id: {
-                type: "string",
-                required: false,
-            },
         },
     },
     plugins: [

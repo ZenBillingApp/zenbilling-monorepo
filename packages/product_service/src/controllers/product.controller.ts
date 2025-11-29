@@ -54,7 +54,7 @@ export class ProductController {
     public static async createProduct(req: AuthRequest, res: Response) {
         try {
             logger.info({ req: req.body }, "Creating product");
-            if (!req.organization) {
+            if (!req.organizationId) {
                 return ApiResponse.error(
                     res,
                     401,
@@ -63,7 +63,7 @@ export class ProductController {
             }
 
             const product = await ProductService.createProduct(
-                req.organization.id,
+                req.organizationId,
                 req.body
             );
             logger.info({ product }, "Product created");
@@ -93,7 +93,7 @@ export class ProductController {
     public static async updateProduct(req: AuthRequest, res: Response) {
         try {
             logger.info({ req: req.body }, "Updating product");
-            if (!req.organization) {
+            if (!req.organizationId) {
                 return ApiResponse.error(
                     res,
                     401,
@@ -103,7 +103,7 @@ export class ProductController {
 
             const product = await ProductService.updateProduct(
                 req.params.id,
-                req.organization.id,
+                req.organizationId,
                 req.body
             );
             logger.info({ product }, "Product updated");
@@ -133,7 +133,7 @@ export class ProductController {
     public static async deleteProduct(req: AuthRequest, res: Response) {
         try {
             logger.info({ req: req.params }, "Deleting product");
-            if (!req.organization) {
+            if (!req.organizationId) {
                 return ApiResponse.error(
                     res,
                     401,
@@ -143,7 +143,7 @@ export class ProductController {
 
             await ProductService.deleteProduct(
                 req.params.id,
-                req.organization.id
+                req.organizationId
             );
             logger.info("Product deleted");
             return ApiResponse.success(
@@ -168,7 +168,7 @@ export class ProductController {
     public static async getProduct(req: AuthRequest, res: Response) {
         try {
             logger.info({ req: req.params }, "Getting product");
-            if (!req.organization) {
+            if (!req.organizationId) {
                 return ApiResponse.error(
                     res,
                     401,
@@ -178,7 +178,7 @@ export class ProductController {
 
             const product = await ProductService.getProduct(
                 req.params.id,
-                req.organization.id
+                req.organizationId
             );
             logger.info({ product }, "Product retrieved");
             return ApiResponse.success(
@@ -204,7 +204,7 @@ export class ProductController {
     public static async getCompanyProducts(req: AuthRequest, res: Response) {
         try {
             logger.info({ req: req.query }, "Getting company products");
-            if (!req.organization) {
+            if (!req.organizationId) {
                 return ApiResponse.error(
                     res,
                     401,
@@ -241,7 +241,7 @@ export class ProductController {
             };
 
             const result = await ProductService.getCompanyProducts(
-                req.organization.id,
+                req.organizationId,
                 queryParams
             );
             logger.info({ result }, "Company products retrieved");

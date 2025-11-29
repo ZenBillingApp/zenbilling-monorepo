@@ -10,7 +10,7 @@ export class CustomerController {
     public static async createCustomer(req: AuthRequest, res: Response) {
         try {
             logger.info({ req: req.user!.id }, "Creating customer");
-            if (!req.organization) {
+            if (!req.organizationId) {
                 return ApiResponse.error(
                     res,
                     401,
@@ -20,7 +20,7 @@ export class CustomerController {
 
             const customer = await CustomerService.createCustomer(
                 req.user!.id,
-                req.organization.id,
+                req.organizationId,
                 req.body
             );
             logger.info({ customer }, "Customer created");
@@ -49,7 +49,7 @@ export class CustomerController {
     public static async getCustomer(req: AuthRequest, res: Response) {
         try {
             logger.info({ req: req.params }, "Getting customer");
-            if (!req.organization) {
+            if (!req.organizationId) {
                 return ApiResponse.error(
                     res,
                     401,
@@ -59,7 +59,7 @@ export class CustomerController {
 
             const customer = await CustomerService.getCustomerWithDetails(
                 req.params.id,
-                req.organization.id
+                req.organizationId
             );
             logger.info({ customer }, "Customer retrieved");
             return ApiResponse.success(
@@ -85,7 +85,7 @@ export class CustomerController {
     public static async updateCustomer(req: AuthRequest, res: Response) {
         try {
             logger.info({ req: req.params }, "Updating customer");
-            if (!req.organization) {
+            if (!req.organizationId) {
                 return ApiResponse.error(
                     res,
                     401,
@@ -95,7 +95,7 @@ export class CustomerController {
 
             const customer = await CustomerService.updateCustomer(
                 req.params.id,
-                req.organization.id,
+                req.organizationId,
                 req.body
             );
             logger.info({ customer }, "Customer updated");
@@ -125,7 +125,7 @@ export class CustomerController {
     public static async deleteCustomer(req: AuthRequest, res: Response) {
         try {
             logger.info({ req: req.params }, "Deleting customer");
-            if (!req.organization) {
+            if (!req.organizationId) {
                 return ApiResponse.error(
                     res,
                     401,
@@ -135,7 +135,7 @@ export class CustomerController {
 
             await CustomerService.deleteCustomer(
                 req.params.id,
-                req.organization.id
+                req.organizationId
             );
             logger.info("Customer deleted");
             return ApiResponse.success(res, 200, "Client supprimé avec succès");
@@ -156,7 +156,7 @@ export class CustomerController {
     public static async getCompanyCustomers(req: AuthRequest, res: Response) {
         try {
             logger.info({ req: req.query }, "Getting company customers");
-            if (!req.organization) {
+            if (!req.organizationId) {
                 return ApiResponse.error(
                     res,
                     401,
@@ -178,7 +178,7 @@ export class CustomerController {
             };
 
             const result = await CustomerService.getCompanyCustomers(
-                req.organization.id,
+                req.organizationId,
                 queryParams
             );
             logger.info({ result }, "Company customers retrieved");

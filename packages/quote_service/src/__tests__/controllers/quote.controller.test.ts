@@ -127,7 +127,7 @@ describe("QuoteController", () => {
         });
 
         it("should return 401 when user has no company", async () => {
-            mockRequest.organization = undefined;
+            mockRequest.organizationId = undefined;
 
             await QuoteController.createQuote(
                 mockRequest as AuthRequest,
@@ -217,7 +217,7 @@ describe("QuoteController", () => {
         });
 
         it("should return 401 when user has no company", async () => {
-            mockRequest.organization = undefined;
+            mockRequest.organizationId = undefined;
 
             await QuoteController.updateQuote(
                 mockRequest as AuthRequest,
@@ -254,7 +254,7 @@ describe("QuoteController", () => {
         });
 
         it("should return 401 when user has no company", async () => {
-            mockRequest.organization = undefined;
+            mockRequest.organizationId = undefined;
 
             await QuoteController.deleteQuote(
                 mockRequest as AuthRequest,
@@ -302,7 +302,7 @@ describe("QuoteController", () => {
         });
 
         it("should return 401 when user has no company", async () => {
-            mockRequest.organization = undefined;
+            mockRequest.organizationId = undefined;
 
             await QuoteController.getQuote(
                 mockRequest as AuthRequest,
@@ -485,7 +485,7 @@ describe("QuoteController", () => {
         });
 
         it("should return 401 when user has no company", async () => {
-            mockRequest.organization = undefined;
+            mockRequest.organizationId = undefined;
 
             await QuoteController.sendQuoteByEmail(
                 mockRequest as AuthRequest,

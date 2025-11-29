@@ -11,7 +11,7 @@ export class QuoteController {
     public static async createQuote(req: AuthRequest, res: Response) {
         try {
             logger.info({ req: req.body }, "Creating quote");
-            if (!req.organization) {
+            if (!req.organizationId) {
                 return ApiResponse.error(
                     res,
                     401,
@@ -21,7 +21,7 @@ export class QuoteController {
 
             const quote = await QuoteService.createQuote(
                 req.user!.id,
-                req.organization.id,
+                req.organizationId,
                 req.body
             );
             logger.info({ quote }, "Quote created");
@@ -43,7 +43,7 @@ export class QuoteController {
     public static async updateQuote(req: AuthRequest, res: Response) {
         try {
             logger.info({ req: req.body }, "Updating quote");
-            if (!req.organization) {
+            if (!req.organizationId) {
                 return ApiResponse.error(
                     res,
                     401,
@@ -53,7 +53,7 @@ export class QuoteController {
 
             const quote = await QuoteService.updateQuote(
                 req.params.id,
-                req.organization.id,
+                req.organizationId,
                 req.body
             );
             logger.info({ quote }, "Quote updated");
@@ -75,7 +75,7 @@ export class QuoteController {
     public static async deleteQuote(req: AuthRequest, res: Response) {
         try {
             logger.info({ req: req.params }, "Deleting quote");
-            if (!req.organization) {
+            if (!req.organizationId) {
                 return ApiResponse.error(
                     res,
                     401,
@@ -85,7 +85,7 @@ export class QuoteController {
 
             await QuoteService.deleteQuote(
                 req.params.id,
-                req.organization.id as string
+                req.organizationId as string
             );
             logger.info("Quote deleted");
             return ApiResponse.success(res, 200, "Devis supprimé avec succès");
@@ -101,7 +101,7 @@ export class QuoteController {
     public static async getQuote(req: AuthRequest, res: Response) {
         try {
             logger.info({ req: req.params }, "Getting quote");
-            if (!req.organization) {
+            if (!req.organizationId) {
                 return ApiResponse.error(
                     res,
                     401,
@@ -111,7 +111,7 @@ export class QuoteController {
 
             const quote = await QuoteService.getQuoteWithDetails(
                 req.params.id,
-                req.organization.id as string
+                req.organizationId as string
             );
 
             return ApiResponse.success(
@@ -132,7 +132,7 @@ export class QuoteController {
     public static async getCompanyQuotes(req: AuthRequest, res: Response) {
         try {
             logger.info({ req: req.query }, "Getting company quotes");
-            if (!req.organization) {
+            if (!req.organizationId) {
                 return ApiResponse.error(
                     res,
                     401,
@@ -176,7 +176,7 @@ export class QuoteController {
             };
 
             const result = await QuoteService.getCompanyQuotes(
-                req.organization.id,
+                req.organizationId,
                 queryParams
             );
             logger.info({ result }, "Company quotes retrieved");
@@ -211,7 +211,7 @@ export class QuoteController {
             logger.info({ req: req.params }, "Downloading quote pdf");
             const quoteId = req.params.id;
 
-            if (!req.organization) {
+            if (!req.organizationId) {
                 return ApiResponse.error(
                     res,
                     401,
@@ -221,12 +221,12 @@ export class QuoteController {
 
             const quote = await QuoteService.getQuoteWithDetails(
                 quoteId,
-                req.organization.id
+                req.organizationId
             );
             logger.info({ quote }, "Quote retrieved");
 
             // Vérifier que l'utilisateur a accès à ce devis
-            if (quote.organization_id !== req.organization.id) {
+            if (quote.organization_id !== req.organizationId) {
                 return ApiResponse.error(
                     res,
                     403,
@@ -268,7 +268,7 @@ export class QuoteController {
     public static async sendQuoteByEmail(req: AuthRequest, res: Response) {
         try {
             logger.info({ req: req.params }, "Envoi de devis par email");
-            if (!req.organization) {
+            if (!req.organizationId) {
                 return ApiResponse.error(
                     res,
                     401,
@@ -278,7 +278,7 @@ export class QuoteController {
 
             await QuoteService.sendQuoteByEmail(
                 req.params.id,
-                req.organization.id as string,
+                req.organizationId as string,
                 req.user
             );
 
@@ -316,7 +316,7 @@ export class QuoteController {
                 { req: req.params, query: req.query },
                 "Récupération des devis du client"
             );
-            if (!req.organization) {
+            if (!req.organizationId) {
                 return ApiResponse.error(
                     res,
                     401,
@@ -347,7 +347,7 @@ export class QuoteController {
 
             const result = await QuoteService.getCustomerQuotes(
                 req.params.customerId,
-                req.organization!.id,
+                req.organizationId!,
                 queryParams
             );
 

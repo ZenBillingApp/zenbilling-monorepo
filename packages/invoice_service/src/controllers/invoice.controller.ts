@@ -1,7 +1,7 @@
 import { Response } from "express";
 import { InvoiceService } from "../services/invoice.service";
 // import { PdfService } from "../services/pdf.service";
-import { AuthRequest } from "@zenbilling/shared";
+import { AuthRequest, IOrganization } from "@zenbilling/shared";
 import { ApiResponse } from "@zenbilling/shared";
 import { CustomError } from "@zenbilling/shared";
 import {
@@ -10,12 +10,13 @@ import {
 } from "@zenbilling/shared";
 import { logger } from "@zenbilling/shared";
 import axios from "axios";
+import { prisma } from "@zenbilling/shared";
 
 export class InvoiceController {
     public static async createInvoice(req: AuthRequest, res: Response) {
         try {
             logger.info({ req: req.body }, "Creating invoice");
-            if (!req.organization) {
+            if (!req.organizationId) {
                 return ApiResponse.error(
                     res,
                     401,
@@ -24,7 +25,7 @@ export class InvoiceController {
             }
             const invoice = await InvoiceService.createInvoice(
                 req.user!.id,
-                req.organization.id,
+                req.organizationId,
                 req.body
             );
             logger.info({ invoice }, "Invoice created");
@@ -51,7 +52,7 @@ export class InvoiceController {
     public static async getInvoice(req: AuthRequest, res: Response) {
         try {
             logger.info({ req: req.params }, "Getting invoice");
-            if (!req.organization) {
+            if (!req.organizationId) {
                 return ApiResponse.error(
                     res,
                     401,
@@ -60,7 +61,7 @@ export class InvoiceController {
             }
             const invoice = await InvoiceService.getInvoiceWithDetails(
                 req.params.id,
-                req.organization.id
+                req.organizationId
             );
             logger.info({ invoice }, "Invoice retrieved");
             return ApiResponse.success(
@@ -86,7 +87,7 @@ export class InvoiceController {
     public static async updateInvoice(req: AuthRequest, res: Response) {
         try {
             logger.info({ req: req.params }, "Updating invoice");
-            if (!req.organization) {
+            if (!req.organizationId) {
                 return ApiResponse.error(
                     res,
                     401,
@@ -95,7 +96,7 @@ export class InvoiceController {
             }
             const invoice = await InvoiceService.updateInvoice(
                 req.params.id,
-                req.organization.id,
+                req.organizationId,
                 req.body
             );
             logger.info({ invoice }, "Invoice updated");
@@ -122,7 +123,7 @@ export class InvoiceController {
     public static async deleteInvoice(req: AuthRequest, res: Response) {
         try {
             logger.info({ req: req.params }, "Deleting invoice");
-            if (!req.organization) {
+            if (!req.organizationId) {
                 return ApiResponse.error(
                     res,
                     401,
@@ -131,7 +132,7 @@ export class InvoiceController {
             }
             await InvoiceService.deleteInvoice(
                 req.params.id,
-                req.organization.id
+                req.organizationId
             );
             logger.info("Invoice deleted");
             return ApiResponse.success(
@@ -156,7 +157,7 @@ export class InvoiceController {
     public static async getCompanyInvoices(req: AuthRequest, res: Response) {
         try {
             logger.info({ req: req.query }, "Getting company invoices");
-            if (!req.organization) {
+            if (!req.organizationId) {
                 return ApiResponse.error(
                     res,
                     401,
@@ -194,7 +195,7 @@ export class InvoiceController {
             };
 
             const result = await InvoiceService.getCompanyInvoices(
-                req.organization.id,
+                req.organizationId,
                 queryParams
             );
             logger.info({ result }, "Company invoices retrieved");
@@ -228,7 +229,7 @@ export class InvoiceController {
     public static async createPayment(req: AuthRequest, res: Response) {
         try {
             logger.info({ req: req.params }, "Creating payment");
-            if (!req.organization) {
+            if (!req.organizationId) {
                 return ApiResponse.error(
                     res,
                     401,
@@ -237,7 +238,7 @@ export class InvoiceController {
             }
             const payment = await InvoiceService.createPayment(
                 req.params.id,
-                req.organization.id,
+                req.organizationId,
                 req.body
             );
             logger.info({ payment }, "Payment created");
@@ -266,7 +267,7 @@ export class InvoiceController {
             logger.info({ req: req.params }, "Downloading invoice PDF");
             const invoiceId = req.params.id;
 
-            if (!req.organization) {
+            if (!req.organizationId) {
                 return ApiResponse.error(
                     res,
                     401,
@@ -276,11 +277,11 @@ export class InvoiceController {
 
             const invoice = await InvoiceService.getInvoiceWithDetails(
                 invoiceId,
-                req.organization.id
+                req.organizationId
             );
 
             // Vérifier que l'utilisateur a accès à cette facture
-            if (invoice.organization_id !== req.organization.id) {
+            if (invoice.organization_id !== req.organizationId) {
                 return ApiResponse.error(
                     res,
                     403,
@@ -343,7 +344,7 @@ export class InvoiceController {
     public static async sendInvoiceByEmail(req: AuthRequest, res: Response) {
         try {
             logger.info({ req: req.params }, "Envoi de facture par email");
-            if (!req.organization) {
+            if (!req.organizationId) {
                 return ApiResponse.error(
                     res,
                     401,
@@ -353,7 +354,7 @@ export class InvoiceController {
 
             await InvoiceService.sendInvoiceByEmail(
                 req.params.id,
-                req.organization.id,
+                req.organizationId,
                 req.user!.id
             );
 
@@ -394,13 +395,17 @@ export class InvoiceController {
                 { req: req.params },
                 "Envoi de facture par email avec lien de paiement"
             );
-            if (!req.organization) {
+            if (!req.organizationId) {
                 return ApiResponse.error(
                     res,
                     401,
                     "Aucune organisation associée à l'utilisateur"
                 );
             }
+
+            const organization = await prisma.organization.findUnique({
+                where: { id: req.organizationId },
+            });
 
             const { successUrl, cancelUrl } = req.body;
 
@@ -428,7 +433,7 @@ export class InvoiceController {
 
             await InvoiceService.sendInvoiceWithPaymentLink(
                 req.params.id,
-                req.organization,
+                organization as IOrganization,
                 req.user!,
                 { successUrl, cancelUrl }
             );
@@ -541,7 +546,7 @@ export class InvoiceController {
                 { req: req.params, query: req.query },
                 "Récupération des factures du client"
             );
-            if (!req.organization) {
+            if (!req.organizationId) {
                 return ApiResponse.error(
                     res,
                     401,
@@ -572,7 +577,7 @@ export class InvoiceController {
 
             const result = await InvoiceService.getCustomerInvoices(
                 req.params.customerId,
-                req.organization.id,
+                req.organizationId,
                 queryParams
             );
 

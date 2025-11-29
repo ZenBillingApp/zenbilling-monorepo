@@ -1,6 +1,9 @@
-import { IUser } from "./User.interface";
 import { Request } from "express";
+import { auth } from "../lib/auth";
 import { IOrganization } from "./Organization.interface";
+import { IUser } from "./User.interface";
+
+type Session = typeof auth.$Infer.Session;
 
 export interface ILoginRequest {
     email: string;
@@ -34,6 +37,7 @@ export interface ICookieOptions {
 }
 
 export interface AuthRequest extends Request {
+    session?: Session;
     user?: IUser;
-    organization?: IOrganization;
+    organizationId?: string;
 }

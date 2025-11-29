@@ -60,12 +60,12 @@ export async function authMiddleware(
 
         if (!organization) {
             logger.warn("Organization not found");
-            ApiResponse.error(
-                res,
-                401,
-                "Non autorisé - Organisation introuvable"
-            );
-            return;
+            // ApiResponse.error(
+            //     res,
+            //     401,
+            //     "Non autorisé - Organisation introuvable"
+            // );
+            // return;
         }
         (req as AuthRequest).organization = organization as IFullOrganization;
         (req as AuthRequest).user = user;

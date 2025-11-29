@@ -7,29 +7,6 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model Company {
-  company_id     String    @id @default(uuid())
-  name           String    @db.VarChar(100)
-  siret          String    @unique @db.VarChar(14)
-  tva_intra      String?   @db.VarChar(13)
-  tva_applicable Boolean
-  RCS_number     String    @db.VarChar(100)
-  RCS_city       String    @db.VarChar(100)
-  capital        Decimal?  @db.Decimal(10, 2)
-  siren          String    @unique @db.VarChar(9)
-  legal_form     LegalForm
-  address        String    @db.VarChar(255)
-  postal_code    String    @db.VarChar(10)
-  city           String    @db.VarChar(100)
-  country        String    @default("France") @db.VarChar(100)
-  email          String?   @db.VarChar(100)
-  phone          String?   @db.VarChar(20)
-  website        String?   @db.VarChar(255)
-  createdAt      DateTime  @default(now()) @map("createdAt")
-  updatedAt      DateTime  @updatedAt @map("updatedAt")
-  users          User[]
-}
-
 model Customer {
   customer_id     String              @id @default(uuid())
   user_id         String
@@ -219,38 +196,25 @@ model Verification {
 }
 
 model User {
-  id                   String         @id
-  name                 String
-  email                String         @unique
-  emailVerified        Boolean
-  image                String?
-  createdAt            DateTime
-  updatedAt            DateTime
-  companyCompany_id    String?
-  first_name           String         @db.VarChar(50)
-  last_name            String         @db.VarChar(50)
-  company_id           String?
-  onboarding_completed Boolean        @default(false)
-  onboarding_step      OnboardingStep @default(CHOOSING_COMPANY)
-  stripe_account_id    String?
-  stripe_onboarded     Boolean        @default(false)
-  Customer             Customer[]
-  Invoice              Invoice[]
-  Quote                Quote[]
-  accounts             Account[]
-  sessions             Session[]
-  Company              Company?       @relation(fields: [companyCompany_id], references: [company_id])
+  id            String     @id
+  name          String
+  email         String     @unique
+  emailVerified Boolean
+  image         String?
+  createdAt     DateTime
+  updatedAt     DateTime
+  first_name    String     @db.VarChar(50)
+  last_name     String     @db.VarChar(50)
+  Customer      Customer[]
+  Invoice       Invoice[]
+  Quote         Quote[]
+  accounts      Account[]
+  sessions      Session[]
 
   members     Member[]
   invitations Invitation[]
 
   @@map("user")
-}
-
-enum OnboardingStep {
-  CHOOSING_COMPANY
-  STRIPE_SETUP
-  FINISH
 }
 
 enum LegalForm {

@@ -1,4 +1,3 @@
-import { OnboardingStep } from "@prisma/client";
 import { IUser } from "./User.interface";
 import { Request } from "express";
 import { IOrganization } from "./Organization.interface";
@@ -22,9 +21,6 @@ export interface IAuthResponse {
         email?: string | null;
         first_name: string;
         last_name: string;
-        company_id?: string | null;
-        onboarding_completed: boolean;
-        onboarding_step: OnboardingStep;
     };
 }
 

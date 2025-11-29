@@ -1,7 +1,4 @@
-import {
-    IUpdateUserRequest,
-    IUserResponse,
-} from "@zenbilling/shared";
+import { IUpdateUserRequest, IUserResponse } from "@zenbilling/shared";
 import { CustomError } from "@zenbilling/shared";
 import { logger } from "@zenbilling/shared";
 import { prisma } from "@zenbilling/shared";
@@ -75,25 +72,6 @@ export class UserService {
             );
             if (error instanceof CustomError) throw error;
             throw new CustomError("Erreur lors de la suppression", 500);
-        }
-    }
-
-    public static async onboardingFinish(userId: string): Promise<void> {
-        try {
-            await prisma.user.update({
-                where: { id: userId },
-                data: { onboarding_completed: true },
-            });
-        } catch (error) {
-            logger.error(
-                { error, userId },
-                "Erreur lors de la fin de l'onboarding"
-            );
-            if (error instanceof CustomError) throw error;
-            throw new CustomError(
-                "Erreur lors de la complétion de l'onboarding",
-                500
-            );
         }
     }
 }

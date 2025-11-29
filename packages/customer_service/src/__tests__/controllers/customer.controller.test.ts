@@ -35,7 +35,9 @@ jest.mock("@zenbilling/shared", () => ({
     },
 }));
 
-const mockCustomerService = CustomerService as jest.Mocked<typeof CustomerService>;
+const mockCustomerService = CustomerService as jest.Mocked<
+    typeof CustomerService
+>;
 const mockShared = jest.requireMock("@zenbilling/shared") as any;
 const ApiResponse = mockShared.ApiResponse;
 
@@ -54,12 +56,8 @@ describe("CustomerController", () => {
                 emailVerified: true,
                 first_name: "John",
                 last_name: "Doe",
-                company_id: "company-123",
                 createdAt: new Date(),
                 updatedAt: new Date(),
-                onboarding_step: "FINISH" as any,
-                onboarding_completed: true,
-                stripe_onboarded: false,
             },
             body: {},
             params: {},
@@ -98,7 +96,9 @@ describe("CustomerController", () => {
             };
 
             mockRequest.body = customerData;
-            mockCustomerService.createCustomer.mockResolvedValue(createdCustomer as any);
+            mockCustomerService.createCustomer.mockResolvedValue(
+                createdCustomer as any
+            );
 
             await CustomerController.createCustomer(
                 mockRequest as AuthRequest,
@@ -119,7 +119,7 @@ describe("CustomerController", () => {
         });
 
         it("should return 401 when user has no company", async () => {
-            mockRequest.user!.company_id = null;
+            mockRequest.organization = undefined;
 
             await CustomerController.createCustomer(
                 mockRequest as AuthRequest,
@@ -129,13 +129,16 @@ describe("CustomerController", () => {
             expect(ApiResponse.error).toHaveBeenCalledWith(
                 mockResponse,
                 401,
-                "Aucune entreprise associée à l'utilisateur"
+                "Aucune organisation associée à l'utilisateur"
             );
         });
 
         it("should handle CustomError", async () => {
             const CustomError = mockShared.CustomError;
-            const error = new CustomError("Client avec cet email existe déjà", 409);
+            const error = new CustomError(
+                "Client avec cet email existe déjà",
+                409
+            );
             mockCustomerService.createCustomer.mockRejectedValue(error);
 
             await CustomerController.createCustomer(
@@ -180,17 +183,18 @@ describe("CustomerController", () => {
             };
 
             mockRequest.params = { id: "customer-123" };
-            mockCustomerService.getCustomerWithDetails.mockResolvedValue(customer as any);
+            mockCustomerService.getCustomerWithDetails.mockResolvedValue(
+                customer as any
+            );
 
             await CustomerController.getCustomer(
                 mockRequest as AuthRequest,
                 mockResponse as Response
             );
 
-            expect(mockCustomerService.getCustomerWithDetails).toHaveBeenCalledWith(
-                "customer-123",
-                "company-123"
-            );
+            expect(
+                mockCustomerService.getCustomerWithDetails
+            ).toHaveBeenCalledWith("customer-123", "company-123");
             expect(ApiResponse.success).toHaveBeenCalledWith(
                 mockResponse,
                 200,
@@ -200,7 +204,7 @@ describe("CustomerController", () => {
         });
 
         it("should return 401 when user has no company", async () => {
-            mockRequest.user!.company_id = null;
+            mockRequest.organization = undefined;
 
             await CustomerController.getCustomer(
                 mockRequest as AuthRequest,
@@ -210,7 +214,7 @@ describe("CustomerController", () => {
             expect(ApiResponse.error).toHaveBeenCalledWith(
                 mockResponse,
                 401,
-                "Aucune entreprise associée à l'utilisateur"
+                "Aucune organisation associée à l'utilisateur"
             );
         });
 
@@ -245,7 +249,9 @@ describe("CustomerController", () => {
 
             mockRequest.params = { id: "customer-123" };
             mockRequest.body = updateData;
-            mockCustomerService.updateCustomer.mockResolvedValue(updatedCustomer as any);
+            mockCustomerService.updateCustomer.mockResolvedValue(
+                updatedCustomer as any
+            );
 
             await CustomerController.updateCustomer(
                 mockRequest as AuthRequest,
@@ -304,7 +310,7 @@ describe("CustomerController", () => {
         });
 
         it("should return 401 when user has no company", async () => {
-            mockRequest.user!.company_id = null;
+            mockRequest.organization = undefined;
 
             await CustomerController.deleteCustomer(
                 mockRequest as AuthRequest,
@@ -314,7 +320,7 @@ describe("CustomerController", () => {
             expect(ApiResponse.error).toHaveBeenCalledWith(
                 mockResponse,
                 401,
-                "Aucune entreprise associée à l'utilisateur"
+                "Aucune organisation associée à l'utilisateur"
             );
         });
     });
@@ -338,24 +344,25 @@ describe("CustomerController", () => {
             };
 
             mockRequest.query = queryParams as any;
-            mockCustomerService.getCompanyCustomers.mockResolvedValue(result as any);
+            mockCustomerService.getCompanyCustomers.mockResolvedValue(
+                result as any
+            );
 
             await CustomerController.getCompanyCustomers(
                 mockRequest as AuthRequest,
                 mockResponse as Response
             );
 
-            expect(mockCustomerService.getCompanyCustomers).toHaveBeenCalledWith(
-                "company-123",
-                {
-                    page: 1,
-                    limit: 10,
-                    search: "test",
-                    type: "individual",
-                    sortBy: undefined,
-                    sortOrder: undefined,
-                }
-            );
+            expect(
+                mockCustomerService.getCompanyCustomers
+            ).toHaveBeenCalledWith("organization-123", {
+                page: 1,
+                limit: 10,
+                search: "test",
+                type: "individual",
+                sortBy: undefined,
+                sortOrder: undefined,
+            });
             expect(ApiResponse.success).toHaveBeenCalledWith(
                 mockResponse,
                 200,
@@ -380,24 +387,25 @@ describe("CustomerController", () => {
             };
 
             mockRequest.query = {};
-            mockCustomerService.getCompanyCustomers.mockResolvedValue(result as any);
+            mockCustomerService.getCompanyCustomers.mockResolvedValue(
+                result as any
+            );
 
             await CustomerController.getCompanyCustomers(
                 mockRequest as AuthRequest,
                 mockResponse as Response
             );
 
-            expect(mockCustomerService.getCompanyCustomers).toHaveBeenCalledWith(
-                "company-123",
-                {
-                    page: undefined,
-                    limit: undefined,
-                    search: undefined,
-                    type: undefined,
-                    sortBy: undefined,
-                    sortOrder: undefined,
-                }
-            );
+            expect(
+                mockCustomerService.getCompanyCustomers
+            ).toHaveBeenCalledWith("organization-123", {
+                page: undefined,
+                limit: undefined,
+                search: undefined,
+                type: undefined,
+                sortBy: undefined,
+                sortOrder: undefined,
+            });
         });
     });
 });

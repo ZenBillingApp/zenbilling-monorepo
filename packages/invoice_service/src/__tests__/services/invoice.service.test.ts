@@ -37,7 +37,7 @@ describe("InvoiceService", () => {
         it("devrait créer une facture avec succès", async () => {
             // Arrange
             const userId = "user-123";
-            const companyId = "company-123";
+            const organizationId = "organization-123";
 
             // Mock the transaction to return the expected result
             mockPrisma.$transaction.mockResolvedValue(mockInvoice);
@@ -45,7 +45,7 @@ describe("InvoiceService", () => {
             // Act
             const result = await InvoiceService.createInvoice(
                 userId,
-                companyId,
+                organizationId,
                 mockCreateInvoiceRequest
             );
 
@@ -57,7 +57,7 @@ describe("InvoiceService", () => {
         it("devrait lever une erreur si le produit n'existe pas", async () => {
             // Arrange
             const userId = "user-123";
-            const companyId = "company-123";
+            const organizationId = "organization-123";
 
             mockPrisma.$transaction.mockImplementation((callback: any) =>
                 callback(mockPrisma)
@@ -68,7 +68,7 @@ describe("InvoiceService", () => {
             await expect(
                 InvoiceService.createInvoice(
                     userId,
-                    companyId,
+                    organizationId,
                     mockCreateInvoiceRequest
                 )
             ).rejects.toThrow(CustomError);
@@ -77,7 +77,7 @@ describe("InvoiceService", () => {
         it("devrait créer un nouveau produit si save_as_product est true", async () => {
             // Arrange
             const userId = "user-123";
-            const companyId = "company-123";
+            const organizationId = "organization-123";
             const requestWithNewProduct = {
                 ...mockCreateInvoiceRequest,
                 items: [
@@ -95,7 +95,7 @@ describe("InvoiceService", () => {
             // Act
             const result = await InvoiceService.createInvoice(
                 userId,
-                companyId,
+                organizationId,
                 requestWithNewProduct
             );
 
@@ -107,7 +107,7 @@ describe("InvoiceService", () => {
         it("devrait gérer les erreurs de transaction", async () => {
             // Arrange
             const userId = "user-123";
-            const companyId = "company-123";
+            const organizationId = "organization-123";
 
             mockPrisma.$transaction.mockRejectedValue(
                 new Error("Erreur de base de données")
@@ -117,7 +117,7 @@ describe("InvoiceService", () => {
             await expect(
                 InvoiceService.createInvoice(
                     userId,
-                    companyId,
+                    organizationId,
                     mockCreateInvoiceRequest
                 )
             ).rejects.toThrow(CustomError);
@@ -128,7 +128,7 @@ describe("InvoiceService", () => {
         it("devrait mettre à jour une facture avec succès", async () => {
             // Arrange
             const invoiceId = "invoice-123";
-            const companyId = "company-123";
+            const organizationId = "organization-123";
 
             mockPrisma.$transaction.mockImplementation((callback: any) =>
                 callback(mockPrisma)
@@ -142,7 +142,7 @@ describe("InvoiceService", () => {
             // Act
             const result = await InvoiceService.updateInvoice(
                 invoiceId,
-                companyId,
+                organizationId,
                 mockUpdateInvoiceRequest
             );
 
@@ -154,7 +154,7 @@ describe("InvoiceService", () => {
             expect(mockPrisma.invoice.findUnique).toHaveBeenCalledWith({
                 where: {
                     invoice_id: invoiceId,
-                    company_id: companyId,
+                    organization_id: organizationId,
                 },
             });
             expect(mockPrisma.invoice.update).toHaveBeenCalled();
@@ -163,7 +163,7 @@ describe("InvoiceService", () => {
         it("devrait lever une erreur si la facture n'existe pas", async () => {
             // Arrange
             const invoiceId = "invoice-123";
-            const companyId = "company-123";
+            const organizationId = "organization-123";
 
             mockPrisma.$transaction.mockImplementation((callback: any) =>
                 callback(mockPrisma)
@@ -174,7 +174,7 @@ describe("InvoiceService", () => {
             await expect(
                 InvoiceService.updateInvoice(
                     invoiceId,
-                    companyId,
+                    organizationId,
                     mockUpdateInvoiceRequest
                 )
             ).rejects.toThrow(CustomError);
@@ -183,7 +183,7 @@ describe("InvoiceService", () => {
         it("devrait lever une erreur si on essaie de modifier une facture payée", async () => {
             // Arrange
             const invoiceId = "invoice-123";
-            const companyId = "company-123";
+            const organizationId = "organization-123";
             const paidInvoice = { ...mockInvoice, status: "paid" as const };
 
             mockPrisma.$transaction.mockImplementation((callback: any) =>
@@ -195,7 +195,7 @@ describe("InvoiceService", () => {
             await expect(
                 InvoiceService.updateInvoice(
                     invoiceId,
-                    companyId,
+                    organizationId,
                     mockUpdateInvoiceRequest
                 )
             ).rejects.toThrow("Impossible de modifier une facture payée");
@@ -204,7 +204,7 @@ describe("InvoiceService", () => {
         it("devrait lever une erreur si on essaie de modifier une facture annulée", async () => {
             // Arrange
             const invoiceId = "invoice-123";
-            const companyId = "company-123";
+            const organizationId = "organization-123";
             const cancelledInvoice = {
                 ...mockInvoice,
                 status: "cancelled" as const,
@@ -219,7 +219,7 @@ describe("InvoiceService", () => {
             await expect(
                 InvoiceService.updateInvoice(
                     invoiceId,
-                    companyId,
+                    organizationId,
                     mockUpdateInvoiceRequest
                 )
             ).rejects.toThrow("Impossible de modifier une facture annulée");
@@ -230,14 +230,14 @@ describe("InvoiceService", () => {
         it("devrait récupérer une facture avec tous ses détails", async () => {
             // Arrange
             const invoiceId = "invoice-123";
-            const companyId = "company-123";
+            const organizationId = "organization-123";
 
             mockPrisma.invoice.findUnique.mockResolvedValue(mockInvoice);
 
             // Act
             const result = await InvoiceService.getInvoiceWithDetails(
                 invoiceId,
-                companyId
+                organizationId
             );
 
             // Assert
@@ -245,7 +245,7 @@ describe("InvoiceService", () => {
             expect(mockPrisma.invoice.findUnique).toHaveBeenCalledWith({
                 where: {
                     invoice_id: invoiceId,
-                    company_id: companyId,
+                    organization_id: organizationId,
                 },
                 include: {
                     items: {
@@ -269,13 +269,13 @@ describe("InvoiceService", () => {
         it("devrait lever une erreur si la facture n'existe pas", async () => {
             // Arrange
             const invoiceId = "invoice-123";
-            const companyId = "company-123";
+            const organizationId = "organization-123";
 
             mockPrisma.invoice.findUnique.mockResolvedValue(null);
 
             // Act & Assert
             await expect(
-                InvoiceService.getInvoiceWithDetails(invoiceId, companyId)
+                InvoiceService.getInvoiceWithDetails(invoiceId, organizationId)
             ).rejects.toThrow("Facture non trouvée");
         });
     });
@@ -284,7 +284,7 @@ describe("InvoiceService", () => {
         it("devrait supprimer une facture avec succès", async () => {
             // Arrange
             const invoiceId = "invoice-123";
-            const companyId = "company-123";
+            const organizationId = "organization-123";
 
             mockPrisma.$transaction.mockImplementation((callback: any) =>
                 callback(mockPrisma)
@@ -293,7 +293,7 @@ describe("InvoiceService", () => {
             mockPrisma.invoice.delete.mockResolvedValue(mockInvoice);
 
             // Act
-            await InvoiceService.deleteInvoice(invoiceId, companyId);
+            await InvoiceService.deleteInvoice(invoiceId, organizationId);
 
             // Assert
             expect(mockPrisma.invoice.findUnique).toHaveBeenCalled();
@@ -305,7 +305,7 @@ describe("InvoiceService", () => {
         it("devrait lever une erreur si on essaie de supprimer une facture payée", async () => {
             // Arrange
             const invoiceId = "invoice-123";
-            const companyId = "company-123";
+            const organizationId = "organization-123";
             const paidInvoice = { ...mockInvoice, status: "paid" as const };
 
             mockPrisma.$transaction.mockImplementation((callback: any) =>
@@ -315,14 +315,14 @@ describe("InvoiceService", () => {
 
             // Act & Assert
             await expect(
-                InvoiceService.deleteInvoice(invoiceId, companyId)
+                InvoiceService.deleteInvoice(invoiceId, organizationId)
             ).rejects.toThrow("Impossible de supprimer une facture payée");
         });
 
         it("devrait lever une erreur si la facture n'existe pas", async () => {
             // Arrange
             const invoiceId = "invoice-123";
-            const companyId = "company-123";
+            const organizationId = "organization-123";
 
             mockPrisma.$transaction.mockImplementation((callback: any) =>
                 callback(mockPrisma)
@@ -331,7 +331,7 @@ describe("InvoiceService", () => {
 
             // Act & Assert
             await expect(
-                InvoiceService.deleteInvoice(invoiceId, companyId)
+                InvoiceService.deleteInvoice(invoiceId, organizationId)
             ).rejects.toThrow("Facture non trouvée");
         });
     });
@@ -339,7 +339,7 @@ describe("InvoiceService", () => {
     describe("getCompanyInvoices", () => {
         it("devrait récupérer les factures d'une entreprise avec pagination", async () => {
             // Arrange
-            const companyId = "company-123";
+            const organizationId = "organization-123";
             const queryParams = { page: 1, limit: 10 };
 
             // Mock the first transaction (invoices + total)
@@ -349,7 +349,7 @@ describe("InvoiceService", () => {
 
             // Act
             const result = await InvoiceService.getCompanyInvoices(
-                companyId,
+                organizationId,
                 queryParams
             );
 
@@ -371,7 +371,7 @@ describe("InvoiceService", () => {
 
         it("devrait appliquer les filtres de recherche", async () => {
             // Arrange
-            const companyId = "company-123";
+            const organizationId = "organization-123";
             const queryParams = { search: "test", status: "pending" as const };
 
             mockPrisma.$transaction.mockResolvedValue([
@@ -386,7 +386,10 @@ describe("InvoiceService", () => {
             ]);
 
             // Act
-            await InvoiceService.getCompanyInvoices(companyId, queryParams);
+            await InvoiceService.getCompanyInvoices(
+                organizationId,
+                queryParams
+            );
 
             // Assert
             expect(mockPrisma.$transaction).toHaveBeenCalled();
@@ -397,7 +400,7 @@ describe("InvoiceService", () => {
         it("devrait créer un paiement avec succès", async () => {
             // Arrange
             const invoiceId = "invoice-123";
-            const companyId = "company-123";
+            const organizationId = "organization-123";
 
             mockPrisma.$transaction.mockImplementation((callback: any) =>
                 callback(mockPrisma)
@@ -415,7 +418,7 @@ describe("InvoiceService", () => {
             // Act
             const result = await InvoiceService.createPayment(
                 invoiceId,
-                companyId,
+                organizationId,
                 mockCreatePaymentRequest
             );
 
@@ -427,7 +430,7 @@ describe("InvoiceService", () => {
         it("devrait mettre à jour le statut de la facture si elle est entièrement payée", async () => {
             // Arrange
             const invoiceId = "invoice-123";
-            const companyId = "company-123";
+            const organizationId = "organization-123";
             const fullPaymentRequest = {
                 ...mockCreatePaymentRequest,
                 amount: new Decimal("120.00"),
@@ -453,7 +456,7 @@ describe("InvoiceService", () => {
             // Act
             await InvoiceService.createPayment(
                 invoiceId,
-                companyId,
+                organizationId,
                 fullPaymentRequest
             );
 
@@ -467,7 +470,7 @@ describe("InvoiceService", () => {
         it("devrait lever une erreur si on essaie de payer une facture annulée", async () => {
             // Arrange
             const invoiceId = "invoice-123";
-            const companyId = "company-123";
+            const organizationId = "organization-123";
             const cancelledInvoice = {
                 ...mockInvoice,
                 status: "cancelled" as const,
@@ -482,7 +485,7 @@ describe("InvoiceService", () => {
             await expect(
                 InvoiceService.createPayment(
                     invoiceId,
-                    companyId,
+                    organizationId,
                     mockCreatePaymentRequest
                 )
             ).rejects.toThrow("Impossible de payer une facture annulée");
@@ -491,7 +494,7 @@ describe("InvoiceService", () => {
         it("devrait lever une erreur si on essaie de payer une facture déjà payée", async () => {
             // Arrange
             const invoiceId = "invoice-123";
-            const companyId = "company-123";
+            const organizationId = "organization-123";
             const paidInvoice = { ...mockInvoice, status: "paid" as const };
 
             mockPrisma.$transaction.mockImplementation((callback: any) =>
@@ -503,7 +506,7 @@ describe("InvoiceService", () => {
             await expect(
                 InvoiceService.createPayment(
                     invoiceId,
-                    companyId,
+                    organizationId,
                     mockCreatePaymentRequest
                 )
             ).rejects.toThrow("Cette facture est déjà payée");
@@ -512,7 +515,7 @@ describe("InvoiceService", () => {
         it("devrait lever une erreur si le montant du paiement dépasse le montant de la facture", async () => {
             // Arrange
             const invoiceId = "invoice-123";
-            const companyId = "company-123";
+            const organizationId = "organization-123";
             const excessivePaymentRequest = {
                 ...mockCreatePaymentRequest,
                 amount: new Decimal("200.00"),
@@ -530,7 +533,7 @@ describe("InvoiceService", () => {
             await expect(
                 InvoiceService.createPayment(
                     invoiceId,
-                    companyId,
+                    organizationId,
                     excessivePaymentRequest
                 )
             ).rejects.toThrow(
@@ -543,7 +546,7 @@ describe("InvoiceService", () => {
         it("devrait envoyer une facture par email avec succès", async () => {
             // Arrange
             const invoiceId = "invoice-123";
-            const companyId = "company-123";
+            const organizationId = "organization-123";
             const userId = "user-123";
 
             mockPrisma.invoice.findUnique.mockResolvedValue(mockInvoice);
@@ -560,7 +563,7 @@ describe("InvoiceService", () => {
             // Act
             await InvoiceService.sendInvoiceByEmail(
                 invoiceId,
-                companyId,
+                organizationId,
                 userId
             );
 
@@ -575,7 +578,7 @@ describe("InvoiceService", () => {
         it("devrait lever une erreur si le client n'a pas d'email", async () => {
             // Arrange
             const invoiceId = "invoice-123";
-            const companyId = "company-123";
+            const organizationId = "organization-123";
             const userId = "user-123";
             const invoiceWithoutEmail = {
                 ...mockInvoice,
@@ -588,14 +591,18 @@ describe("InvoiceService", () => {
 
             // Act & Assert
             await expect(
-                InvoiceService.sendInvoiceByEmail(invoiceId, companyId, userId)
+                InvoiceService.sendInvoiceByEmail(
+                    invoiceId,
+                    organizationId,
+                    userId
+                )
             ).rejects.toThrow("Le client n'a pas d'adresse email");
         });
 
         it("devrait lever une erreur si l'utilisateur n'existe pas", async () => {
             // Arrange
             const invoiceId = "invoice-123";
-            const companyId = "company-123";
+            const organizationId = "organization-123";
             const userId = "user-123";
 
             mockPrisma.invoice.findUnique.mockResolvedValue(mockInvoice);
@@ -603,14 +610,18 @@ describe("InvoiceService", () => {
 
             // Act & Assert
             await expect(
-                InvoiceService.sendInvoiceByEmail(invoiceId, companyId, userId)
+                InvoiceService.sendInvoiceByEmail(
+                    invoiceId,
+                    organizationId,
+                    userId
+                )
             ).rejects.toThrow("Utilisateur non trouvé");
         });
 
         it("devrait lever une erreur si la génération du PDF échoue", async () => {
             // Arrange
             const invoiceId = "invoice-123";
-            const companyId = "company-123";
+            const organizationId = "organization-123";
             const userId = "user-123";
 
             mockPrisma.invoice.findUnique.mockResolvedValue(mockInvoice);
@@ -619,7 +630,11 @@ describe("InvoiceService", () => {
 
             // Act & Assert
             await expect(
-                InvoiceService.sendInvoiceByEmail(invoiceId, companyId, userId)
+                InvoiceService.sendInvoiceByEmail(
+                    invoiceId,
+                    organizationId,
+                    userId
+                )
             ).rejects.toThrow("Erreur lors de la génération du PDF");
         });
     });
@@ -628,7 +643,7 @@ describe("InvoiceService", () => {
         it("devrait envoyer une facture avec lien de paiement avec succès", async () => {
             // Arrange
             const invoiceId = "invoice-123";
-            const companyId = "company-123";
+            const organizationId = "organization-123";
             const options = {
                 successUrl: "https://example.com/success",
                 cancelUrl: "https://example.com/cancel",
@@ -648,7 +663,7 @@ describe("InvoiceService", () => {
             // Act
             await InvoiceService.sendInvoiceWithPaymentLink(
                 invoiceId,
-                companyId,
+                organizationId,
                 mockUser,
                 options
             );
@@ -664,12 +679,12 @@ describe("InvoiceService", () => {
         it("devrait lever une erreur si Stripe n'est pas configuré", async () => {
             // Arrange
             const invoiceId = "invoice-123";
-            const companyId = "company-123";
-            const userWithoutStripe = {
-                ...mockUser,
+            const organizationId = "organization-123";
+            const organizationWithoutStripe = {
+                ...mockOrganization,
                 stripe_account_id: null,
                 stripe_onboarded: false,
-            };
+            } as IOrganization;
             const options = {
                 successUrl: "https://example.com/success",
                 cancelUrl: "https://example.com/cancel",
@@ -682,8 +697,8 @@ describe("InvoiceService", () => {
             await expect(
                 InvoiceService.sendInvoiceWithPaymentLink(
                     invoiceId,
-                    companyId,
-                    userWithoutStripe,
+                    organizationId,
+                    organizationWithoutStripe,
                     options
                 )
             ).rejects.toThrow("Le compte Stripe n'est pas configuré");
@@ -692,8 +707,11 @@ describe("InvoiceService", () => {
         it("devrait envoyer une facture sans lien de paiement si les URLs ne sont pas fournies", async () => {
             // Arrange
             const invoiceId = "invoice-123";
-            const companyId = "company-123";
-            const options = {};
+            const organizationId = "organization-123";
+            const options = {
+                successUrl: "https://example.com/success",
+                cancelUrl: "https://example.com/cancel",
+            };
 
             mockPrisma.invoice.findUnique.mockResolvedValue(mockInvoice);
             mockPrisma.invoice.update.mockResolvedValue({
@@ -708,7 +726,7 @@ describe("InvoiceService", () => {
             // Act
             await InvoiceService.sendInvoiceWithPaymentLink(
                 invoiceId,
-                companyId,
+                organizationId,
                 mockUser,
                 options
             );
@@ -722,7 +740,7 @@ describe("InvoiceService", () => {
         it("devrait récupérer les factures d'un client avec pagination", async () => {
             // Arrange
             const customerId = "customer-123";
-            const companyId = "company-123";
+            const organizationId = "organization-123";
             const queryParams = { page: 1, limit: 10 };
 
             mockPrisma.invoice.findMany.mockResolvedValue([mockInvoice]);
@@ -731,7 +749,7 @@ describe("InvoiceService", () => {
             // Act
             const result = await InvoiceService.getCustomerInvoices(
                 customerId,
-                companyId,
+                organizationId,
                 queryParams
             );
 
@@ -744,7 +762,7 @@ describe("InvoiceService", () => {
             expect(mockPrisma.invoice.findMany).toHaveBeenCalledWith({
                 where: {
                     customer_id: customerId,
-                    company_id: companyId,
+                    organization_id: organizationId,
                 },
                 include: {
                     customer: true,
@@ -766,7 +784,7 @@ describe("InvoiceService", () => {
         it("devrait appliquer les filtres de recherche", async () => {
             // Arrange
             const customerId = "customer-123";
-            const companyId = "company-123";
+            const organizationId = "organization-123";
             const queryParams = { search: "test", status: "pending" as const };
 
             mockPrisma.invoice.findMany.mockResolvedValue([mockInvoice]);
@@ -775,7 +793,7 @@ describe("InvoiceService", () => {
             // Act
             await InvoiceService.getCustomerInvoices(
                 customerId,
-                companyId,
+                organizationId,
                 queryParams
             );
 
@@ -784,7 +802,7 @@ describe("InvoiceService", () => {
                 expect.objectContaining({
                     where: expect.objectContaining({
                         customer_id: customerId,
-                        company_id: companyId,
+                        organization_id: organizationId,
                         status: "pending",
                         OR: expect.any(Array),
                     }),

@@ -140,7 +140,7 @@ export const getAccountStatus = async (req: AuthRequest, res: Response) => {
 
         // Mettre à jour le statut d'onboarding dans la base de données si nécessaire
         if (isOnboarded !== organization.stripe_onboarded) {
-            await prisma.user.update({
+            await prisma.organization.update({
                 where: { id: organization.id },
                 data: { stripe_onboarded: isOnboarded },
             });
@@ -183,7 +183,7 @@ export const createPayment = async (req: AuthRequest, res: Response) => {
             req.body;
 
         // Vérifier que tous les champs nécessaires sont présents
-        if (!amount || !description || !organization.id || !invoiceId) {
+        if (!amount || !description || !organization?.id || !invoiceId) {
             return ApiResponse.error(
                 res,
                 400,
@@ -515,11 +515,11 @@ export const skipStripeSetup = async (req: AuthRequest, res: Response) => {
         }
 
         // Vérifier que l'utilisateur est bien à l'étape STRIPE_SETUP
-        if (organization.onboarding_step !== "STRIPE_SETUP") {
+        if (organization.stripe_onboarded !== false) {
             return ApiResponse.error(
                 res,
                 400,
-                "L'organisation n'est pas à l'étape de configuration Stripe"
+                "L'organisation n'a pas de compte Stripe Connect configuré"
             );
         }
 

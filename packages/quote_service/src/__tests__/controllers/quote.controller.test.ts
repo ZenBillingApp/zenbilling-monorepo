@@ -62,12 +62,8 @@ describe("QuoteController", () => {
                 emailVerified: true,
                 first_name: "John",
                 last_name: "Doe",
-                company_id: "company-123",
                 createdAt: new Date(),
                 updatedAt: new Date(),
-                onboarding_step: "FINISH" as any,
-                onboarding_completed: true,
-                stripe_onboarded: false,
             },
             body: {},
             params: {},
@@ -131,7 +127,7 @@ describe("QuoteController", () => {
         });
 
         it("should return 401 when user has no company", async () => {
-            mockRequest.user!.company_id = null;
+            mockRequest.organization = undefined;
 
             await QuoteController.createQuote(
                 mockRequest as AuthRequest,
@@ -141,7 +137,7 @@ describe("QuoteController", () => {
             expect(ApiResponse.error).toHaveBeenCalledWith(
                 mockResponse,
                 401,
-                "Aucune entreprise associée à l'utilisateur"
+                "Aucune organisation associée à l'utilisateur"
             );
         });
 
@@ -221,7 +217,7 @@ describe("QuoteController", () => {
         });
 
         it("should return 401 when user has no company", async () => {
-            mockRequest.user!.company_id = null;
+            mockRequest.organization = undefined;
 
             await QuoteController.updateQuote(
                 mockRequest as AuthRequest,
@@ -231,7 +227,7 @@ describe("QuoteController", () => {
             expect(ApiResponse.error).toHaveBeenCalledWith(
                 mockResponse,
                 401,
-                "Aucune entreprise associée à l'utilisateur"
+                "Aucune organisation associée à l'utilisateur"
             );
         });
     });
@@ -258,7 +254,7 @@ describe("QuoteController", () => {
         });
 
         it("should return 401 when user has no company", async () => {
-            mockRequest.user!.company_id = null;
+            mockRequest.organization = undefined;
 
             await QuoteController.deleteQuote(
                 mockRequest as AuthRequest,
@@ -268,7 +264,7 @@ describe("QuoteController", () => {
             expect(ApiResponse.error).toHaveBeenCalledWith(
                 mockResponse,
                 401,
-                "Aucune entreprise associée à l'utilisateur"
+                "Aucune organisation associée à l'utilisateur"
             );
         });
     });
@@ -284,7 +280,9 @@ describe("QuoteController", () => {
             };
 
             mockRequest.params = { id: "quote-123" };
-            mockQuoteService.getQuoteWithDetails.mockResolvedValue(quote as any);
+            mockQuoteService.getQuoteWithDetails.mockResolvedValue(
+                quote as any
+            );
 
             await QuoteController.getQuote(
                 mockRequest as AuthRequest,
@@ -304,7 +302,7 @@ describe("QuoteController", () => {
         });
 
         it("should return 401 when user has no company", async () => {
-            mockRequest.user!.company_id = null;
+            mockRequest.organization = undefined;
 
             await QuoteController.getQuote(
                 mockRequest as AuthRequest,
@@ -314,7 +312,7 @@ describe("QuoteController", () => {
             expect(ApiResponse.error).toHaveBeenCalledWith(
                 mockResponse,
                 401,
-                "Aucune entreprise associée à l'utilisateur"
+                "Aucune organisation associée à l'utilisateur"
             );
         });
     });
@@ -400,7 +398,9 @@ describe("QuoteController", () => {
             const pdfBuffer = Buffer.from("PDF content");
 
             mockRequest.params = { id: "quote-123" };
-            mockQuoteService.getQuoteWithDetails.mockResolvedValue(quote as any);
+            mockQuoteService.getQuoteWithDetails.mockResolvedValue(
+                quote as any
+            );
             mockAxios.post.mockResolvedValue({ data: pdfBuffer });
 
             process.env.PDF_SERVICE_URL = "http://localhost:3010";
@@ -445,7 +445,9 @@ describe("QuoteController", () => {
             };
 
             mockRequest.params = { id: "quote-123" };
-            mockQuoteService.getQuoteWithDetails.mockResolvedValue(quote as any);
+            mockQuoteService.getQuoteWithDetails.mockResolvedValue(
+                quote as any
+            );
 
             await QuoteController.downloadQuotePdf(
                 mockRequest as AuthRequest,
@@ -472,7 +474,7 @@ describe("QuoteController", () => {
 
             expect(mockQuoteService.sendQuoteByEmail).toHaveBeenCalledWith(
                 "quote-123",
-                "company-123",
+                "organization-123",
                 mockRequest.user
             );
             expect(ApiResponse.success).toHaveBeenCalledWith(
@@ -483,7 +485,7 @@ describe("QuoteController", () => {
         });
 
         it("should return 401 when user has no company", async () => {
-            mockRequest.user!.company_id = null;
+            mockRequest.organization = undefined;
 
             await QuoteController.sendQuoteByEmail(
                 mockRequest as AuthRequest,
@@ -523,9 +525,7 @@ describe("QuoteController", () => {
             };
 
             const result = {
-                quotes: [
-                    { quote_id: "quote-1", customer_id: "customer-123" },
-                ],
+                quotes: [{ quote_id: "quote-1", customer_id: "customer-123" }],
                 total: 1,
                 totalPages: 1,
             };

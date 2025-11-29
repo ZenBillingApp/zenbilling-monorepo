@@ -77,13 +77,13 @@ export const handleWebhook = async (req: Request, res: Response) => {
 async function handleAccountUpdated(account: Stripe.Account) {
     try {
         // Trouver l'utilisateur avec cet ID de compte Stripe
-        const user = await prisma.user.findFirst({
+        const organization = await prisma.organization.findFirst({
             where: { stripe_account_id: account.id },
         });
 
-        if (!user) {
+        if (!organization) {
             logger.warn(
-                `Utilisateur non trouvé pour le compte Stripe ${account.id}`
+                `Organisation non trouvée pour le compte Stripe ${account.id}`
             );
             return;
         }
@@ -93,16 +93,15 @@ async function handleAccountUpdated(account: Stripe.Account) {
             account.details_submitted && account.payouts_enabled;
 
         // Mettre à jour le statut d'onboarding
-        await prisma.user.update({
-            where: { id: user.id },
+        await prisma.organization.update({
+            where: { id: organization.id },
             data: {
                 stripe_onboarded: isOnboarded,
-                onboarding_step: "FINISH",
             },
         });
 
         logger.info(
-            `Statut Stripe Connect mis à jour pour l'utilisateur ${user.id}: ${isOnboarded}`
+            `Statut Stripe Connect mis à jour pour l'organisation ${organization.id}: ${isOnboarded}`
         );
     } catch (error: any) {
         logger.error(

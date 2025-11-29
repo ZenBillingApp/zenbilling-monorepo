@@ -7,7 +7,7 @@ import {
     afterEach,
 } from "@jest/globals";
 import { InvoiceService } from "../../services/invoice.service";
-import { CustomError, Decimal } from "@zenbilling/shared";
+import { CustomError, Decimal, IOrganization, IUser } from "@zenbilling/shared";
 import { mockPrisma } from "../mocks/prisma.mock";
 import { mockAxios } from "../mocks/axios.mock";
 import {
@@ -663,8 +663,8 @@ describe("InvoiceService", () => {
             // Act
             await InvoiceService.sendInvoiceWithPaymentLink(
                 invoiceId,
-                organizationId,
-                mockUser,
+                mockInvoice.organization as unknown as IOrganization,
+                mockUser as any,
                 options
             );
 
@@ -681,8 +681,8 @@ describe("InvoiceService", () => {
             const invoiceId = "invoice-123";
             const organizationId = "organization-123";
             const organizationWithoutStripe = {
-                ...mockOrganization,
-                stripe_account_id: null,
+                ...(mockInvoice.organization as any),
+                stripe_account_id: undefined,
                 stripe_onboarded: false,
             } as IOrganization;
             const options = {
@@ -697,20 +697,18 @@ describe("InvoiceService", () => {
             await expect(
                 InvoiceService.sendInvoiceWithPaymentLink(
                     invoiceId,
-                    organizationId,
-                    organizationWithoutStripe,
-                    options
+                    organizationWithoutStripe as IOrganization,
+                    mockUser as unknown as IUser,
+                    options as { successUrl?: string; cancelUrl?: string }
                 )
             ).rejects.toThrow("Le compte Stripe n'est pas configuré");
         });
 
         it("devrait envoyer une facture sans lien de paiement si les URLs ne sont pas fournies", async () => {
             // Arrange
-            const invoiceId = "invoice-123";
-            const organizationId = "organization-123";
-            const options = {
-                successUrl: "https://example.com/success",
-                cancelUrl: "https://example.com/cancel",
+            const options: { successUrl?: string; cancelUrl?: string } = {
+                successUrl: undefined,
+                cancelUrl: undefined,
             };
 
             mockPrisma.invoice.findUnique.mockResolvedValue(mockInvoice);
@@ -725,9 +723,9 @@ describe("InvoiceService", () => {
 
             // Act
             await InvoiceService.sendInvoiceWithPaymentLink(
-                invoiceId,
-                organizationId,
-                mockUser,
+                mockInvoice.invoice_id,
+                mockInvoice.organization as unknown as IOrganization,
+                mockUser as any,
                 options
             );
 

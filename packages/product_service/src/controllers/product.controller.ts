@@ -54,16 +54,9 @@ export class ProductController {
     public static async createProduct(req: AuthRequest, res: Response) {
         try {
             logger.info({ req: req.body }, "Creating product");
-            if (!req.organizationId) {
-                return ApiResponse.error(
-                    res,
-                    401,
-                    "Aucune organisation associée à l'utilisateur"
-                );
-            }
 
             const product = await ProductService.createProduct(
-                req.organizationId,
+                req.organizationId!,
                 req.body
             );
             logger.info({ product }, "Product created");
@@ -93,17 +86,10 @@ export class ProductController {
     public static async updateProduct(req: AuthRequest, res: Response) {
         try {
             logger.info({ req: req.body }, "Updating product");
-            if (!req.organizationId) {
-                return ApiResponse.error(
-                    res,
-                    401,
-                    "Aucune organisation associée à l'utilisateur"
-                );
-            }
 
             const product = await ProductService.updateProduct(
                 req.params.id,
-                req.organizationId,
+                req.organizationId!,
                 req.body
             );
             logger.info({ product }, "Product updated");
@@ -133,17 +119,10 @@ export class ProductController {
     public static async deleteProduct(req: AuthRequest, res: Response) {
         try {
             logger.info({ req: req.params }, "Deleting product");
-            if (!req.organizationId) {
-                return ApiResponse.error(
-                    res,
-                    401,
-                    "Aucune organisation associée à l'utilisateur"
-                );
-            }
 
             await ProductService.deleteProduct(
                 req.params.id,
-                req.organizationId
+                req.organizationId!
             );
             logger.info("Product deleted");
             return ApiResponse.success(
@@ -168,17 +147,10 @@ export class ProductController {
     public static async getProduct(req: AuthRequest, res: Response) {
         try {
             logger.info({ req: req.params }, "Getting product");
-            if (!req.organizationId) {
-                return ApiResponse.error(
-                    res,
-                    401,
-                    "Aucune organisation associée à l'utilisateur"
-                );
-            }
 
             const product = await ProductService.getProduct(
                 req.params.id,
-                req.organizationId
+                req.organizationId!
             );
             logger.info({ product }, "Product retrieved");
             return ApiResponse.success(
@@ -204,13 +176,6 @@ export class ProductController {
     public static async getCompanyProducts(req: AuthRequest, res: Response) {
         try {
             logger.info({ req: req.query }, "Getting company products");
-            if (!req.organizationId) {
-                return ApiResponse.error(
-                    res,
-                    401,
-                    "Aucune organisation associée à l'utilisateur"
-                );
-            }
 
             const queryParams = {
                 page: req.query.page
@@ -240,11 +205,11 @@ export class ProductController {
                 sortOrder: req.query.sortOrder as "ASC" | "DESC",
             };
 
-            const result = await ProductService.getCompanyProducts(
-                req.organizationId,
+            const result = await ProductService.getOrganizationProducts(
+                req.organizationId!,
                 queryParams
             );
-            logger.info({ result }, "Company products retrieved");
+            logger.info({ result }, "Organization products retrieved");
             return ApiResponse.success(
                 res,
                 200,
@@ -260,11 +225,11 @@ export class ProductController {
                 }
             );
         } catch (error) {
-            logger.error({ error }, "Error getting company products");
+            logger.error({ error }, "Error getting organization products");
             if (error instanceof CustomError) {
                 return ApiResponse.error(res, error.statusCode, error.message);
             }
-            logger.error({ error }, "Error getting company products");
+            logger.error({ error }, "Error getting organization products");
             return ApiResponse.error(res, 500, "Erreur interne du serveur");
         }
     }

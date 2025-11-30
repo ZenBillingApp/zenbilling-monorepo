@@ -1,5 +1,4 @@
 import { Router } from "express";
-import { authMiddleware } from "@zenbilling/shared";
 import { validateRequest } from "@zenbilling/shared";
 import {
     generateDescriptionSchema,
@@ -28,7 +27,6 @@ const aiRateLimit = rateLimit({
 // Routes IA pour génération de descriptions
 router.post(
     "/ai/generate-description",
-    authMiddleware,
     aiRateLimit,
     validateRequest(generateDescriptionSchema),
     ProductController.generateProductDescription
@@ -36,7 +34,6 @@ router.post(
 
 router.post(
     "/ai/generate-suggestions",
-    authMiddleware,
     aiRateLimit,
     validateRequest(generateDescriptionSuggestionsSchema),
     ProductController.generateProductDescriptionSuggestions
@@ -44,7 +41,6 @@ router.post(
 
 router.post(
     "/ai/improve-description",
-    authMiddleware,
     aiRateLimit,
     validateRequest(improveDescriptionSchema),
     ProductController.improveProductDescription
@@ -52,12 +48,11 @@ router.post(
 
 router.post(
     "/ai/generate-keywords",
-    authMiddleware,
     aiRateLimit,
     validateRequest(generateKeywordsSchema),
     ProductController.generateProductKeywords
 );
 
-router.get("/ai/status", authMiddleware, ProductController.checkAIService);
+router.get("/ai/status", ProductController.checkAIService);
 
 export default router;

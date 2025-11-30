@@ -6,24 +6,26 @@ import { createCustomerSchema, updateCustomerSchema } from "@zenbilling/shared";
 
 const router = Router();
 
-router.use(authMiddleware, organizationRequired);
+router.use(authMiddleware);
 
 router.post(
     "/",
+    organizationRequired,
     validateRequest(createCustomerSchema),
     CustomerController.createCustomer
 );
 
-router.get("/", CustomerController.getCompanyCustomers);
+router.get("/", organizationRequired, CustomerController.getCompanyCustomers);
 
-router.get("/:id", CustomerController.getCustomer);
+router.get("/:id", organizationRequired, CustomerController.getCustomer);
 
 router.put(
     "/:id",
+    organizationRequired,
     validateRequest(updateCustomerSchema),
     CustomerController.updateCustomer
 );
 
-router.delete("/:id", CustomerController.deleteCustomer);
+router.delete("/:id", organizationRequired, CustomerController.deleteCustomer);
 
 export default router;

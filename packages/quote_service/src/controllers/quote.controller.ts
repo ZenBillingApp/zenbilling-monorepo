@@ -11,17 +11,10 @@ export class QuoteController {
     public static async createQuote(req: AuthRequest, res: Response) {
         try {
             logger.info({ req: req.body }, "Creating quote");
-            if (!req.organizationId) {
-                return ApiResponse.error(
-                    res,
-                    401,
-                    "Aucune organisation associée à l'utilisateur"
-                );
-            }
 
             const quote = await QuoteService.createQuote(
                 req.user!.id,
-                req.organizationId,
+                req.organizationId!,
                 req.body
             );
             logger.info({ quote }, "Quote created");
@@ -43,17 +36,10 @@ export class QuoteController {
     public static async updateQuote(req: AuthRequest, res: Response) {
         try {
             logger.info({ req: req.body }, "Updating quote");
-            if (!req.organizationId) {
-                return ApiResponse.error(
-                    res,
-                    401,
-                    "Aucune organisation associée à l'utilisateur"
-                );
-            }
 
             const quote = await QuoteService.updateQuote(
                 req.params.id,
-                req.organizationId,
+                req.organizationId!,
                 req.body
             );
             logger.info({ quote }, "Quote updated");
@@ -75,18 +61,8 @@ export class QuoteController {
     public static async deleteQuote(req: AuthRequest, res: Response) {
         try {
             logger.info({ req: req.params }, "Deleting quote");
-            if (!req.organizationId) {
-                return ApiResponse.error(
-                    res,
-                    401,
-                    "Aucune organisation associée à l'utilisateur"
-                );
-            }
 
-            await QuoteService.deleteQuote(
-                req.params.id,
-                req.organizationId as string
-            );
+            await QuoteService.deleteQuote(req.params.id, req.organizationId!);
             logger.info("Quote deleted");
             return ApiResponse.success(res, 200, "Devis supprimé avec succès");
         } catch (error) {
@@ -101,17 +77,10 @@ export class QuoteController {
     public static async getQuote(req: AuthRequest, res: Response) {
         try {
             logger.info({ req: req.params }, "Getting quote");
-            if (!req.organizationId) {
-                return ApiResponse.error(
-                    res,
-                    401,
-                    "Aucune organisation associée à l'utilisateur"
-                );
-            }
 
             const quote = await QuoteService.getQuoteWithDetails(
                 req.params.id,
-                req.organizationId as string
+                req.organizationId!
             );
 
             return ApiResponse.success(
@@ -129,16 +98,9 @@ export class QuoteController {
         }
     }
 
-    public static async getCompanyQuotes(req: AuthRequest, res: Response) {
+    public static async getOrganizationQuotes(req: AuthRequest, res: Response) {
         try {
             logger.info({ req: req.query }, "Getting company quotes");
-            if (!req.organizationId) {
-                return ApiResponse.error(
-                    res,
-                    401,
-                    "Aucune organisation associée à l'utilisateur"
-                );
-            }
 
             const queryParams: IQuoteQueryParams = {
                 page: req.query.page
@@ -175,11 +137,11 @@ export class QuoteController {
                 sortOrder: req.query.sortOrder as "ASC" | "DESC",
             };
 
-            const result = await QuoteService.getCompanyQuotes(
-                req.organizationId,
+            const result = await QuoteService.getOrganizationQuotes(
+                req.organizationId!,
                 queryParams
             );
-            logger.info({ result }, "Company quotes retrieved");
+            logger.info({ result }, "Organization quotes retrieved");
             return ApiResponse.success(
                 res,
                 200,
@@ -198,7 +160,7 @@ export class QuoteController {
                 }
             );
         } catch (error) {
-            logger.error({ error }, "Error getting company quotes");
+            logger.error({ error }, "Error getting organization quotes");
             if (error instanceof CustomError) {
                 return ApiResponse.error(res, error.statusCode, error.message);
             }
@@ -211,17 +173,9 @@ export class QuoteController {
             logger.info({ req: req.params }, "Downloading quote pdf");
             const quoteId = req.params.id;
 
-            if (!req.organizationId) {
-                return ApiResponse.error(
-                    res,
-                    401,
-                    "Aucune organisation associée à l'utilisateur"
-                );
-            }
-
             const quote = await QuoteService.getQuoteWithDetails(
                 quoteId,
-                req.organizationId
+                req.organizationId!
             );
             logger.info({ quote }, "Quote retrieved");
 
@@ -268,17 +222,10 @@ export class QuoteController {
     public static async sendQuoteByEmail(req: AuthRequest, res: Response) {
         try {
             logger.info({ req: req.params }, "Envoi de devis par email");
-            if (!req.organizationId) {
-                return ApiResponse.error(
-                    res,
-                    401,
-                    "Aucune organisation associée à l'utilisateur"
-                );
-            }
 
             await QuoteService.sendQuoteByEmail(
                 req.params.id,
-                req.organizationId as string,
+                req.organizationId!,
                 req.user
             );
 
@@ -316,13 +263,6 @@ export class QuoteController {
                 { req: req.params, query: req.query },
                 "Récupération des devis du client"
             );
-            if (!req.organizationId) {
-                return ApiResponse.error(
-                    res,
-                    401,
-                    "Aucune organisation associée à l'utilisateur"
-                );
-            }
 
             const queryParams: IQuoteQueryParams = {
                 page: req.query.page

@@ -1,17 +1,23 @@
 import { Router } from "express";
 import * as stripeController from "../controllers/stripe.controller";
-import { authMiddleware } from "@zenbilling/shared";
+import { authMiddleware, organizationRequired } from "@zenbilling/shared";
 import express from "express";
 import { handleWebhook } from "../controllers/stripe-webhook.controller";
 
 const router = Router();
+
+router.use(authMiddleware);
 
 /**
  * @route POST /api/stripe/connect
  * @desc Créer un compte Stripe Connect pour un utilisateur
  * @access Private
  */
-router.post("/connect", authMiddleware, stripeController.createConnectAccount);
+router.post(
+    "/connect",
+    organizationRequired,
+    stripeController.createConnectAccount
+);
 
 /**
  * @route POST /api/stripe/account-link
@@ -20,16 +26,9 @@ router.post("/connect", authMiddleware, stripeController.createConnectAccount);
  */
 router.post(
     "/account-link",
-    authMiddleware,
+    organizationRequired,
     stripeController.createAccountLink
 );
-
-/**
- * @route POST /api/stripe/skip-setup
- * @desc Sauter l'étape de configuration Stripe et la reporter à plus tard
- * @access Private
- */
-router.post("/skip-setup", authMiddleware, stripeController.skipStripeSetup);
 
 /**
  * @route GET /api/stripe/account-status/:userId
@@ -37,8 +36,8 @@ router.post("/skip-setup", authMiddleware, stripeController.skipStripeSetup);
  * @access Private
  */
 router.get(
-    "/account-status/:userId",
-    authMiddleware,
+    "/account-status",
+    organizationRequired,
     stripeController.getAccountStatus
 );
 
@@ -47,7 +46,11 @@ router.get(
  * @desc Créer un paiement pour une facture
  * @access Private
  */
-router.post("/create-payment", authMiddleware, stripeController.createPayment);
+router.post(
+    "/create-payment",
+    organizationRequired,
+    stripeController.createPayment
+);
 
 /**
  * @route POST /api/stripe/create-checkout-session
@@ -55,17 +58,6 @@ router.post("/create-payment", authMiddleware, stripeController.createPayment);
  * @access Private
  */
 router.post("/create-checkout-session", stripeController.createCheckoutSession);
-
-// /**
-//  * @route POST /api/stripe/create-payment-with-email
-//  * @desc Créer un paiement pour une facture et envoyer un e-mail avec le lien de paiement
-//  * @access Private
-//  */
-// router.post(
-//     "/create-payment-with-email",
-//     authMiddleware,
-//     stripeController.createPaymentWithEmailLink
-// );
 
 /**
  * @route POST /api/stripe/webhook
@@ -85,7 +77,7 @@ router.post(
  */
 router.get(
     "/dashboard-link",
-    authMiddleware,
+    organizationRequired,
     stripeController.createDashboardLink
 );
 

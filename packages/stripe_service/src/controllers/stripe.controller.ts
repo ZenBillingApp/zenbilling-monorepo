@@ -10,26 +10,19 @@ import {
     ConnectAccountResponse,
     CreateAccountLinkRequest,
     CreatePaymentRequest,
-    CreatePaymentWithEmailRequest,
     DashboardLinkResponse,
     PaymentResponse,
-    PaymentWithEmailResponse,
-    SkipStripeSetupResponse,
 } from "@zenbilling/shared";
 import { IOrganization } from "@zenbilling/shared";
 
 export const createConnectAccount = async (req: AuthRequest, res: Response) => {
     try {
         const organization = await prisma.organization.findUnique({
-            where: { id: req.organizationId },
+            where: { id: req.organizationId! },
         });
 
-        if (!organization) {
-            return ApiResponse.error(res, 404, "Organisation non trouvée");
-        }
-
         // Vérifier si l'utilisateur a déjà un compte Stripe Connect
-        if (organization.stripe_account_id) {
+        if (organization?.stripe_account_id) {
             return ApiResponse.error(
                 res,
                 400,
@@ -44,7 +37,7 @@ export const createConnectAccount = async (req: AuthRequest, res: Response) => {
 
         // Mettre à jour l'utilisateur avec l'ID du compte Stripe
         await prisma.organization.update({
-            where: { id: organization.id },
+            where: { id: organization!.id },
             data: { stripe_account_id: account.id },
         });
 
@@ -76,13 +69,8 @@ export const createAccountLink = async (req: AuthRequest, res: Response) => {
         });
         const { refreshUrl, returnUrl }: CreateAccountLinkRequest = req.body;
 
-        // Vérifier si l'utilisateur existe
-        if (!organization || !organization.stripe_account_id) {
-            return ApiResponse.error(res, 404, "Organisation non trouvée");
-        }
-
         // Vérifier si l'utilisateur a un compte Stripe Connect
-        if (!organization.stripe_account_id) {
+        if (!organization?.stripe_account_id) {
             return ApiResponse.error(
                 res,
                 400,
@@ -318,151 +306,6 @@ export const createCheckoutSession = async (
     }
 };
 
-// export const createPaymentWithEmailLink = async (
-//     req: AuthRequest,
-//     res: Response
-// ) => {
-//     try {
-//         const userId = req.user?.id;
-//         const {
-//             amount,
-//             description,
-//             invoiceId,
-//             successUrl,
-//             cancelUrl,
-//         }: CreatePaymentWithEmailRequest = req.body;
-
-//         // Vérifier que tous les champs nécessaires sont présents
-//         if (
-//             !amount ||
-//             !description ||
-//             !userId ||
-//             !invoiceId ||
-//             !successUrl ||
-//             !cancelUrl
-//         ) {
-//             return ApiResponse.error(
-//                 res,
-//                 400,
-//                 "Tous les champs sont requis (amount, description, invoiceId, successUrl, cancelUrl)"
-//             );
-//         }
-
-//         // Vérifier si l'utilisateur existe
-//         const user = await prisma.user.findUnique({
-//             where: { id: userId },
-//             include: { Company: true },
-//         });
-
-//         if (!user) {
-//             return ApiResponse.error(res, 404, "Utilisateur non trouvé");
-//         }
-
-//         // Vérifier si l'utilisateur a un compte Stripe Connect
-//         if (!user.stripe_account_id || !user.stripe_onboarded) {
-//             return ApiResponse.error(
-//                 res,
-//                 400,
-//                 "L'utilisateur n'a pas de compte Stripe Connect configuré"
-//             );
-//         }
-
-//         // Récupérer la facture et le client
-//         const invoice = await prisma.invoice.findUnique({
-//             where: { invoice_id: invoiceId },
-//             include: { customer: true },
-//         });
-
-//         if (!invoice) {
-//             return ApiResponse.error(res, 404, "Facture non trouvée");
-//         }
-
-//         // Vérifier que le client a un email
-//         if (!invoice.customer.email) {
-//             return ApiResponse.error(
-//                 res,
-//                 400,
-//                 "Le client n'a pas d'adresse email"
-//             );
-//         }
-
-//         // Calculer les frais d'application (exemple: 5%)
-//         const applicationFeeAmount = Math.round(Number(amount) * 0.05);
-
-//         // Créer la session de paiement Stripe
-//         const session = await stripeService.createCheckoutSession(
-//             Number(amount) * 100,
-//             "eur",
-//             description,
-//             user.stripe_account_id,
-//             applicationFeeAmount,
-//             invoiceId,
-//             invoice.customer.email,
-//             successUrl,
-//             cancelUrl
-//         );
-
-//         // Récupérer le nom de la société ou le nom de l'utilisateur
-//         const companyName =
-//             user.Company?.name || `${user.first_name} ${user.last_name}`;
-
-//         // Construire le contenu de l'email
-//         const emailContent = `
-//         <html>
-//             <body>
-//                 <h1>Votre facture est prête à être payée</h1>
-//                 <p>Cher client,</p>
-//                 <p>Votre facture n°${invoice.invoice_number} d'un montant de ${(
-//             amount / 100
-//         ).toFixed(2)} € est disponible pour paiement.</p>
-//                 <p>Pour procéder au règlement, veuillez cliquer sur le lien ci-dessous :</p>
-//                 <p><a href="${
-//                     session.url
-//                 }" style="display: inline-block; background-color: black; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">Payer maintenant</a></p>
-//                 <p>Ce lien expirera dans 24 heures.</p>
-//                 <p>Merci de votre confiance.</p>
-//                 <p>Cordialement,</p>
-//                 <p>${companyName}</p>
-//             </body>
-//         </html>
-//         `;
-
-//         // Envoyer l'email
-//         await emailService.sendEmail(
-//             [invoice.customer.email],
-//             `Paiement de votre facture n°${invoice.invoice_number}`,
-//             emailContent,
-//             {
-//                 name: companyName,
-//                 email: user.email,
-//             }
-//         );
-
-//         const response: PaymentWithEmailResponse = {
-//             sessionId: session.id,
-//             paymentUrl: session.url || "",
-//             emailSent: true,
-//         };
-
-//         return ApiResponse.success(
-//             res,
-//             200,
-//             "Paiement créé avec succès et email envoyé",
-//             response
-//         );
-//     } catch (error) {
-//         logger.error(
-//             "Erreur lors de la création du paiement et de l'envoi de l'email:",
-//             error
-//         );
-//         return ApiResponse.error(
-//             res,
-//             500,
-//             "Erreur lors de la création du paiement et de l'envoi de l'email"
-//         );
-//     }
-// };
-
 export const createDashboardLink = async (req: AuthRequest, res: Response) => {
     try {
         const organization = await prisma.organization.findUnique({
@@ -514,58 +357,6 @@ export const createDashboardLink = async (req: AuthRequest, res: Response) => {
             res,
             500,
             "Erreur lors de la génération du lien vers le dashboard Stripe"
-        );
-    }
-};
-
-export const skipStripeSetup = async (req: AuthRequest, res: Response) => {
-    try {
-        const organization = await prisma.organization.findUnique({
-            where: { id: req.organizationId },
-        });
-
-        // Vérifier si l'utilisateur existe
-        if (!organization) {
-            return ApiResponse.error(res, 404, "Organisation non trouvée");
-        }
-
-        // Vérifier que l'utilisateur est bien à l'étape STRIPE_SETUP
-        if (organization.stripe_onboarded !== false) {
-            return ApiResponse.error(
-                res,
-                400,
-                "L'organisation n'a pas de compte Stripe Connect configuré"
-            );
-        }
-
-        // Mettre à jour l'utilisateur pour terminer l'onboarding
-        await prisma.organization.update({
-            where: { id: organization.id },
-            data: {
-                stripe_onboarded: true,
-            },
-        });
-
-        const response: SkipStripeSetupResponse = {
-            success: true,
-            message: "Configuration Stripe reportée avec succès",
-        };
-
-        return ApiResponse.success(
-            res,
-            200,
-            "Configuration Stripe reportée, onboarding terminé",
-            response
-        );
-    } catch (error) {
-        logger.error(
-            { err: error },
-            "Erreur lors du report de la configuration Stripe"
-        );
-        return ApiResponse.error(
-            res,
-            500,
-            "Erreur lors du report de la configuration Stripe"
         );
     }
 };

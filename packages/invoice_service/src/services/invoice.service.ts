@@ -390,7 +390,7 @@ export class InvoiceService {
         }
     }
 
-    public static async getCompanyInvoices(
+    public static async getOrganizationInvoices(
         organizationId: string,
         queryParams: IInvoiceQueryParams = {}
     ): Promise<{

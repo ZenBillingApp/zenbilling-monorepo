@@ -1,12 +1,10 @@
 import { Router } from "express";
 import { ProductController } from "../controllers/product.controller";
-import { authMiddleware, organizationRequired } from "@zenbilling/shared";
+import { organizationRequired } from "@zenbilling/shared";
 import { validateRequest } from "@zenbilling/shared";
 import { createProductSchema, updateProductSchema } from "@zenbilling/shared";
 
 const router = Router();
-
-router.use(authMiddleware, organizationRequired);
 
 router.get("/units", ProductController.getAvailableUnits);
 
@@ -14,20 +12,22 @@ router.get("/vat-rates", ProductController.getAvailableVatRates);
 
 router.post(
     "/",
+    organizationRequired,
     validateRequest(createProductSchema),
     ProductController.createProduct
 );
 
-router.get("/", ProductController.getCompanyProducts);
+router.get("/", organizationRequired, ProductController.getCompanyProducts);
 
-router.get("/:id", ProductController.getProduct);
+router.get("/:id", organizationRequired, ProductController.getProduct);
 
 router.put(
     "/:id",
+    organizationRequired,
     validateRequest(updateProductSchema),
     ProductController.updateProduct
 );
 
-router.delete("/:id", ProductController.deleteProduct);
+router.delete("/:id", organizationRequired, ProductController.deleteProduct);
 
 export default router;

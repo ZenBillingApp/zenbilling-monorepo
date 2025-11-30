@@ -249,7 +249,7 @@ export class ProductService {
         return product;
     }
 
-    public static async getCompanyProducts(
+    public static async getOrganizationProducts(
         organizationId: string,
         queryParams: IProductQueryParams = {}
     ): Promise<{ products: IProduct[]; total: number; totalPages: number }> {

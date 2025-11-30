@@ -6,32 +6,37 @@ import { createQuoteSchema, updateQuoteSchema } from "@zenbilling/shared";
 
 const router = Router();
 
-router.use(authMiddleware, organizationRequired);
+router.use(authMiddleware);
 
 router.post(
     "/",
+    organizationRequired,
     validateRequest(createQuoteSchema),
     QuoteController.createQuote
 );
 
-router.get("/", QuoteController.getCompanyQuotes);
-
-router.get("/customer/:customerId", QuoteController.getCustomerQuotes);
-
-router.get("/:id", QuoteController.getQuote);
-
-// router.get("/:id/pdf", authMiddleware, QuoteController.downloadQuotePdf);
-
+router.get("/", organizationRequired, QuoteController.getOrganizationQuotes);
+router.get(
+    "/customer/:customerId",
+    organizationRequired,
+    QuoteController.getCustomerQuotes
+);
+router.get("/:id", organizationRequired, QuoteController.getQuote);
 router.put(
     "/:id",
+    organizationRequired,
     validateRequest(updateQuoteSchema),
     QuoteController.updateQuote
 );
 
-router.delete("/:id", QuoteController.deleteQuote);
+router.delete("/:id", organizationRequired, QuoteController.deleteQuote);
 
-router.get("/:id/pdf", QuoteController.downloadQuotePdf);
+router.get("/:id/pdf", organizationRequired, QuoteController.downloadQuotePdf);
 
-router.post("/:id/send", QuoteController.sendQuoteByEmail);
+router.post(
+    "/:id/send",
+    organizationRequired,
+    QuoteController.sendQuoteByEmail
+);
 
 export default router;

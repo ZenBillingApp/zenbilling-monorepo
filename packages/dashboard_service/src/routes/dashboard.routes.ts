@@ -5,10 +5,11 @@ import { authMiddleware, organizationRequired } from "@zenbilling/shared";
 const router = Router();
 const dashboardController = new DashboardController();
 
-router.use(authMiddleware, organizationRequired);
+router.use(authMiddleware);
 
 router.get(
     "/metrics",
+    organizationRequired,
     dashboardController.getDashboardMetrics.bind(dashboardController)
 );
 

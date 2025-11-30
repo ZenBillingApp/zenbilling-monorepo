@@ -1,13 +1,9 @@
 import { Response } from "express";
 import { InvoiceService } from "../services/invoice.service";
-// import { PdfService } from "../services/pdf.service";
 import { AuthRequest, IOrganization } from "@zenbilling/shared";
 import { ApiResponse } from "@zenbilling/shared";
 import { CustomError } from "@zenbilling/shared";
-import {
-    IInvoiceQueryParams,
-    ISendInvoiceWithPaymentLinkRequest,
-} from "@zenbilling/shared";
+import { IInvoiceQueryParams } from "@zenbilling/shared";
 import { logger } from "@zenbilling/shared";
 import axios from "axios";
 import { prisma } from "@zenbilling/shared";
@@ -16,16 +12,10 @@ export class InvoiceController {
     public static async createInvoice(req: AuthRequest, res: Response) {
         try {
             logger.info({ req: req.body }, "Creating invoice");
-            if (!req.organizationId) {
-                return ApiResponse.error(
-                    res,
-                    401,
-                    "Aucune organisation associée à l'utilisateur"
-                );
-            }
+
             const invoice = await InvoiceService.createInvoice(
                 req.user!.id,
-                req.organizationId,
+                req.organizationId!,
                 req.body
             );
             logger.info({ invoice }, "Invoice created");
@@ -52,16 +42,10 @@ export class InvoiceController {
     public static async getInvoice(req: AuthRequest, res: Response) {
         try {
             logger.info({ req: req.params }, "Getting invoice");
-            if (!req.organizationId) {
-                return ApiResponse.error(
-                    res,
-                    401,
-                    "Aucune organisation associée à l'utilisateur"
-                );
-            }
+
             const invoice = await InvoiceService.getInvoiceWithDetails(
                 req.params.id,
-                req.organizationId
+                req.organizationId!
             );
             logger.info({ invoice }, "Invoice retrieved");
             return ApiResponse.success(
@@ -87,16 +71,10 @@ export class InvoiceController {
     public static async updateInvoice(req: AuthRequest, res: Response) {
         try {
             logger.info({ req: req.params }, "Updating invoice");
-            if (!req.organizationId) {
-                return ApiResponse.error(
-                    res,
-                    401,
-                    "Aucune organisation associée à l'utilisateur"
-                );
-            }
+
             const invoice = await InvoiceService.updateInvoice(
                 req.params.id,
-                req.organizationId,
+                req.organizationId!,
                 req.body
             );
             logger.info({ invoice }, "Invoice updated");
@@ -123,16 +101,10 @@ export class InvoiceController {
     public static async deleteInvoice(req: AuthRequest, res: Response) {
         try {
             logger.info({ req: req.params }, "Deleting invoice");
-            if (!req.organizationId) {
-                return ApiResponse.error(
-                    res,
-                    401,
-                    "Aucune organisation associée à l'utilisateur"
-                );
-            }
+
             await InvoiceService.deleteInvoice(
                 req.params.id,
-                req.organizationId
+                req.organizationId!
             );
             logger.info("Invoice deleted");
             return ApiResponse.success(
@@ -154,16 +126,12 @@ export class InvoiceController {
         }
     }
 
-    public static async getCompanyInvoices(req: AuthRequest, res: Response) {
+    public static async getOrganizationInvoices(
+        req: AuthRequest,
+        res: Response
+    ) {
         try {
-            logger.info({ req: req.query }, "Getting company invoices");
-            if (!req.organizationId) {
-                return ApiResponse.error(
-                    res,
-                    401,
-                    "Aucune organisation associée à l'utilisateur"
-                );
-            }
+            logger.info({ req: req.query }, "Getting organization invoices");
 
             const queryParams: IInvoiceQueryParams = {
                 page: req.query.page
@@ -194,11 +162,11 @@ export class InvoiceController {
                 sortOrder: req.query.sortOrder as "ASC" | "DESC",
             };
 
-            const result = await InvoiceService.getCompanyInvoices(
-                req.organizationId,
+            const result = await InvoiceService.getOrganizationInvoices(
+                req.organizationId!,
                 queryParams
             );
-            logger.info({ result }, "Company invoices retrieved");
+            logger.info({ result }, "Organization invoices retrieved");
             return ApiResponse.success(
                 res,
                 200,
@@ -217,11 +185,11 @@ export class InvoiceController {
                 }
             );
         } catch (error) {
-            logger.error({ error }, "Error getting company invoices");
+            logger.error({ error }, "Error getting organization invoices");
             if (error instanceof CustomError) {
                 return ApiResponse.error(res, error.statusCode, error.message);
             }
-            logger.error({ error }, "Error getting company invoices");
+            logger.error({ error }, "Error getting organization invoices");
             return ApiResponse.error(res, 500, "Erreur interne du serveur");
         }
     }
@@ -229,16 +197,10 @@ export class InvoiceController {
     public static async createPayment(req: AuthRequest, res: Response) {
         try {
             logger.info({ req: req.params }, "Creating payment");
-            if (!req.organizationId) {
-                return ApiResponse.error(
-                    res,
-                    401,
-                    "Aucune organisation associée à l'utilisateur"
-                );
-            }
+
             const payment = await InvoiceService.createPayment(
                 req.params.id,
-                req.organizationId,
+                req.organizationId!,
                 req.body
             );
             logger.info({ payment }, "Payment created");
@@ -267,17 +229,9 @@ export class InvoiceController {
             logger.info({ req: req.params }, "Downloading invoice PDF");
             const invoiceId = req.params.id;
 
-            if (!req.organizationId) {
-                return ApiResponse.error(
-                    res,
-                    401,
-                    "Aucune organisation associée à l'utilisateur"
-                );
-            }
-
             const invoice = await InvoiceService.getInvoiceWithDetails(
                 invoiceId,
-                req.organizationId
+                req.organizationId!
             );
 
             // Vérifier que l'utilisateur a accès à cette facture
@@ -344,17 +298,10 @@ export class InvoiceController {
     public static async sendInvoiceByEmail(req: AuthRequest, res: Response) {
         try {
             logger.info({ req: req.params }, "Envoi de facture par email");
-            if (!req.organizationId) {
-                return ApiResponse.error(
-                    res,
-                    401,
-                    "Aucune organisation associée à l'utilisateur"
-                );
-            }
 
             await InvoiceService.sendInvoiceByEmail(
                 req.params.id,
-                req.organizationId,
+                req.organizationId!,
                 req.user!.id
             );
 
@@ -395,16 +342,9 @@ export class InvoiceController {
                 { req: req.params },
                 "Envoi de facture par email avec lien de paiement"
             );
-            if (!req.organizationId) {
-                return ApiResponse.error(
-                    res,
-                    401,
-                    "Aucune organisation associée à l'utilisateur"
-                );
-            }
 
             const organization = await prisma.organization.findUnique({
-                where: { id: req.organizationId },
+                where: { id: req.organizationId! },
             });
 
             const { successUrl, cancelUrl } = req.body;
@@ -546,13 +486,6 @@ export class InvoiceController {
                 { req: req.params, query: req.query },
                 "Récupération des factures du client"
             );
-            if (!req.organizationId) {
-                return ApiResponse.error(
-                    res,
-                    401,
-                    "Aucune organisation associée à l'utilisateur"
-                );
-            }
 
             const queryParams: IInvoiceQueryParams = {
                 page: req.query.page
@@ -577,7 +510,7 @@ export class InvoiceController {
 
             const result = await InvoiceService.getCustomerInvoices(
                 req.params.customerId,
-                req.organizationId,
+                req.organizationId!,
                 queryParams
             );
 

@@ -410,7 +410,7 @@ export class QuoteService {
         }
     }
 
-    public static async getCompanyQuotes(
+    public static async getOrganizationQuotes(
         organizationId: string,
         queryParams: IQuoteQueryParams = {}
     ): Promise<{

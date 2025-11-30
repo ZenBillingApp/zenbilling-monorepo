@@ -343,15 +343,17 @@ describe("QuoteController", () => {
             };
 
             mockRequest.query = queryParams as any;
-            mockQuoteService.getCompanyQuotes.mockResolvedValue(result as any);
+            mockQuoteService.getOrganizationQuotes.mockResolvedValue(
+                result as any
+            );
 
-            await QuoteController.getCompanyQuotes(
+            await QuoteController.getOrganizationQuotes(
                 mockRequest as AuthRequest,
                 mockResponse as Response
             );
 
-            expect(mockQuoteService.getCompanyQuotes).toHaveBeenCalledWith(
-                "company-123",
+            expect(mockQuoteService.getOrganizationQuotes).toHaveBeenCalledWith(
+                "organization-123",
                 {
                     page: 1,
                     limit: 10,

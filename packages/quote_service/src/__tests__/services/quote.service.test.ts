@@ -71,7 +71,7 @@ jest.mock("@zenbilling/shared", () => ({
     Decimal: class MockDecimal {
         private value: number;
         constructor(value: number | string) {
-            this.value = typeof value === 'string' ? parseFloat(value) : value;
+            this.value = typeof value === "string" ? parseFloat(value) : value;
         }
         plus(other: MockDecimal): MockDecimal {
             return new MockDecimal(this.value + other.value);
@@ -88,10 +88,10 @@ jest.mock("@zenbilling/shared", () => ({
     },
     vatRateToNumber: jest.fn((rate: string) => {
         const rates: { [key: string]: number } = {
-            'TVA_0': 0,
-            'TVA_5_5': 5.5,
-            'TVA_10': 10,
-            'TVA_20': 20,
+            TVA_0: 0,
+            TVA_5_5: 5.5,
+            TVA_10: 10,
+            TVA_20: 20,
         };
         return rates[rate] || 20;
     }),
@@ -205,7 +205,9 @@ describe("QuoteService", () => {
 
             await expect(
                 QuoteService.createQuote(userId, companyId, quoteData as any)
-            ).rejects.toThrow("Certains produits n'existent pas ou n'appartiennent pas à votre société");
+            ).rejects.toThrow(
+                "Certains produits n'existent pas ou n'appartiennent pas à votre société"
+            );
         });
 
         it("should create quote without products (custom items)", async () => {
@@ -236,7 +238,9 @@ describe("QuoteService", () => {
 
             // No products to validate
             mockTransaction.product.findMany.mockResolvedValue([]);
-            mockTransaction.quote.create.mockResolvedValue({ quote_id: "quote-123" });
+            mockTransaction.quote.create.mockResolvedValue({
+                quote_id: "quote-123",
+            });
             mockTransaction.quote.update.mockResolvedValue(expectedQuote);
 
             const result = await QuoteService.createQuote(
@@ -466,7 +470,7 @@ describe("QuoteService", () => {
             prisma.$transaction.mockResolvedValueOnce([quotes, 2]);
             prisma.$transaction.mockResolvedValueOnce([1, 1, 0, 0, 0, 2]);
 
-            const result = await QuoteService.getCompanyQuotes(companyId);
+            const result = await QuoteService.getOrganizationQuotes(companyId);
 
             expect(result).toEqual({
                 quotes,
@@ -497,7 +501,7 @@ describe("QuoteService", () => {
             prisma.$transaction.mockResolvedValueOnce([[], 0]);
             prisma.$transaction.mockResolvedValueOnce([0, 0, 0, 0, 0, 0]);
 
-            await QuoteService.getCompanyQuotes(companyId, queryParams);
+            await QuoteService.getOrganizationQuotes(companyId, queryParams);
 
             // Verify the query was called with correct parameters
             expect(prisma.$transaction).toHaveBeenCalled();
@@ -516,7 +520,10 @@ describe("QuoteService", () => {
             prisma.$transaction.mockResolvedValueOnce([[], 0]);
             prisma.$transaction.mockResolvedValueOnce([0, 0, 0, 0, 0, 0]);
 
-            const result = await QuoteService.getCompanyQuotes(companyId, queryParams);
+            const result = await QuoteService.getOrganizationQuotes(
+                companyId,
+                queryParams
+            );
 
             expect(result.quotes).toEqual([]);
             expect(result.total).toBe(0);
@@ -654,9 +661,7 @@ describe("QuoteService", () => {
         it("should get customer quotes successfully", async () => {
             const customerId = "customer-123";
             const companyId = "company-123";
-            const quotes = [
-                { quote_id: "quote-1", customer_id: customerId },
-            ];
+            const quotes = [{ quote_id: "quote-1", customer_id: customerId }];
 
             prisma.quote.findMany.mockResolvedValue(quotes);
             prisma.quote.count.mockResolvedValue(1);
@@ -745,7 +750,9 @@ describe("QuoteService", () => {
 
             await expect(
                 QuoteService.getCustomerQuotes("customer-123", "company-123")
-            ).rejects.toThrow("Erreur lors de la récupération des devis du client");
+            ).rejects.toThrow(
+                "Erreur lors de la récupération des devis du client"
+            );
         });
     });
 });

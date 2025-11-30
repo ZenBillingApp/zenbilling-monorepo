@@ -348,7 +348,7 @@ describe("InvoiceService", () => {
                 .mockResolvedValueOnce([1, 0, 0, 0, 0, 1]); // Second call: [pending, paid, cancelled, sent, late, total]
 
             // Act
-            const result = await InvoiceService.getCompanyInvoices(
+            const result = await InvoiceService.getOrganizationInvoices(
                 organizationId,
                 queryParams
             );
@@ -386,7 +386,7 @@ describe("InvoiceService", () => {
             ]);
 
             // Act
-            await InvoiceService.getCompanyInvoices(
+            await InvoiceService.getOrganizationInvoices(
                 organizationId,
                 queryParams
             );

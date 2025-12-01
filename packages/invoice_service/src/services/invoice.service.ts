@@ -718,6 +718,7 @@ export class InvoiceService {
                     headers: {
                         "Content-Type": "application/json",
                     },
+                    withCredentials: true,
                 }
             );
 

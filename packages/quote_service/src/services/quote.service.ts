@@ -11,7 +11,7 @@ import { IProduct, vatRateToNumber } from "@zenbilling/shared";
 import { logger } from "@zenbilling/shared";
 import { Prisma, PrismaClient, Decimal } from "@zenbilling/shared";
 import { prisma } from "@zenbilling/shared";
-import axios from "axios";
+import { ServiceClients } from "@zenbilling/shared";
 
 export class QuoteService {
     private static generateQuoteNumber(
@@ -633,17 +633,14 @@ export class QuoteService {
             }
 
             // Générer le PDF du devis
-            const pdfResponse = await axios.post(
-                `${process.env.PDF_SERVICE_URL}/api/pdf/quote`,
+            const pdfResponse = await ServiceClients.pdf.post(
+                "/api/pdf/quote",
                 {
                     quote: quote,
                     organization: quote.organization,
                 },
                 {
                     responseType: "arraybuffer",
-                    headers: {
-                        "Content-Type": "application/json",
-                    },
                 }
             );
 
@@ -696,8 +693,8 @@ export class QuoteService {
             `;
 
             // Envoyer l'email avec le devis en pièce jointe
-            await axios.post(
-                `${process.env.EMAIL_SERVICE_URL}/api/email/send-with-attachment`,
+            await ServiceClients.email.post(
+                "/api/email/send-with-attachment",
                 {
                     to: [quote.customer.email],
                     subject: `Devis ${quote.quote_number}`,
@@ -706,9 +703,6 @@ export class QuoteService {
                     filename: `devis-${quote.quote_number}.pdf`,
                 },
                 {
-                    headers: {
-                        "Content-Type": "application/json",
-                    },
                     maxBodyLength: Infinity,
                     maxContentLength: Infinity,
                 }

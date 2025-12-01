@@ -17,8 +17,8 @@ import {
     ICreatePaymentRequest,
     IInvoiceQueryParams,
     ISendInvoiceWithPaymentLinkRequest,
+    ServiceClients,
 } from "@zenbilling/shared";
-import axios from "axios";
 
 export class InvoiceService {
     private static generateInvoiceNumber(
@@ -707,18 +707,14 @@ export class InvoiceService {
             }
 
             // Générer le PDF de la facture
-            const pdfResponse = await axios.post(
-                `${process.env.PDF_SERVICE_URL}/api/pdf/invoice`,
+            const pdfResponse = await ServiceClients.pdf.post(
+                "/api/pdf/invoice",
                 {
                     invoice: invoice,
                     organization: invoice.organization,
                 },
                 {
                     responseType: "arraybuffer",
-                    headers: {
-                        "Content-Type": "application/json",
-                    },
-                    withCredentials: true,
                 }
             );
 
@@ -771,8 +767,8 @@ export class InvoiceService {
             `;
 
             // Envoyer l'email avec la facture en pièce jointe
-            await axios.post(
-                `${process.env.EMAIL_SERVICE_URL}/api/email/send-with-attachment`,
+            await ServiceClients.email.post(
+                "/api/email/send-with-attachment",
                 {
                     to: [invoice.customer.email],
                     subject: `Facture ${invoice.invoice_number}`,
@@ -781,9 +777,6 @@ export class InvoiceService {
                     filename: `facture-${invoice.invoice_number}.pdf`,
                 },
                 {
-                    headers: {
-                        "Content-Type": "application/json",
-                    },
                     maxBodyLength: Infinity,
                     maxContentLength: Infinity,
                 }
@@ -852,17 +845,14 @@ export class InvoiceService {
             }
 
             // Générer le PDF de la facture
-            const pdfResponse = await axios.post(
-                `${process.env.PDF_SERVICE_URL}/api/pdf/invoice`,
+            const pdfResponse = await ServiceClients.pdf.post(
+                "/api/pdf/invoice",
                 {
                     invoice: invoice,
                     organization: invoice.organization,
                 },
                 {
                     responseType: "arraybuffer",
-                    headers: {
-                        "Content-Type": "application/json",
-                    },
                 }
             );
 
@@ -896,8 +886,8 @@ export class InvoiceService {
                 }
 
                 // Créer une session de paiement Stripe
-                const stripeResponse = await axios.post(
-                    `${process.env.STRIPE_SERVICE_URL}/api/stripe/create-checkout-session`,
+                const stripeResponse = await ServiceClients.stripe.post(
+                    "/api/stripe/create-checkout-session",
                     {
                         amount: Math.round(
                             Number(invoice.amount_including_tax) * 100
@@ -912,11 +902,6 @@ export class InvoiceService {
                         customerEmail: invoice.customer.email,
                         successUrl: options.successUrl,
                         cancelUrl: options.cancelUrl,
-                    },
-                    {
-                        headers: {
-                            "Content-Type": "application/json",
-                        },
                     }
                 );
 
@@ -974,8 +959,8 @@ export class InvoiceService {
             `;
 
             // Envoyer l'email avec la facture en pièce jointe
-            await axios.post(
-                `${process.env.EMAIL_SERVICE_URL}/api/email/send-with-attachment`,
+            await ServiceClients.email.post(
+                "/api/email/send-with-attachment",
                 {
                     to: [invoice.customer.email],
                     subject: `Facture ${invoice.invoice_number}${
@@ -986,9 +971,6 @@ export class InvoiceService {
                     filename: `facture-${invoice.invoice_number}.pdf`,
                 },
                 {
-                    headers: {
-                        "Content-Type": "application/json",
-                    },
                     maxBodyLength: Infinity,
                     maxContentLength: Infinity,
                 }

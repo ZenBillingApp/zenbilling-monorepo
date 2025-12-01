@@ -5,7 +5,7 @@ import { ApiResponse } from "@zenbilling/shared";
 import { CustomError } from "@zenbilling/shared";
 import { IQuoteQueryParams } from "@zenbilling/shared";
 import { logger } from "@zenbilling/shared";
-import axios from "axios";
+import { ServiceClients } from "@zenbilling/shared";
 
 export class QuoteController {
     public static async createQuote(req: AuthRequest, res: Response) {
@@ -188,17 +188,14 @@ export class QuoteController {
                 );
             }
 
-            const pdf = await axios.post(
-                `${process.env.PDF_SERVICE_URL}/api/pdf/quote`,
+            const pdf = await ServiceClients.pdf.post(
+                "/api/pdf/quote",
                 {
                     quote: quote,
                     organization: quote.organization,
                 },
                 {
                     responseType: "arraybuffer",
-                    headers: {
-                        "Content-Type": "application/json",
-                    },
                 }
             );
 

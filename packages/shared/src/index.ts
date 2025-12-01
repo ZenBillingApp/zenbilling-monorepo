@@ -23,6 +23,8 @@ export * from "./interfaces/Organization.interface";
 export { ApiResponse } from "./utils/apiResponse";
 export { default as logger } from "./utils/logger";
 export { CustomError } from "./utils/customError";
+export { createServiceClient, ServiceClients } from "./utils/axios.util";
+export type { ServiceClientConfig } from "./utils/axios.util";
 
 // Export du client Prisma et types
 export { default as prisma } from "./lib/prisma";

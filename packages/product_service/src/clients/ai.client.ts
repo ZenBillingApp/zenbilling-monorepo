@@ -1,58 +1,17 @@
 import axios, { AxiosInstance, AxiosResponse } from "axios";
-import { logger } from "@zenbilling/shared";
+import { logger, ServiceClients } from "@zenbilling/shared";
 import {
     TextGenerationRequest,
     AISuggestionsRequest,
     AIResponse,
 } from "@zenbilling/shared";
-import dotenv from "dotenv";
-
-dotenv.config();
 
 export class AIClient {
     private client: AxiosInstance;
 
     constructor() {
-        const aiServiceUrl =
-            process.env.AI_SERVICE_URL || "http://localhost:3011";
-
-        this.client = axios.create({
-            baseURL: aiServiceUrl,
-            timeout: 30000, // 30 secondes pour les requêtes AI
-            headers: {
-                "Content-Type": "application/json",
-            },
-        });
-
-        // Intercepteur pour logger les requêtes
-        this.client.interceptors.request.use(
-            (config) => {
-                logger.info(
-                    `AI Service Request: ${config.method?.toUpperCase()} ${
-                        config.url
-                    }`
-                );
-                return config;
-            },
-            (error) => {
-                logger.error({ err: error }, "AI Service Request Error");
-                return Promise.reject(error);
-            }
-        );
-
-        // Intercepteur pour logger les réponses
-        this.client.interceptors.response.use(
-            (response) => {
-                logger.info(
-                    `AI Service Response: ${response.status} ${response.config.url}`
-                );
-                return response;
-            },
-            (error) => {
-                logger.error({ err: error.response?.data || error.message }, "AI Service Response Error");
-                return Promise.reject(error);
-            }
-        );
+        // Utiliser le client AI pré-configuré depuis ServiceClients
+        this.client = ServiceClients.ai;
     }
 
     /**

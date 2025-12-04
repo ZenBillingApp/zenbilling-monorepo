@@ -1,8 +1,17 @@
 import { Request, Response, NextFunction } from "express";
-import { auth } from "../lib/auth";
 import { ApiResponse } from "../utils/apiResponse";
 import logger from "../utils/logger";
-import { AuthRequest } from "../interfaces/Auth.interface";
+
+/**
+ * Interface étendue pour inclure les informations utilisateur transmises par le Gateway
+ */
+export interface GatewayAuthRequest extends Request {
+    gatewayUser?: {
+        id: string;
+        sessionId: string;
+        organizationId?: string;
+    };
+}
 
 export async function authMiddleware(
     req: Request,
@@ -10,25 +19,55 @@ export async function authMiddleware(
     next: NextFunction
 ): Promise<void> {
     try {
-        // Vérifier si la session existe via Better Auth
-        const session = await auth.api.getSession({
-            headers: req.headers as any,
-        });
+        // Lire les headers ajoutés par le Gateway
+        const userId = req.headers["x-user-id"] as string;
+        const sessionId = req.headers["x-session-id"] as string;
+        const organizationId = req.headers["x-organization-id"] as
+            | string
+            | undefined;
 
-        if (!session) {
-            logger.warn("Session manquante");
-            ApiResponse.error(res, 401, "Non autorisé - Session manquante");
+        // Vérifier que les headers requis sont présents
+        if (!userId || !sessionId) {
+            logger.warn(
+                {
+                    headers: req.headers,
+                    path: req.path,
+                },
+                "Gateway auth headers manquants - La requête n'a pas été authentifiée par le Gateway"
+            );
+
+            ApiResponse.error(
+                res,
+                401,
+                "Non autorisé - Headers d'authentification manquants"
+            );
             return;
         }
 
-        (req as AuthRequest).session = session;
-        (req as AuthRequest).user = session.user;
+        // Attacher les informations utilisateur à la requête
+        (req as GatewayAuthRequest).gatewayUser = {
+            id: userId,
+            sessionId: sessionId,
+            organizationId: organizationId,
+        };
 
-        logger.info({ session }, "Session authenticated successfully");
+        logger.info(
+            {
+                userId,
+                organizationId,
+                path: req.path,
+                method: req.method,
+            },
+            "Utilisateur authentifié via Gateway"
+        );
 
         next();
     } catch (error) {
-        logger.error({ error }, "Authentication middleware error");
-        ApiResponse.error(res, 401, "Non autorisé - Token invalide");
+        logger.error({ error }, "Erreur dans gatewayAuthMiddleware");
+        ApiResponse.error(
+            res,
+            500,
+            "Erreur interne lors de la vérification de l'authentification"
+        );
     }
 }

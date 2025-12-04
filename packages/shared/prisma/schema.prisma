@@ -1,3 +1,4 @@
+
 generator client {
   provider = "prisma-client-js"
 }
@@ -264,9 +265,9 @@ enum ProductUnit {
   ml
   m
   cm
-  m2    @map("m²")
-  cm2   @map("cm²")
-  m3    @map("m³")
+  m2 @map("m²")
+  cm2 @map("cm²")
+  m3 @map("m³")
   h
   jour
   mois
@@ -274,11 +275,11 @@ enum ProductUnit {
 }
 
 enum VatRate {
-  ZERO      @map("0.00")
+  ZERO @map("0.00")
   REDUCED_1 @map("2.10")
   REDUCED_2 @map("5.50")
   REDUCED_3 @map("10.00")
-  STANDARD  @map("20.00")
+  STANDARD @map("20.00")
 }
 
 model Organization {
@@ -347,4 +348,14 @@ model Invitation {
   @@index([organizationId])
   @@index([email])
   @@map("invitation")
+}
+
+model Jwks {
+  id         String    @id
+  publicKey  String
+  privateKey String
+  createdAt  DateTime
+  expiresAt  DateTime?
+
+  @@map("jwks")
 }

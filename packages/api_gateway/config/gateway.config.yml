@@ -56,12 +56,14 @@ serviceEndpoints:
         url: "${AI_SERVICE_URL:-http://localhost:3011}"
 policies:
     - basic-auth
+    - cors
     - expression
     - key-auth
     - log
     - oauth2
     - proxy
     - rate-limit
+    - better-auth-jwt
 pipelines:
     health:
         apiEndpoints:
@@ -79,6 +81,12 @@ pipelines:
         apiEndpoints:
             - auth
         policies:
+            - cors:
+                  - action:
+                        origin: "${CLIENT_URL:-http://localhost:3000}"
+                        credentials: true
+                        methods: "GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS"
+                        allowedHeaders: "Content-Type,Authorization"
             - proxy:
                   - action:
                         serviceEndpoint: auth_service
@@ -88,6 +96,13 @@ pipelines:
         apiEndpoints:
             - company
         policies:
+            - cors:
+                  - action:
+                        origin: "${CLIENT_URL:-http://localhost:3000}"
+                        credentials: true
+                        methods: "GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS"
+                        allowedHeaders: "Content-Type,Authorization"
+            - better-auth-jwt:
             - proxy:
                   - action:
                         serviceEndpoint: company_service
@@ -106,6 +121,13 @@ pipelines:
         apiEndpoints:
             - dashboard
         policies:
+            - cors:
+                  - action:
+                        origin: "${CLIENT_URL:-http://localhost:3000}"
+                        credentials: true
+                        methods: "GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS"
+                        allowedHeaders: "Content-Type,Authorization"
+            - better-auth-jwt:
             - proxy:
                   - action:
                         serviceEndpoint: dashboard_service
@@ -115,6 +137,13 @@ pipelines:
         apiEndpoints:
             - invoice
         policies:
+            - cors:
+                  - action:
+                        origin: "${CLIENT_URL:-http://localhost:3000}"
+                        credentials: true
+                        methods: "GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS"
+                        allowedHeaders: "Content-Type,Authorization"
+            - better-auth-jwt:
             - proxy:
                   - action:
                         serviceEndpoint: invoice_service
@@ -124,6 +153,13 @@ pipelines:
         apiEndpoints:
             - quote
         policies:
+            - cors:
+                  - action:
+                        origin: "${CLIENT_URL:-http://localhost:3000}"
+                        credentials: true
+                        methods: "GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS"
+                        allowedHeaders: "Content-Type,Authorization"
+            - better-auth-jwt:
             - proxy:
                   - action:
                         serviceEndpoint: quote_service
@@ -133,6 +169,13 @@ pipelines:
         apiEndpoints:
             - product
         policies:
+            - cors:
+                  - action:
+                        origin: "${CLIENT_URL:-http://localhost:3000}"
+                        credentials: true
+                        methods: "GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS"
+                        allowedHeaders: "Content-Type,Authorization"
+            - better-auth-jwt:
             - proxy:
                   - action:
                         serviceEndpoint: product_service
@@ -142,6 +185,13 @@ pipelines:
         apiEndpoints:
             - customer
         policies:
+            - cors:
+                  - action:
+                        origin: "${CLIENT_URL:-http://localhost:3000}"
+                        credentials: true
+                        methods: "GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS"
+                        allowedHeaders: "Content-Type,Authorization"
+            - better-auth-jwt:
             - proxy:
                   - action:
                         serviceEndpoint: customer_service

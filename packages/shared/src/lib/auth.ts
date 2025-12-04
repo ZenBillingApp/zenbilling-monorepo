@@ -1,7 +1,7 @@
 import { betterAuth } from "better-auth";
 import { nextCookies } from "better-auth/next-js";
 import { prismaAdapter } from "better-auth/adapters/prisma";
-import { organization } from "better-auth/plugins";
+import { organization, jwt } from "better-auth/plugins";
 import prisma from "./prisma";
 import { z } from "zod";
 
@@ -181,6 +181,25 @@ export const auth = betterAuth({
     },
     plugins: [
         nextCookies(),
+        // Plugin JWT pour génération de tokens validables par le Gateway
+        jwt({
+            jwt: {
+                issuer: process.env.BETTER_AUTH_URL || "http://localhost:3001",
+                audience:
+                    process.env.API_GATEWAY_URL || "http://localhost:8080",
+                // Inclure les données de session dans le JWT
+                definePayload: ({ user, session }) => {
+                    return {
+                        // User claims
+                        id: user.id,
+                        email: user.email,
+                        name: `${user.first_name} ${user.last_name}`,
+                        sessionId: session.id,
+                        activeOrganizationId: session.activeOrganizationId,
+                    };
+                },
+            },
+        }),
         organization({
             schema: {
                 organization: {

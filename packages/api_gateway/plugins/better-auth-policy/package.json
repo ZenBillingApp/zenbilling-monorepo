@@ -1,0 +1,9 @@
+{
+  "name": "better-auth-jwt-policy",
+  "version": "1.0.0",
+  "description": "Express Gateway policy for Better Auth JWT validation",
+  "main": "manifest.js",
+  "dependencies": {
+    "jose": "^5.9.6"
+  }
+}

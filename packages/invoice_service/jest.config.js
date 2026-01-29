@@ -15,8 +15,8 @@ module.exports = {
     coverageDirectory: "coverage",
     coverageReporters: ["text", "lcov", "html"],
     setupFilesAfterEnv: ["<rootDir>/src/__tests__/setup.ts"],
-    moduleNameMapping: {
-        "^@zenbilling/shared$": "<rootDir>/../shared/src/index.ts",
+    moduleNameMapper: {
+        "^@zenbilling/shared$": "<rootDir>/src/__tests__/mocks/shared.mock.ts",
     },
     testTimeout: 10000,
 };

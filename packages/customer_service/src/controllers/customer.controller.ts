@@ -9,8 +9,8 @@ import { logger } from "@zenbilling/shared";
 export class CustomerController {
     public static async createCustomer(req: AuthRequest, res: Response) {
         try {
-            logger.info({ req: req.user!.id }, "Creating customer");
-            if (!req.organizationId) {
+            logger.info({ userId: req.gatewayUser!.id }, "Creating customer");
+            if (!req.gatewayUser?.organizationId) {
                 return ApiResponse.error(
                     res,
                     401,
@@ -19,8 +19,8 @@ export class CustomerController {
             }
 
             const customer = await CustomerService.createCustomer(
-                req.user!.id,
-                req.organizationId,
+                req.gatewayUser.id,
+                req.gatewayUser.organizationId,
                 req.body
             );
             logger.info({ customer }, "Customer created");
@@ -49,7 +49,7 @@ export class CustomerController {
     public static async getCustomer(req: AuthRequest, res: Response) {
         try {
             logger.info({ req: req.params }, "Getting customer");
-            if (!req.organizationId) {
+            if (!req.gatewayUser?.organizationId) {
                 return ApiResponse.error(
                     res,
                     401,
@@ -59,7 +59,7 @@ export class CustomerController {
 
             const customer = await CustomerService.getCustomerWithDetails(
                 req.params.id,
-                req.organizationId
+                req.gatewayUser.organizationId
             );
             logger.info({ customer }, "Customer retrieved");
             return ApiResponse.success(
@@ -85,7 +85,7 @@ export class CustomerController {
     public static async updateCustomer(req: AuthRequest, res: Response) {
         try {
             logger.info({ req: req.params }, "Updating customer");
-            if (!req.organizationId) {
+            if (!req.gatewayUser?.organizationId) {
                 return ApiResponse.error(
                     res,
                     401,
@@ -95,7 +95,7 @@ export class CustomerController {
 
             const customer = await CustomerService.updateCustomer(
                 req.params.id,
-                req.organizationId,
+                req.gatewayUser.organizationId,
                 req.body
             );
             logger.info({ customer }, "Customer updated");
@@ -125,7 +125,7 @@ export class CustomerController {
     public static async deleteCustomer(req: AuthRequest, res: Response) {
         try {
             logger.info({ req: req.params }, "Deleting customer");
-            if (!req.organizationId) {
+            if (!req.gatewayUser?.organizationId) {
                 return ApiResponse.error(
                     res,
                     401,
@@ -135,7 +135,7 @@ export class CustomerController {
 
             await CustomerService.deleteCustomer(
                 req.params.id,
-                req.organizationId
+                req.gatewayUser.organizationId
             );
             logger.info("Customer deleted");
             return ApiResponse.success(res, 200, "Client supprimé avec succès");
@@ -155,12 +155,12 @@ export class CustomerController {
 
     public static async getCompanyCustomers(req: AuthRequest, res: Response) {
         try {
-            logger.info({ req: req.query }, "Getting company customers");
-            if (!req.organizationId) {
+            logger.info({ req: req.query }, "Getting organization customers");
+            if (!req.gatewayUser?.organizationId) {
                 return ApiResponse.error(
                     res,
                     401,
-                    "Aucune entreprise associée à l'utilisateur"
+                    "Aucune organisation associée à l'utilisateur"
                 );
             }
 
@@ -178,10 +178,10 @@ export class CustomerController {
             };
 
             const result = await CustomerService.getCompanyCustomers(
-                req.organizationId,
+                req.gatewayUser.organizationId,
                 queryParams
             );
-            logger.info({ result }, "Company customers retrieved");
+            logger.info({ result }, "Organization customers retrieved");
             return ApiResponse.success(
                 res,
                 200,
@@ -197,11 +197,11 @@ export class CustomerController {
                 }
             );
         } catch (error) {
-            logger.error({ error }, "Error getting company customers");
+            logger.error({ error }, "Error getting organization customers");
             if (error instanceof CustomError) {
                 return ApiResponse.error(res, error.statusCode, error.message);
             }
-            logger.error({ error }, "Error getting company customers");
+            logger.error({ error }, "Error getting organization customers");
             return ApiResponse.error(res, 500, "Erreur interne du serveur");
         }
     }

@@ -1,9 +1,10 @@
+import dotenv from "dotenv";
+dotenv.config();
+
 import express from "express";
 import cors from "cors";
-import dotenv from "dotenv";
+import { prisma, createHealthRouter, logger } from "@zenbilling/shared";
 import productRoutes from "./routes/index.routes";
-
-dotenv.config();
 
 const app = express();
 const port = process.env.PORT || 3008;
@@ -17,11 +18,20 @@ app.use(
     })
 );
 
+// Health check routes (before body parsing)
+app.use(
+    createHealthRouter({
+        serviceName: "product-service",
+        version: "1.0.0",
+        prisma,
+    })
+);
+
 // Parse JSON bodies
 app.use(express.json());
 
 app.use("/api", productRoutes);
 
 app.listen(port, () => {
-    console.log(`Example app listening on port ${port}`);
+    logger.info(`Product service listening on port ${port}`);
 });

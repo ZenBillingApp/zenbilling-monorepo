@@ -5,6 +5,30 @@ import { prisma } from "@zenbilling/shared";
 import { Prisma } from "@prisma/client";
 
 export class UserService {
+    public static async getUserById(userId: string): Promise<IUserResponse> {
+        logger.info({ userId }, "Récupération de l'utilisateur");
+
+        try {
+            const user = await prisma.user.findUnique({
+                where: { id: userId },
+            });
+
+            if (!user) {
+                logger.warn({ userId }, "Utilisateur non trouvé");
+                throw new CustomError("Utilisateur non trouvé", 404);
+            }
+
+            return user;
+        } catch (error) {
+            logger.error(
+                { error, userId },
+                "Erreur lors de la récupération de l'utilisateur"
+            );
+            if (error instanceof CustomError) throw error;
+            throw new CustomError("Erreur lors de la récupération", 500);
+        }
+    }
+
     public static async updateUser(
         userId: string,
         updateData: IUpdateUserRequest

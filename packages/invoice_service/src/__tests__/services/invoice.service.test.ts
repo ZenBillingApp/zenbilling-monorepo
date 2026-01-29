@@ -7,7 +7,7 @@ import {
     afterEach,
 } from "@jest/globals";
 import { InvoiceService } from "../../services/invoice.service";
-import { CustomError, Decimal, IOrganization, IUser } from "@zenbilling/shared";
+import { CustomError, Decimal, IOrganization } from "@zenbilling/shared";
 import { mockPrisma } from "../mocks/prisma.mock";
 import { mockAxios } from "../mocks/axios.mock";
 import {
@@ -261,7 +261,7 @@ describe("InvoiceService", () => {
                         },
                     },
                     user: true,
-                    company: true,
+                    organization: true,
                 },
             });
         });
@@ -664,7 +664,7 @@ describe("InvoiceService", () => {
             await InvoiceService.sendInvoiceWithPaymentLink(
                 invoiceId,
                 mockInvoice.organization as unknown as IOrganization,
-                mockUser as any,
+                mockUser.id,
                 options
             );
 
@@ -698,7 +698,7 @@ describe("InvoiceService", () => {
                 InvoiceService.sendInvoiceWithPaymentLink(
                     invoiceId,
                     organizationWithoutStripe as IOrganization,
-                    mockUser as unknown as IUser,
+                    mockUser.id,
                     options as { successUrl?: string; cancelUrl?: string }
                 )
             ).rejects.toThrow("Le compte Stripe n'est pas configuré");
@@ -725,7 +725,7 @@ describe("InvoiceService", () => {
             await InvoiceService.sendInvoiceWithPaymentLink(
                 mockInvoice.invoice_id,
                 mockInvoice.organization as unknown as IOrganization,
-                mockUser as any,
+                mockUser.id,
                 options
             );
 

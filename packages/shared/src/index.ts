@@ -25,6 +25,22 @@ export { default as logger } from "./utils/logger";
 export { CustomError } from "./utils/customError";
 export { createServiceClient, ServiceClients } from "./utils/axios.util";
 export type { ServiceClientConfig } from "./utils/axios.util";
+export {
+    CircuitBreaker,
+    CircuitBreakerRegistry,
+    CircuitBreakerOpenError,
+    CircuitBreakerState,
+} from "./utils/circuitBreaker";
+export type {
+    CircuitBreakerConfig,
+    CircuitBreakerStats,
+} from "./utils/circuitBreaker";
+export { createHealthRouter } from "./utils/healthCheck";
+export type {
+    HealthCheckConfig,
+    HealthCheckResponse,
+    HealthCheckResult,
+} from "./utils/healthCheck";
 
 // Export du client Prisma et types
 export { default as prisma } from "./lib/prisma";

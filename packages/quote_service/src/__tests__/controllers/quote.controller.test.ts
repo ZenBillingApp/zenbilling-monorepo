@@ -55,15 +55,10 @@ describe("QuoteController", () => {
         jest.clearAllMocks();
 
         mockRequest = {
-            user: {
+            gatewayUser: {
                 id: "user-123",
-                name: "John Doe",
-                email: "john@example.com",
-                emailVerified: true,
-                first_name: "John",
-                last_name: "Doe",
-                createdAt: new Date(),
-                updatedAt: new Date(),
+                sessionId: "session-123",
+                organizationId: "organization-123",
             },
             body: {},
             params: {},
@@ -127,7 +122,7 @@ describe("QuoteController", () => {
         });
 
         it("should return 401 when user has no company", async () => {
-            mockRequest.organizationId = undefined;
+            mockRequest.gatewayUser = { ...mockRequest.gatewayUser!, organizationId: undefined };
 
             await QuoteController.createQuote(
                 mockRequest as AuthRequest,
@@ -217,7 +212,7 @@ describe("QuoteController", () => {
         });
 
         it("should return 401 when user has no company", async () => {
-            mockRequest.organizationId = undefined;
+            mockRequest.gatewayUser = { ...mockRequest.gatewayUser!, organizationId: undefined };
 
             await QuoteController.updateQuote(
                 mockRequest as AuthRequest,
@@ -254,7 +249,7 @@ describe("QuoteController", () => {
         });
 
         it("should return 401 when user has no company", async () => {
-            mockRequest.organizationId = undefined;
+            mockRequest.gatewayUser = { ...mockRequest.gatewayUser!, organizationId: undefined };
 
             await QuoteController.deleteQuote(
                 mockRequest as AuthRequest,
@@ -302,7 +297,7 @@ describe("QuoteController", () => {
         });
 
         it("should return 401 when user has no company", async () => {
-            mockRequest.organizationId = undefined;
+            mockRequest.gatewayUser = { ...mockRequest.gatewayUser!, organizationId: undefined };
 
             await QuoteController.getQuote(
                 mockRequest as AuthRequest,
@@ -487,7 +482,7 @@ describe("QuoteController", () => {
         });
 
         it("should return 401 when user has no company", async () => {
-            mockRequest.organizationId = undefined;
+            mockRequest.gatewayUser = { ...mockRequest.gatewayUser!, organizationId: undefined };
 
             await QuoteController.sendQuoteByEmail(
                 mockRequest as AuthRequest,

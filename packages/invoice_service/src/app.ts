@@ -1,9 +1,10 @@
+import dotenv from "dotenv";
+dotenv.config();
+
 import express from "express";
 import cors from "cors";
-import dotenv from "dotenv";
+import { prisma, createHealthRouter, logger } from "@zenbilling/shared";
 import invoiceRoutes from "./routes/invoice.routes";
-
-dotenv.config();
 
 const app = express();
 const port = process.env.PORT || 3005;
@@ -17,6 +18,15 @@ app.use(
     })
 );
 
+// Health check routes (before body parsing)
+app.use(
+    createHealthRouter({
+        serviceName: "invoice-service",
+        version: "1.0.0",
+        prisma,
+    })
+);
+
 // Parse JSON bodies with increased limit for PDF processing
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ limit: "50mb", extended: true }));
@@ -24,5 +34,5 @@ app.use(express.urlencoded({ limit: "50mb", extended: true }));
 app.use("/api/invoice", invoiceRoutes);
 
 app.listen(port, () => {
-    console.log(`Invoice service listening on port ${port}`);
+    logger.info(`Invoice service listening on port ${port}`);
 });

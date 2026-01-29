@@ -16,7 +16,7 @@ const organizationFieldsSchema = z.object({
         .string()
         .regex(
             /^FR[0-9A-Z]{2}[0-9]{9}$/,
-            "La TVA intracommunautaire doit être au format FR + 11 caractères"
+            "La TVA intracommunautaire doit être au format FR + 11 caractères",
         )
         .optional()
         .nullable(),
@@ -29,7 +29,7 @@ const organizationFieldsSchema = z.object({
         })
         .regex(
             /^[A-Za-z0-9\s-]{1,50}$/,
-            "Le numéro RCS doit contenir uniquement des lettres, chiffres, espaces et tirets (max 50 caractères)"
+            "Le numéro RCS doit contenir uniquement des lettres, chiffres, espaces et tirets (max 50 caractères)",
         ),
     RCS_city: z
         .string({
@@ -37,7 +37,7 @@ const organizationFieldsSchema = z.object({
         })
         .regex(
             /^[A-Za-zÀ-ÿ\s-]{2,50}$/,
-            "La ville RCS doit contenir uniquement des lettres, espaces et tirets (entre 2 et 50 caractères)"
+            "La ville RCS doit contenir uniquement des lettres, espaces et tirets (entre 2 et 50 caractères)",
         ),
     capital: z
         .number({
@@ -68,7 +68,7 @@ const organizationFieldsSchema = z.object({
                 message:
                     "Forme juridique invalide - doit être l'une des valeurs autorisées",
             }),
-        }
+        },
     ),
     address: z
         .string({
@@ -78,7 +78,7 @@ const organizationFieldsSchema = z.object({
         .max(255, "L'adresse ne peut pas dépasser 255 caractères")
         .regex(
             /^[A-Za-zÀ-ÿ0-9\s,.-]+$/,
-            "L'adresse contient des caractères non autorisés"
+            "L'adresse contient des caractères non autorisés",
         ),
     postal_code: z
         .string({
@@ -91,13 +91,13 @@ const organizationFieldsSchema = z.object({
         })
         .regex(
             /^[A-Za-zÀ-ÿ\s-]{2,50}$/,
-            "La ville doit contenir uniquement des lettres, espaces et tirets (entre 2 et 50 caractères)"
+            "La ville doit contenir uniquement des lettres, espaces et tirets (entre 2 et 50 caractères)",
         ),
     country: z
         .string()
         .regex(
             /^[A-Za-zÀ-ÿ\s-]{2,100}$/,
-            "Le pays doit contenir uniquement des lettres, espaces et tirets"
+            "Le pays doit contenir uniquement des lettres, espaces et tirets",
         )
         .default("France"),
     email: z
@@ -110,14 +110,14 @@ const organizationFieldsSchema = z.object({
         .string()
         .regex(
             /^(\+33|0)[1-9](\d{2}){4}$/,
-            "Le numéro de téléphone doit être au format français (+33 ou 0 suivi de 9 chiffres)"
+            "Le numéro de téléphone doit être au format français (+33 ou 0 suivi de 9 chiffres)",
         )
         .optional()
         .nullable(),
     website: z
         .string()
         .url(
-            "Le site web doit être une URL valide (commençant par http:// ou https://)"
+            "Le site web doit être une URL valide (commençant par http:// ou https://)",
         )
         .max(255, "L'URL du site web ne peut pas dépasser 255 caractères")
         .optional()
@@ -195,7 +195,8 @@ export const auth = betterAuth({
                         email: user.email,
                         name: `${user.first_name} ${user.last_name}`,
                         sessionId: session.id,
-                        activeOrganizationId: session.activeOrganizationId,
+                        activeOrganizationId:
+                            session.activeOrganizationId || null,
                     };
                 },
             },

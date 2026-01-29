@@ -822,19 +822,24 @@ export class InvoiceService {
     public static async sendInvoiceWithPaymentLink(
         invoiceId: string,
         organization: IOrganization,
-        user: IUser,
+        userId: string,
         options: { successUrl?: string; cancelUrl?: string }
     ): Promise<void> {
         logger.info(
             {
                 invoiceId,
                 organizationId: organization.id,
-                userId: user.id,
+                userId,
                 options,
             },
             "Début d'envoi de facture par email avec lien de paiement"
         );
         try {
+            // Récupérer l'utilisateur pour le nom dans l'email
+            const user = await prisma.user.findUnique({
+                where: { id: userId },
+            });
+
             // Récupérer la facture avec tous les détails
             const invoice = await this.getInvoiceWithDetails(
                 invoiceId,
@@ -988,7 +993,7 @@ export class InvoiceService {
                 {
                     invoiceId,
                     organizationId: organization.id,
-                    userId: user.id,
+                    userId,
                     customerEmail: invoice.customer?.email,
                     paymentLinkCreated: !!paymentLink,
                 },
@@ -1000,7 +1005,7 @@ export class InvoiceService {
                     error,
                     invoiceId,
                     organizationId: organization.id,
-                    userId: user.id,
+                    userId,
                 },
                 "Erreur lors de l'envoi de la facture par email avec lien de paiement"
             );

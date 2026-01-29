@@ -1,26 +1,23 @@
 import { Request, Response } from "express";
 import { UserService } from "../services/user.service";
-import { IUser } from "@zenbilling/shared";
+import { AuthRequest } from "@zenbilling/shared";
 import { ApiResponse } from "@zenbilling/shared";
 import { logger } from "@zenbilling/shared";
-
-interface AuthRequest extends Request {
-    user?: IUser;
-}
 
 export class UserController {
     public static async getProfile(req: AuthRequest, res: Response) {
         try {
-            logger.info({ req: req.user }, "Getting profile");
-            if (!req.user) {
+            const userId = req.gatewayUser?.id;
+            if (!userId) {
                 return ApiResponse.error(res, 401, "Non autorisé");
             }
 
+            const user = await UserService.getUserById(userId);
             return ApiResponse.success(
                 res,
                 200,
                 "Profil récupéré avec succès",
-                req.user
+                user,
             );
         } catch (error) {
             logger.error({ error }, "Error getting profile");
@@ -31,20 +28,22 @@ export class UserController {
     public static async updateProfile(req: AuthRequest, res: Response) {
         try {
             logger.info({ req: req.body }, "Updating profile");
-            if (!req.user) {
+
+            const userId = req.gatewayUser?.id;
+            if (!userId) {
                 return ApiResponse.error(res, 401, "Non autorisé");
             }
 
             const updatedUser = await UserService.updateUser(
-                req.user.id,
-                req.body
+                userId,
+                req.body,
             );
             logger.info({ updatedUser }, "Profile updated");
             return ApiResponse.success(
                 res,
                 200,
                 "Profil mis à jour avec succès",
-                updatedUser
+                updatedUser,
             );
         } catch (error) {
             logger.error({ error }, "Error updating profile");
@@ -60,12 +59,14 @@ export class UserController {
 
     public static async deleteProfile(req: AuthRequest, res: Response) {
         try {
-            logger.info({ req: req.user }, "Deleting profile");
-            if (!req.user) {
+            const userId = req.gatewayUser?.id;
+            if (!userId) {
                 return ApiResponse.error(res, 401, "Non autorisé");
             }
 
-            await UserService.deleteUser(req.user.id);
+            logger.info({ userId }, "Deleting profile");
+
+            await UserService.deleteUser(userId);
             logger.info("Profile deleted");
             return ApiResponse.success(res, 200, "Profil supprimé avec succès");
         } catch (error) {

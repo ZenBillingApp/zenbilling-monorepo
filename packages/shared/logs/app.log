@@ -1,0 +1,4 @@
+{"level":40,"time":1769535772383,"pid":38056,"hostname":"MacBook-Pro-de-Hassan-2.local","circuitBreaker":"test-service","failureCount":1,"threshold":3,"state":"CLOSED","msg":"Circuit breaker failure recorded"}
+{"level":40,"time":1769535772384,"pid":38056,"hostname":"MacBook-Pro-de-Hassan-2.local","circuitBreaker":"test-service","failureCount":2,"threshold":3,"state":"CLOSED","msg":"Circuit breaker failure recorded"}
+{"level":40,"time":1769535772384,"pid":38056,"hostname":"MacBook-Pro-de-Hassan-2.local","circuitBreaker":"test-service","failureCount":3,"threshold":3,"state":"CLOSED","msg":"Circuit breaker failure recorded"}
+{"level":30,"time":1769535772384,"pid":38056,"hostname":"MacBook-Pro-de-Hassan-2.local","circuitBreaker":"test-service","previousState":"CLOSED","newState":"OPEN","msg":"Circuit breaker state transition: CLOSED -> OPEN"}

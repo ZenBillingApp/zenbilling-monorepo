@@ -10,19 +10,17 @@ const dashboardService = new DashboardService();
 export class DashboardController {
     public async getDashboardMetrics(req: AuthRequest, res: Response) {
         try {
-            if (!req.user) {
-                return ApiResponse.error(res, 401, "Non autorisé");
-            }
+            logger.info({ req: req }, "Getting dashboard metrics");
 
             const metrics = await dashboardService.getAllMetrics(
-                req.organizationId!
+                req.gatewayUser?.organizationId!,
             );
 
             return ApiResponse.success(
                 res,
                 200,
                 "Métriques du dashboard récupérées avec succès",
-                metrics
+                metrics,
             );
         } catch (error) {
             logger.error({ error }, "Error fetching dashboard metrics");
@@ -34,7 +32,7 @@ export class DashboardController {
             return ApiResponse.error(
                 res,
                 500,
-                "Erreur lors de la récupération des métriques du dashboard"
+                "Erreur lors de la récupération des métriques du dashboard",
             );
         }
     }

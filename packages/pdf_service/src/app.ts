@@ -1,12 +1,13 @@
-import express from "express";
-import cors from "cors";
 import dotenv from "dotenv";
-import pdfRoutes from "./routes/pdf.routes";
-
 dotenv.config();
 
+import express from "express";
+import cors from "cors";
+import { createHealthRouter, logger } from "@zenbilling/shared";
+import pdfRoutes from "./routes/pdf.routes";
+
 const app = express();
-const port = process.env.PORT || 3006;
+const port = process.env.PORT || 3010;
 
 // Configure CORS middleware
 app.use(
@@ -17,11 +18,19 @@ app.use(
     })
 );
 
+// Health check routes (no database for PDF service)
+app.use(
+    createHealthRouter({
+        serviceName: "pdf-service",
+        version: "1.0.0",
+    })
+);
+
 // Parse JSON bodies
 app.use(express.json());
 
 app.use("/api/pdf", pdfRoutes);
 
 app.listen(port, () => {
-    console.log(`PDF service listening on port ${port}`);
+    logger.info(`PDF service listening on port ${port}`);
 });

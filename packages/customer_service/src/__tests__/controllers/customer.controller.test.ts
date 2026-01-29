@@ -49,15 +49,10 @@ describe("CustomerController", () => {
         jest.clearAllMocks();
 
         mockRequest = {
-            user: {
+            gatewayUser: {
                 id: "user-123",
-                name: "John Doe",
-                email: "john@example.com",
-                emailVerified: true,
-                first_name: "John",
-                last_name: "Doe",
-                createdAt: new Date(),
-                updatedAt: new Date(),
+                sessionId: "session-123",
+                organizationId: "company-123",
             },
             body: {},
             params: {},
@@ -119,7 +114,7 @@ describe("CustomerController", () => {
         });
 
         it("should return 401 when user has no company", async () => {
-            mockRequest.organizationId = undefined;
+            mockRequest.gatewayUser = { ...mockRequest.gatewayUser!, organizationId: undefined };
 
             await CustomerController.createCustomer(
                 mockRequest as AuthRequest,
@@ -204,7 +199,7 @@ describe("CustomerController", () => {
         });
 
         it("should return 401 when user has no company", async () => {
-            mockRequest.organizationId = undefined;
+            mockRequest.gatewayUser = { ...mockRequest.gatewayUser!, organizationId: undefined };
 
             await CustomerController.getCustomer(
                 mockRequest as AuthRequest,
@@ -310,7 +305,7 @@ describe("CustomerController", () => {
         });
 
         it("should return 401 when user has no company", async () => {
-            mockRequest.organizationId = undefined;
+            mockRequest.gatewayUser = { ...mockRequest.gatewayUser!, organizationId: undefined };
 
             await CustomerController.deleteCustomer(
                 mockRequest as AuthRequest,

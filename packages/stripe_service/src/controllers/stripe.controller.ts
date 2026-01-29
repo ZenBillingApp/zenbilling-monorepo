@@ -17,8 +17,13 @@ import { IOrganization } from "@zenbilling/shared";
 
 export const createConnectAccount = async (req: AuthRequest, res: Response) => {
     try {
+        const organizationId = req.gatewayUser?.organizationId;
+        if (!organizationId) {
+            return ApiResponse.error(res, 401, "Organisation non spécifiée");
+        }
+
         const organization = await prisma.organization.findUnique({
-            where: { id: req.organizationId! },
+            where: { id: organizationId },
         });
 
         // Vérifier si l'utilisateur a déjà un compte Stripe Connect
@@ -64,8 +69,13 @@ export const createConnectAccount = async (req: AuthRequest, res: Response) => {
 
 export const createAccountLink = async (req: AuthRequest, res: Response) => {
     try {
+        const organizationId = req.gatewayUser?.organizationId;
+        if (!organizationId) {
+            return ApiResponse.error(res, 401, "Organisation non spécifiée");
+        }
+
         const organization = await prisma.organization.findUnique({
-            where: { id: req.organizationId },
+            where: { id: organizationId },
         });
         const { refreshUrl, returnUrl }: CreateAccountLinkRequest = req.body;
 
@@ -108,8 +118,13 @@ export const createAccountLink = async (req: AuthRequest, res: Response) => {
 
 export const getAccountStatus = async (req: AuthRequest, res: Response) => {
     try {
+        const organizationId = req.gatewayUser?.organizationId;
+        if (!organizationId) {
+            return ApiResponse.error(res, 401, "Organisation non spécifiée");
+        }
+
         const organization = await prisma.organization.findUnique({
-            where: { id: req.organizationId },
+            where: { id: organizationId },
         });
 
         // Vérifier si l'utilisateur existe
@@ -175,8 +190,13 @@ export const getAccountStatus = async (req: AuthRequest, res: Response) => {
 
 export const createPayment = async (req: AuthRequest, res: Response) => {
     try {
+        const organizationId = req.gatewayUser?.organizationId;
+        if (!organizationId) {
+            return ApiResponse.error(res, 401, "Organisation non spécifiée");
+        }
+
         const organization = await prisma.organization.findUnique({
-            where: { id: req.organizationId },
+            where: { id: organizationId },
         });
         const { amount, description, invoiceId }: CreatePaymentRequest =
             req.body;
@@ -308,8 +328,13 @@ export const createCheckoutSession = async (
 
 export const createDashboardLink = async (req: AuthRequest, res: Response) => {
     try {
+        const organizationId = req.gatewayUser?.organizationId;
+        if (!organizationId) {
+            return ApiResponse.error(res, 401, "Organisation non spécifiée");
+        }
+
         const organization = await prisma.organization.findUnique({
-            where: { id: req.organizationId },
+            where: { id: organizationId },
         });
 
         // Vérifier si l'utilisateur existe

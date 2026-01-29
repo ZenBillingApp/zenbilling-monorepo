@@ -1,9 +1,10 @@
+import dotenv from "dotenv";
+dotenv.config();
+
 import express from "express";
 import cors from "cors";
-import dotenv from "dotenv";
+import { prisma, createHealthRouter, logger } from "@zenbilling/shared";
 import stripeRoutes from "./routes/stripe.routes";
-
-dotenv.config();
 
 const app = express();
 const port = process.env.PORT || 3003;
@@ -14,6 +15,15 @@ app.use(
         origin: [process.env.CLIENT_URL!, process.env.API_GATEWAY_URL!],
         methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
         credentials: true,
+    })
+);
+
+// Health check routes (before body parsing)
+app.use(
+    createHealthRouter({
+        serviceName: "stripe-service",
+        version: "1.0.0",
+        prisma,
     })
 );
 
@@ -35,5 +45,5 @@ app.use(express.json());
 app.use("/api/stripe", stripeRoutes);
 
 app.listen(port, () => {
-    console.log(`Example app listening on port ${port}`);
+    logger.info(`Stripe service listening on port ${port}`);
 });

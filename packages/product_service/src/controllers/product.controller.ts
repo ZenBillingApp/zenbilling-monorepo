@@ -56,7 +56,7 @@ export class ProductController {
             logger.info({ req: req.body }, "Creating product");
 
             const product = await ProductService.createProduct(
-                req.organizationId!,
+                req.gatewayUser!.organizationId!,
                 req.body
             );
             logger.info({ product }, "Product created");
@@ -89,7 +89,7 @@ export class ProductController {
 
             const product = await ProductService.updateProduct(
                 req.params.id,
-                req.organizationId!,
+                req.gatewayUser!.organizationId!,
                 req.body
             );
             logger.info({ product }, "Product updated");
@@ -122,7 +122,7 @@ export class ProductController {
 
             await ProductService.deleteProduct(
                 req.params.id,
-                req.organizationId!
+                req.gatewayUser!.organizationId!
             );
             logger.info("Product deleted");
             return ApiResponse.success(
@@ -150,7 +150,7 @@ export class ProductController {
 
             const product = await ProductService.getProduct(
                 req.params.id,
-                req.organizationId!
+                req.gatewayUser!.organizationId!
             );
             logger.info({ product }, "Product retrieved");
             return ApiResponse.success(
@@ -175,7 +175,7 @@ export class ProductController {
 
     public static async getCompanyProducts(req: AuthRequest, res: Response) {
         try {
-            logger.info({ req: req.query }, "Getting company products");
+            logger.info({ req: req.query }, "Getting organization products");
 
             const queryParams = {
                 page: req.query.page
@@ -206,7 +206,7 @@ export class ProductController {
             };
 
             const result = await ProductService.getOrganizationProducts(
-                req.organizationId!,
+                req.gatewayUser!.organizationId!,
                 queryParams
             );
             logger.info({ result }, "Organization products retrieved");

@@ -36,8 +36,25 @@ export interface ICookieOptions {
     domain?: string | undefined;
 }
 
+/**
+ * Interface pour les requêtes authentifiées via le Gateway
+ *
+ * Le Gateway injecte les headers x-user-id, x-session-id, x-organization-id
+ * qui sont lus par authMiddleware et attachés à gatewayUser
+ *
+ * @property gatewayUser - Informations utilisateur injectées par le Gateway (source primaire)
+ * @property session - Session Better Auth (utilisé côté auth_service uniquement)
+ * @property user - Objet utilisateur complet (optionnel, pour compatibilité)
+ */
 export interface AuthRequest extends Request {
     session?: Session;
     user?: IUser;
-    organizationId?: string;
+    gatewayUser?: {
+        /** ID de l'utilisateur (provient de x-user-id) */
+        id: string;
+        /** ID de la session (provient de x-session-id) */
+        sessionId: string;
+        /** ID de l'organisation active (provient de x-organization-id) */
+        organizationId?: string;
+    };
 }

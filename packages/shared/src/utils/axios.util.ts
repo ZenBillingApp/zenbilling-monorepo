@@ -7,6 +7,12 @@ import axios, {
 } from "axios";
 import logger from "./logger";
 import { CustomError } from "./customError";
+import {
+    CircuitBreaker,
+    CircuitBreakerRegistry,
+    CircuitBreakerOpenError,
+    CircuitBreakerConfig,
+} from "./circuitBreaker";
 
 export interface ServiceClientConfig {
     baseURL: string;
@@ -14,6 +20,10 @@ export interface ServiceClientConfig {
     timeout?: number;
     retries?: number;
     retryDelay?: number;
+    /** Enable circuit breaker for this client (default: true) */
+    enableCircuitBreaker?: boolean;
+    /** Circuit breaker configuration */
+    circuitBreakerConfig?: Partial<CircuitBreakerConfig>;
 }
 
 /**
@@ -30,7 +40,19 @@ export const createServiceClient = (
         timeout = 30000,
         retries = 3,
         retryDelay = 1000,
+        enableCircuitBreaker = true,
+        circuitBreakerConfig,
     } = config;
+
+    // Get or create circuit breaker for this service
+    const circuitBreaker = enableCircuitBreaker
+        ? CircuitBreakerRegistry.getBreaker(serviceName, {
+              failureThreshold: 5,
+              resetTimeout: 30000,
+              successThreshold: 2,
+              ...circuitBreakerConfig,
+          })
+        : null;
 
     const instance = axios.create({
         baseURL,
@@ -85,11 +107,18 @@ export const createServiceClient = (
                 },
                 `Réponse réussie de ${serviceName}`
             );
+
+            // Record success for circuit breaker
+            if (circuitBreaker) {
+                circuitBreaker.recordSuccess();
+            }
+
             return response;
         },
         async (error: AxiosError) => {
             const originalRequest = error.config as InternalAxiosRequestConfig & {
                 _retry?: number;
+                _circuitBreakerRecorded?: boolean;
             };
 
             // Logging détaillé de l'erreur
@@ -113,6 +142,17 @@ export const createServiceClient = (
                 } else if (error.response.status === 404) {
                     throw new CustomError("Ressource non trouvée", 404);
                 } else if (error.response.status >= 500) {
+                    // Record failure for circuit breaker (only once, not on retries)
+                    if (
+                        circuitBreaker &&
+                        !originalRequest?._circuitBreakerRecorded
+                    ) {
+                        circuitBreaker.recordFailure();
+                        if (originalRequest) {
+                            originalRequest._circuitBreakerRecorded = true;
+                        }
+                    }
+
                     // Retry logic pour les erreurs serveur (5xx)
                     if (originalRequest && !originalRequest._retry) {
                         originalRequest._retry = 0;
@@ -157,6 +197,11 @@ export const createServiceClient = (
                     `Aucune réponse de ${serviceName}`
                 );
 
+                // Record failure for circuit breaker (connection failures are critical)
+                if (circuitBreaker) {
+                    circuitBreaker.recordFailure();
+                }
+
                 throw new CustomError(
                     `Service ${serviceName} injoignable`,
                     503
@@ -180,6 +225,36 @@ export const createServiceClient = (
             throw error;
         }
     );
+
+    // Intercepteur de requête pour vérifier le circuit breaker AVANT l'envoi
+    if (circuitBreaker) {
+        instance.interceptors.request.use(
+            (config: InternalAxiosRequestConfig) => {
+                if (!circuitBreaker.canRequest()) {
+                    const stats = circuitBreaker.getStats();
+                    const timeUntilRetry = Math.max(
+                        0,
+                        stats.config.resetTimeout -
+                            (Date.now() - stats.lastFailureTime)
+                    );
+                    logger.warn(
+                        {
+                            serviceName,
+                            state: stats.state,
+                            timeUntilRetry,
+                        },
+                        `Circuit breaker ouvert pour ${serviceName}`
+                    );
+                    throw new CircuitBreakerOpenError(
+                        `Circuit breaker pour ${serviceName} est ouvert`,
+                        timeUntilRetry
+                    );
+                }
+                return config;
+            },
+            (error) => Promise.reject(error)
+        );
+    }
 
     return instance;
 };

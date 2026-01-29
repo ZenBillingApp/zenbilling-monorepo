@@ -87,6 +87,12 @@ pipelines:
                         credentials: true
                         methods: "GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS"
                         allowedHeaders: "Content-Type,Authorization"
+            - rate-limit:
+                  - action:
+                        max: 20
+                        windowMs: 60000
+                        rateLimitBy: "${req.ip}"
+                        headers: true
             - proxy:
                   - action:
                         serviceEndpoint: auth_service
@@ -102,6 +108,12 @@ pipelines:
                         credentials: true
                         methods: "GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS"
                         allowedHeaders: "Content-Type,Authorization"
+            - rate-limit:
+                  - action:
+                        max: 100
+                        windowMs: 60000
+                        rateLimitBy: "${req.headers['x-user-id'] || req.ip}"
+                        headers: true
             - better-auth-jwt:
             - proxy:
                   - action:
@@ -112,6 +124,12 @@ pipelines:
         apiEndpoints:
             - stripe
         policies:
+            - rate-limit:
+                  - action:
+                        max: 50
+                        windowMs: 60000
+                        rateLimitBy: "${req.ip}"
+                        headers: true
             - proxy:
                   - action:
                         serviceEndpoint: stripe_service
@@ -127,6 +145,12 @@ pipelines:
                         credentials: true
                         methods: "GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS"
                         allowedHeaders: "Content-Type,Authorization"
+            - rate-limit:
+                  - action:
+                        max: 100
+                        windowMs: 60000
+                        rateLimitBy: "${req.headers['x-user-id'] || req.ip}"
+                        headers: true
             - better-auth-jwt:
             - proxy:
                   - action:
@@ -143,6 +167,12 @@ pipelines:
                         credentials: true
                         methods: "GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS"
                         allowedHeaders: "Content-Type,Authorization"
+            - rate-limit:
+                  - action:
+                        max: 100
+                        windowMs: 60000
+                        rateLimitBy: "${req.headers['x-user-id'] || req.ip}"
+                        headers: true
             - better-auth-jwt:
             - proxy:
                   - action:
@@ -159,6 +189,12 @@ pipelines:
                         credentials: true
                         methods: "GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS"
                         allowedHeaders: "Content-Type,Authorization"
+            - rate-limit:
+                  - action:
+                        max: 100
+                        windowMs: 60000
+                        rateLimitBy: "${req.headers['x-user-id'] || req.ip}"
+                        headers: true
             - better-auth-jwt:
             - proxy:
                   - action:
@@ -175,6 +211,12 @@ pipelines:
                         credentials: true
                         methods: "GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS"
                         allowedHeaders: "Content-Type,Authorization"
+            - rate-limit:
+                  - action:
+                        max: 100
+                        windowMs: 60000
+                        rateLimitBy: "${req.headers['x-user-id'] || req.ip}"
+                        headers: true
             - better-auth-jwt:
             - proxy:
                   - action:
@@ -191,6 +233,12 @@ pipelines:
                         credentials: true
                         methods: "GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS"
                         allowedHeaders: "Content-Type,Authorization"
+            - rate-limit:
+                  - action:
+                        max: 100
+                        windowMs: 60000
+                        rateLimitBy: "${req.headers['x-user-id'] || req.ip}"
+                        headers: true
             - better-auth-jwt:
             - proxy:
                   - action:
@@ -201,6 +249,12 @@ pipelines:
         apiEndpoints:
             - ai
         policies:
+            - rate-limit:
+                  - action:
+                        max: 30
+                        windowMs: 60000
+                        rateLimitBy: "${req.ip}"
+                        headers: true
             - proxy:
                   - action:
                         serviceEndpoint: ai_service

@@ -1,9 +1,10 @@
+import dotenv from "dotenv";
+dotenv.config();
+
 import express from "express";
 import cors from "cors";
-import dotenv from "dotenv";
+import { prisma, createHealthRouter, logger } from "@zenbilling/shared";
 import quoteRoutes from "./routes/quote.routes";
-
-dotenv.config();
 
 const app = express();
 const port = process.env.PORT || 3006;
@@ -17,6 +18,15 @@ app.use(
     })
 );
 
+// Health check routes (before body parsing)
+app.use(
+    createHealthRouter({
+        serviceName: "quote-service",
+        version: "1.0.0",
+        prisma,
+    })
+);
+
 // Parse JSON bodies with increased limit for PDF processing
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ limit: "50mb", extended: true }));
@@ -24,5 +34,5 @@ app.use(express.urlencoded({ limit: "50mb", extended: true }));
 app.use("/api/quote", quoteRoutes);
 
 app.listen(port, () => {
-    console.log(`Quote service listening on port ${port}`);
+    logger.info(`Quote service listening on port ${port}`);
 });

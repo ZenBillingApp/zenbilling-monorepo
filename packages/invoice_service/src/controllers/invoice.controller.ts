@@ -14,16 +14,16 @@ export class InvoiceController {
             logger.info({ req: req.body }, "Creating invoice");
 
             const invoice = await InvoiceService.createInvoice(
-                req.user!.id,
-                req.organizationId!,
-                req.body
+                req.gatewayUser?.id!,
+                req.gatewayUser?.organizationId!,
+                req.body,
             );
             logger.info({ invoice }, "Invoice created");
             return ApiResponse.success(
                 res,
                 201,
                 "Facture créée avec succès",
-                invoice
+                invoice,
             );
         } catch (error) {
             if (error instanceof CustomError) {
@@ -45,14 +45,14 @@ export class InvoiceController {
 
             const invoice = await InvoiceService.getInvoiceWithDetails(
                 req.params.id,
-                req.organizationId!
+                req.gatewayUser?.organizationId!,
             );
             logger.info({ invoice }, "Invoice retrieved");
             return ApiResponse.success(
                 res,
                 200,
                 "Facture récupérée avec succès",
-                invoice
+                invoice,
             );
         } catch (error) {
             logger.error({ error }, "Error getting invoice");
@@ -74,15 +74,15 @@ export class InvoiceController {
 
             const invoice = await InvoiceService.updateInvoice(
                 req.params.id,
-                req.organizationId!,
-                req.body
+                req.gatewayUser?.organizationId!,
+                req.body,
             );
             logger.info({ invoice }, "Invoice updated");
             return ApiResponse.success(
                 res,
                 200,
                 "Facture mise à jour avec succès",
-                invoice
+                invoice,
             );
         } catch (error) {
             logger.error({ error }, "Error updating invoice");
@@ -104,13 +104,13 @@ export class InvoiceController {
 
             await InvoiceService.deleteInvoice(
                 req.params.id,
-                req.organizationId!
+                req.gatewayUser?.organizationId!,
             );
             logger.info("Invoice deleted");
             return ApiResponse.success(
                 res,
                 204,
-                "Facture supprimée avec succès"
+                "Facture supprimée avec succès",
             );
         } catch (error) {
             logger.error({ error }, "Error deleting invoice");
@@ -128,7 +128,7 @@ export class InvoiceController {
 
     public static async getOrganizationInvoices(
         req: AuthRequest,
-        res: Response
+        res: Response,
     ) {
         try {
             logger.info({ req: req.query }, "Getting organization invoices");
@@ -163,8 +163,8 @@ export class InvoiceController {
             };
 
             const result = await InvoiceService.getOrganizationInvoices(
-                req.organizationId!,
-                queryParams
+                req.gatewayUser?.organizationId!,
+                queryParams,
             );
             logger.info({ result }, "Organization invoices retrieved");
             return ApiResponse.success(
@@ -182,7 +182,7 @@ export class InvoiceController {
                     stats: {
                         statusCounts: result.statusCounts,
                     },
-                }
+                },
             );
         } catch (error) {
             logger.error({ error }, "Error getting organization invoices");
@@ -200,15 +200,15 @@ export class InvoiceController {
 
             const payment = await InvoiceService.createPayment(
                 req.params.id,
-                req.organizationId!,
-                req.body
+                req.gatewayUser?.organizationId!,
+                req.body,
             );
             logger.info({ payment }, "Payment created");
             return ApiResponse.success(
                 res,
                 201,
                 "Paiement créé avec succès",
-                payment
+                payment,
             );
         } catch (error) {
             logger.error({ error }, "Error creating payment");
@@ -231,15 +231,15 @@ export class InvoiceController {
 
             const invoice = await InvoiceService.getInvoiceWithDetails(
                 invoiceId,
-                req.organizationId!
+                req.gatewayUser?.organizationId!,
             );
 
             // Vérifier que l'utilisateur a accès à cette facture
-            if (invoice.organization_id !== req.organizationId) {
+            if (invoice.organization_id !== req.gatewayUser?.organizationId) {
                 return ApiResponse.error(
                     res,
                     403,
-                    "Accès non autorisé à cette facture"
+                    "Accès non autorisé à cette facture",
                 );
             }
 
@@ -254,14 +254,14 @@ export class InvoiceController {
                     headers: {
                         "Content-Type": "application/json",
                     },
-                }
+                },
             );
 
             // Vérifier que la réponse contient des données
             if (!pdf.data || pdf.data.byteLength === 0) {
                 throw new CustomError(
                     "Erreur lors de la génération du PDF",
-                    500
+                    500,
                 );
             }
 
@@ -271,13 +271,13 @@ export class InvoiceController {
             res.setHeader("Content-Type", "application/pdf");
             res.setHeader(
                 "Content-Disposition",
-                `attachment; filename=facture-${invoice.invoice_number}.pdf`
+                `attachment; filename=facture-${invoice.invoice_number}.pdf`,
             );
             res.setHeader("Content-Length", pdfBuffer.length.toString());
 
             logger.info(
                 { invoice_id: invoiceId, buffer_size: pdfBuffer.length },
-                "PDF généré et envoyé avec succès"
+                "PDF généré et envoyé avec succès",
             );
 
             return res.send(pdfBuffer);
@@ -301,27 +301,27 @@ export class InvoiceController {
 
             await InvoiceService.sendInvoiceByEmail(
                 req.params.id,
-                req.organizationId!,
-                req.user!.id
+                req.gatewayUser?.organizationId!,
+                req.gatewayUser?.id!,
             );
 
             logger.info(
                 {
                     invoiceId: req.params.id,
-                    userId: req.user!.id,
+                    userId: req.gatewayUser?.id!,
                 },
-                "Facture envoyée par email avec succès"
+                "Facture envoyée par email avec succès",
             );
 
             return ApiResponse.success(
                 res,
                 200,
-                "Facture envoyée par email avec succès"
+                "Facture envoyée par email avec succès",
             );
         } catch (error) {
             logger.error(
                 { error, invoiceId: req.params.id },
-                "Erreur lors de l'envoi de la facture par email"
+                "Erreur lors de l'envoi de la facture par email",
             );
             if (error instanceof CustomError) {
                 return ApiResponse.error(res, error.statusCode, error.message);
@@ -335,16 +335,16 @@ export class InvoiceController {
 
     public static async sendInvoiceWithPaymentLink(
         req: AuthRequest,
-        res: Response
+        res: Response,
     ) {
         try {
             logger.info(
                 { req: req.params },
-                "Envoi de facture par email avec lien de paiement"
+                "Envoi de facture par email avec lien de paiement",
             );
 
             const organization = await prisma.organization.findUnique({
-                where: { id: req.organizationId! },
+                where: { id: req.gatewayUser?.organizationId! },
             });
 
             const { successUrl, cancelUrl } = req.body;
@@ -355,7 +355,7 @@ export class InvoiceController {
                 return ApiResponse.error(
                     res,
                     400,
-                    "Les URLs de succès et d'annulation sont requises pour inclure un lien de paiement"
+                    "Les URLs de succès et d'annulation sont requises pour inclure un lien de paiement",
                 );
             }
 
@@ -367,15 +367,15 @@ export class InvoiceController {
                 return ApiResponse.error(
                     res,
                     400,
-                    "Les URLs fournies ne sont pas valides"
+                    "Les URLs fournies ne sont pas valides",
                 );
             }
 
             await InvoiceService.sendInvoiceWithPaymentLink(
                 req.params.id,
                 organization as IOrganization,
-                req.user!,
-                { successUrl, cancelUrl }
+                req.gatewayUser?.id!,
+                { successUrl, cancelUrl },
             );
 
             const message =
@@ -384,16 +384,16 @@ export class InvoiceController {
             logger.info(
                 {
                     invoiceId: req.params.id,
-                    userId: req.user!.id,
+                    userId: req.gatewayUser?.id!,
                 },
-                message
+                message,
             );
 
             return ApiResponse.success(res, 200, message);
         } catch (error) {
             logger.error(
                 { error, invoiceId: req.params.id },
-                "Erreur lors de l'envoi de la facture par email avec lien de paiement"
+                "Erreur lors de l'envoi de la facture par email avec lien de paiement",
             );
             if (error instanceof CustomError) {
                 return ApiResponse.error(res, error.statusCode, error.message);
@@ -484,7 +484,7 @@ export class InvoiceController {
         try {
             logger.info(
                 { req: req.params, query: req.query },
-                "Récupération des factures du client"
+                "Récupération des factures du client",
             );
 
             const queryParams: IInvoiceQueryParams = {
@@ -510,8 +510,8 @@ export class InvoiceController {
 
             const result = await InvoiceService.getCustomerInvoices(
                 req.params.customerId,
-                req.organizationId!,
-                queryParams
+                req.gatewayUser?.organizationId!,
+                queryParams,
             );
 
             logger.info({ result }, "Factures du client récupérées");
@@ -527,12 +527,12 @@ export class InvoiceController {
                         currentPage: queryParams.page || 1,
                         limit: queryParams.limit || 10,
                     },
-                }
+                },
             );
         } catch (error) {
             logger.error(
                 { error },
-                "Erreur lors de la récupération des factures du client"
+                "Erreur lors de la récupération des factures du client",
             );
             if (error instanceof CustomError) {
                 return ApiResponse.error(res, error.statusCode, error.message);

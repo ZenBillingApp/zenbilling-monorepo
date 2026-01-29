@@ -1,11 +1,11 @@
+import dotenv from "dotenv";
+dotenv.config();
+
 import express from "express";
 import cors from "cors";
-import dotenv from "dotenv";
 import helmet from "helmet";
-import { logger } from "@zenbilling/shared";
+import { logger, createHealthRouter } from "@zenbilling/shared";
 import aiRoutes from "./routes/ai.routes";
-
-dotenv.config();
 
 const app = express();
 const port = process.env.PORT || 3011; // Port unique pour le service AI
@@ -26,6 +26,14 @@ app.use(
     })
 );
 
+// Health check routes (no database for AI service)
+app.use(
+    createHealthRouter({
+        serviceName: "ai-service",
+        version: "1.0.0",
+    })
+);
+
 // Logging des requêtes
 app.use((req, res, next) => {
     logger.info({ ip: req.ip, userAgent: req.get("User-Agent") }, `${req.method} ${req.path}`);
@@ -38,16 +46,6 @@ app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 
 // Routes
 app.use("/api/ai", aiRoutes);
-
-// Route racine pour vérifier le statut
-app.get("/", (_req, res) => {
-    res.json({
-        service: "AI Service",
-        status: "running",
-        version: "1.0.0",
-        timestamp: new Date().toISOString(),
-    });
-});
 
 // Middleware de gestion d'erreurs global
 app.use(

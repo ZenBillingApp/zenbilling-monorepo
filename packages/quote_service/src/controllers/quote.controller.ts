@@ -1,11 +1,13 @@
 import { Response } from "express";
 import { QuoteService } from "../services/quote.service";
-import { AuthRequest } from "@zenbilling/shared";
-import { ApiResponse } from "@zenbilling/shared";
-import { CustomError } from "@zenbilling/shared";
-import { IQuoteQueryParams } from "@zenbilling/shared";
-import { logger } from "@zenbilling/shared";
-import { ServiceClients } from "@zenbilling/shared";
+import {
+    AuthRequest,
+    ApiResponse,
+    CustomError,
+    IQuoteQueryParams,
+    logger,
+    ServiceClients,
+} from "@zenbilling/shared";
 
 export class QuoteController {
     public static async createQuote(req: AuthRequest, res: Response) {
@@ -189,7 +191,8 @@ export class QuoteController {
                 );
             }
 
-            const pdf = await ServiceClients.pdf.post(
+            const pdfClient = ServiceClients.getClient("pdf_service");
+            const pdf = await pdfClient.post(
                 "/api/pdf/quote",
                 {
                     quote: quote,
@@ -221,29 +224,78 @@ export class QuoteController {
         try {
             logger.info({ req: req.params }, "Envoi de devis par email");
 
-            await QuoteService.sendQuoteByEmail(
-                req.params.id,
-                req.gatewayUser!.organizationId!,
-                req.gatewayUser!
+            const quoteId = req.params.id;
+            const organizationId = req.gatewayUser!.organizationId!;
+            const userId = req.gatewayUser!.id;
+
+            // 1. Récupérer le devis
+            const quote = await QuoteService.getQuoteWithDetails(
+                quoteId,
+                organizationId,
             );
 
-            logger.info(
+            // 2. Valider que le devis peut être envoyé
+            QuoteService.validateQuoteForEmail(quote);
+
+            // 3. Récupérer l'utilisateur via Auth Service
+            const authClient = ServiceClients.getClient("auth_service", req);
+            const userResponse = await authClient.get(`/api/users/${userId}`);
+            const user = userResponse.data.data;
+
+            if (!user) {
+                throw new CustomError("Utilisateur non trouvé", 404);
+            }
+
+            // 4. Générer le PDF via PDF Service
+            const pdfClient = ServiceClients.getClient("pdf_service");
+            const pdfResponse = await pdfClient.post(
+                "/api/pdf/quote",
+                { quote, organization: quote.organization },
+                { responseType: "arraybuffer" },
+            );
+
+            if (!pdfResponse.data || pdfResponse.data.byteLength === 0) {
+                throw new CustomError("Erreur lors de la génération du PDF", 500);
+            }
+
+            const pdfBuffer = Buffer.from(pdfResponse.data);
+
+            // 5. Générer le contenu HTML de l'email
+            const htmlContent = QuoteService.generateQuoteEmailHtml(quote, user);
+
+            // 6. Envoyer l'email via Email Service
+            const emailClient = ServiceClients.getClient("email_service");
+            await emailClient.post(
+                "/api/email/send-with-attachment",
                 {
-                    quoteId: req.params.id,
-                    userId: req.gatewayUser!.id,
+                    to: [quote.customer!.email],
+                    subject: `Devis ${quote.quote_number}`,
+                    html: htmlContent,
+                    attachment: pdfBuffer.toString("base64"),
+                    filename: `devis-${quote.quote_number}.pdf`,
                 },
-                "Devis envoyé par email avec succès"
+                { maxBodyLength: Infinity, maxContentLength: Infinity },
+            );
+
+            // 7. Mettre à jour le statut si nécessaire
+            if (quote.status === "draft") {
+                await QuoteService.markQuoteAsSent(quoteId);
+            }
+
+            logger.info(
+                { quoteId, userId, customerEmail: quote.customer?.email },
+                "Devis envoyé par email avec succès",
             );
 
             return ApiResponse.success(
                 res,
                 200,
-                "Devis envoyé par email avec succès"
+                "Devis envoyé par email avec succès",
             );
         } catch (error) {
             logger.error(
                 { error, quoteId: req.params.id },
-                "Erreur lors de l'envoi du devis par email"
+                "Erreur lors de l'envoi du devis par email",
             );
             if (error instanceof CustomError) {
                 return ApiResponse.error(res, error.statusCode, error.message);

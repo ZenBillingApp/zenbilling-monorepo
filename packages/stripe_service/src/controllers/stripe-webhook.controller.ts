@@ -1,7 +1,10 @@
 import { Request, Response } from "express";
 import dotenv from "dotenv";
-import { prisma } from "@zenbilling/shared";
-import { logger } from "@zenbilling/shared";
+import {
+    logger,
+    ServiceClients,
+    IOrganization,
+} from "@zenbilling/shared";
 import stripe from "../libs/stripe";
 import Stripe from "stripe";
 
@@ -76,28 +79,30 @@ export const handleWebhook = async (req: Request, res: Response) => {
  */
 async function handleAccountUpdated(account: Stripe.Account) {
     try {
-        // Trouver l'utilisateur avec cet ID de compte Stripe
-        const organization = await prisma.organization.findFirst({
-            where: { stripe_account_id: account.id },
+        // Trouver l'organisation via Auth Service
+        const authClient = ServiceClients.getClient("auth_service");
+        const orgResponse = await authClient.get("/api/organizations/find", {
+            params: {
+                stripe_account_id: account.id,
+            },
         });
 
-        if (!organization) {
+        if (!orgResponse.data.data) {
             logger.warn(
                 `Organisation non trouvée pour le compte Stripe ${account.id}`
             );
             return;
         }
 
+        const organization = orgResponse.data.data as IOrganization;
+
         // Vérifier si l'onboarding est terminé
         const isOnboarded =
             account.details_submitted && account.payouts_enabled;
 
-        // Mettre à jour le statut d'onboarding
-        await prisma.organization.update({
-            where: { id: organization.id },
-            data: {
-                stripe_onboarded: isOnboarded,
-            },
+        // Mettre à jour le statut d'onboarding via Auth Service
+        await authClient.patch(`/api/organizations/${organization.id}`, {
+            stripe_onboarded: isOnboarded,
         });
 
         logger.info(

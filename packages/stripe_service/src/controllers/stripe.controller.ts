@@ -1,10 +1,11 @@
 import { Response } from "express";
 import stripeService from "../services/stripe.service";
-import { prisma } from "@zenbilling/shared";
-import { logger } from "@zenbilling/shared";
-import { AuthRequest } from "@zenbilling/shared";
-import { ApiResponse } from "@zenbilling/shared";
 import {
+    logger,
+    AuthRequest,
+    ApiResponse,
+    ServiceClients,
+    IOrganization,
     AccountLinkResponse,
     AccountStatusResponse,
     ConnectAccountResponse,
@@ -13,7 +14,6 @@ import {
     DashboardLinkResponse,
     PaymentResponse,
 } from "@zenbilling/shared";
-import { IOrganization } from "@zenbilling/shared";
 
 export const createConnectAccount = async (req: AuthRequest, res: Response) => {
     try {
@@ -22,9 +22,12 @@ export const createConnectAccount = async (req: AuthRequest, res: Response) => {
             return ApiResponse.error(res, 401, "Organisation non spécifiée");
         }
 
-        const organization = await prisma.organization.findUnique({
-            where: { id: organizationId },
-        });
+        // Récupérer l'organisation via Auth Service
+        const authClient = ServiceClients.getClient("auth_service", req);
+        const orgResponse = await authClient.get(
+            `/api/organizations/${organizationId}`
+        );
+        const organization = orgResponse.data.data as IOrganization;
 
         // Vérifier si l'utilisateur a déjà un compte Stripe Connect
         if (organization?.stripe_account_id) {
@@ -36,14 +39,11 @@ export const createConnectAccount = async (req: AuthRequest, res: Response) => {
         }
 
         // Créer un compte Stripe Connect
-        const account = await stripeService.createConnectAccount(
-            organization as IOrganization
-        );
+        const account = await stripeService.createConnectAccount(organization);
 
-        // Mettre à jour l'utilisateur avec l'ID du compte Stripe
-        await prisma.organization.update({
-            where: { id: organization!.id },
-            data: { stripe_account_id: account.id },
+        // Mettre à jour l'organisation avec l'ID du compte Stripe via Auth Service
+        await authClient.patch(`/api/organizations/${organization.id}`, {
+            stripe_account_id: account.id,
         });
 
         const response: ConnectAccountResponse = { accountId: account.id };
@@ -74,9 +74,12 @@ export const createAccountLink = async (req: AuthRequest, res: Response) => {
             return ApiResponse.error(res, 401, "Organisation non spécifiée");
         }
 
-        const organization = await prisma.organization.findUnique({
-            where: { id: organizationId },
-        });
+        // Récupérer l'organisation via Auth Service
+        const authClient = ServiceClients.getClient("auth_service", req);
+        const orgResponse = await authClient.get(
+            `/api/organizations/${organizationId}`
+        );
+        const organization = orgResponse.data.data as IOrganization;
         const { refreshUrl, returnUrl }: CreateAccountLinkRequest = req.body;
 
         // Vérifier si l'utilisateur a un compte Stripe Connect
@@ -123,9 +126,12 @@ export const getAccountStatus = async (req: AuthRequest, res: Response) => {
             return ApiResponse.error(res, 401, "Organisation non spécifiée");
         }
 
-        const organization = await prisma.organization.findUnique({
-            where: { id: organizationId },
-        });
+        // Récupérer l'organisation via Auth Service
+        const authClient = ServiceClients.getClient("auth_service", req);
+        const orgResponse = await authClient.get(
+            `/api/organizations/${organizationId}`
+        );
+        const organization = orgResponse.data.data as IOrganization;
 
         // Vérifier si l'utilisateur existe
         if (!organization) {
@@ -150,11 +156,10 @@ export const getAccountStatus = async (req: AuthRequest, res: Response) => {
         const isOnboarded =
             account.details_submitted && account.payouts_enabled;
 
-        // Mettre à jour le statut d'onboarding dans la base de données si nécessaire
+        // Mettre à jour le statut d'onboarding via Auth Service si nécessaire
         if (isOnboarded !== organization.stripe_onboarded) {
-            await prisma.organization.update({
-                where: { id: organization.id },
-                data: { stripe_onboarded: isOnboarded },
+            await authClient.patch(`/api/organizations/${organization.id}`, {
+                stripe_onboarded: isOnboarded,
             });
         }
 
@@ -195,9 +200,12 @@ export const createPayment = async (req: AuthRequest, res: Response) => {
             return ApiResponse.error(res, 401, "Organisation non spécifiée");
         }
 
-        const organization = await prisma.organization.findUnique({
-            where: { id: organizationId },
-        });
+        // Récupérer l'organisation via Auth Service
+        const authClient = ServiceClients.getClient("auth_service", req);
+        const orgResponse = await authClient.get(
+            `/api/organizations/${organizationId}`
+        );
+        const organization = orgResponse.data.data as IOrganization;
         const { amount, description, invoiceId }: CreatePaymentRequest =
             req.body;
 
@@ -333,9 +341,12 @@ export const createDashboardLink = async (req: AuthRequest, res: Response) => {
             return ApiResponse.error(res, 401, "Organisation non spécifiée");
         }
 
-        const organization = await prisma.organization.findUnique({
-            where: { id: organizationId },
-        });
+        // Récupérer l'organisation via Auth Service
+        const authClient = ServiceClients.getClient("auth_service", req);
+        const orgResponse = await authClient.get(
+            `/api/organizations/${organizationId}`
+        );
+        const organization = orgResponse.data.data as IOrganization;
 
         // Vérifier si l'utilisateur existe
         if (!organization) {

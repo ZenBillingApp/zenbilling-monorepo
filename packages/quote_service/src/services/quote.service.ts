@@ -2,16 +2,16 @@ import {
     ICreateQuoteRequest,
     IUpdateQuoteRequest,
     IQuoteQueryParams,
+    CustomError,
+    IQuote,
+    IProduct,
+    vatRateToNumber,
+    logger,
+    Prisma,
+    PrismaClient,
+    Decimal,
+    prisma,
 } from "@zenbilling/shared";
-import { CustomError } from "@zenbilling/shared";
-// import { PdfService } from "./pdf.service";
-// import emailService from "./email.service";
-import { IQuote } from "@zenbilling/shared";
-import { IProduct, vatRateToNumber } from "@zenbilling/shared";
-import { logger } from "@zenbilling/shared";
-import { Prisma, PrismaClient, Decimal } from "@zenbilling/shared";
-import { prisma } from "@zenbilling/shared";
-import { ServiceClients } from "@zenbilling/shared";
 
 export class QuoteService {
     private static generateQuoteNumber(
@@ -613,135 +613,55 @@ export class QuoteService {
         };
     }
 
-    public static async sendQuoteByEmail(
-        quoteId: string,
-        organizationId: string,
-        user: any
-    ): Promise<void> {
-        logger.info(
-            { quoteId, organizationId, userId: user.id },
-            "Début d'envoi de devis par email"
-        );
-        try {
-            // Récupérer le devis avec tous les détails
-            const quote = await this.getQuoteWithDetails(
-                quoteId,
-                organizationId
-            );
-            if (!quote.customer?.email) {
-                throw new CustomError("Le client n'a pas d'adresse email", 400);
-            }
+    /**
+     * Génère le contenu HTML de l'email pour un devis
+     */
+    public static generateQuoteEmailHtml(
+        quote: IQuote,
+        user: { first_name: string; last_name: string }
+    ): string {
+        const customerName = quote.customer?.business
+            ? quote.customer?.business?.name
+            : `${quote.customer?.individual?.first_name} ${quote.customer?.individual?.last_name}`;
 
-            // Générer le PDF du devis
-            const pdfResponse = await ServiceClients.pdf.post(
-                "/api/pdf/quote",
-                {
-                    quote: quote,
-                    organization: quote.organization,
-                },
-                {
-                    responseType: "arraybuffer",
-                }
-            );
-
-            if (!pdfResponse.data || pdfResponse.data.byteLength === 0) {
-                throw new CustomError(
-                    "Erreur lors de la génération du PDF",
-                    500
-                );
-            }
-
-            const pdfBuffer = Buffer.from(pdfResponse.data);
-
-            // Préparer le nom du client
-            const customerName = quote.customer?.business
-                ? quote.customer?.business?.name
-                : `${quote.customer?.individual?.first_name} ${quote.customer?.individual?.last_name}`;
-
-            // Préparer le contenu HTML de l'email
-            const htmlContent = `
-                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-                    <div style="text-align: center; margin-bottom: 30px;">
-                        <h1 style="color: #333; margin-bottom: 10px;">Devis</h1>
-                        <p style="color: #666; font-size: 16px;">Devis n° ${
-                            quote.quote_number
-                        }</p>
-                    </div>
-
-                    <div style="background-color: #f8f9fa; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
-                        <p style="margin: 0 0 10px 0;"><strong>Bonjour ${customerName},</strong></p>
-                        <p style="margin: 0 0 15px 0;">Veuillez trouver ci-joint votre devis n° ${
-                            quote.quote_number
-                        } d'un montant de <strong>${Number(
-                quote.amount_including_tax
-            ).toFixed(2)} €</strong>.</p>
-                        <p style="margin: 0 0 10px 0;"><strong>Date de validité :</strong> ${new Date(
-                            quote.validity_date
-                        ).toLocaleDateString("fr-FR")}</p>
-                    </div>
-
-                    <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #ddd;">
-                        <p style="margin: 0 0 5px 0;">Cordialement,</p>
-                        <p style="margin: 0; font-weight: bold;">${
-                            user.first_name
-                        } ${user.last_name}</p>
-                        <p style="margin: 5px 0 0 0; color: #666;">${
-                            quote.organization?.name
-                        }</p>
-                    </div>
+        return `
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+                <div style="text-align: center; margin-bottom: 30px;">
+                    <h1 style="color: #333; margin-bottom: 10px;">Devis</h1>
+                    <p style="color: #666; font-size: 16px;">Devis n° ${quote.quote_number}</p>
                 </div>
-            `;
 
-            // Envoyer l'email avec le devis en pièce jointe
-            await ServiceClients.email.post(
-                "/api/email/send-with-attachment",
-                {
-                    to: [quote.customer.email],
-                    subject: `Devis ${quote.quote_number}`,
-                    html: htmlContent,
-                    attachment: pdfBuffer.toString("base64"),
-                    filename: `devis-${quote.quote_number}.pdf`,
-                },
-                {
-                    maxBodyLength: Infinity,
-                    maxContentLength: Infinity,
-                }
-            );
+                <div style="background-color: #f8f9fa; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
+                    <p style="margin: 0 0 10px 0;"><strong>Bonjour ${customerName},</strong></p>
+                    <p style="margin: 0 0 15px 0;">Veuillez trouver ci-joint votre devis n° ${quote.quote_number} d'un montant de <strong>${Number(quote.amount_including_tax).toFixed(2)} €</strong>.</p>
+                    <p style="margin: 0 0 10px 0;"><strong>Date de validité :</strong> ${new Date(quote.validity_date).toLocaleDateString("fr-FR")}</p>
+                </div>
 
-            // Mettre à jour le statut du devis
-            if (quote.status === "draft") {
-                await prisma.quote.update({
-                    where: { quote_id: quoteId },
-                    data: { status: "sent" },
-                });
-            }
+                <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #ddd;">
+                    <p style="margin: 0 0 5px 0;">Cordialement,</p>
+                    <p style="margin: 0; font-weight: bold;">${user.first_name} ${user.last_name}</p>
+                    <p style="margin: 5px 0 0 0; color: #666;">${quote.organization?.name}</p>
+                </div>
+            </div>
+        `;
+    }
 
-            logger.info(
-                {
-                    quoteId,
-                    organizationId,
-                    userId: user.id,
-                    customerEmail: quote.customer?.email,
-                },
-                "Devis envoyé par email avec succès"
-            );
-        } catch (error) {
-            logger.error(
-                {
-                    error,
-                    quoteId,
-                    organizationId,
-                    userId: user.id,
-                },
-                "Erreur lors de l'envoi du devis par email"
-            );
-            if (error instanceof CustomError) {
-                throw error;
-            }
-            throw new CustomError(
-                "Erreur lors de l'envoi du devis par email",
-                500
-            );
+    /**
+     * Met à jour le statut du devis après envoi
+     */
+    public static async markQuoteAsSent(quoteId: string): Promise<void> {
+        await prisma.quote.update({
+            where: { quote_id: quoteId },
+            data: { status: "sent" },
+        });
+    }
+
+    /**
+     * Valide que le devis peut être envoyé par email
+     */
+    public static validateQuoteForEmail(quote: IQuote): void {
+        if (!quote.customer?.email) {
+            throw new CustomError("Le client n'a pas d'adresse email", 400);
         }
     }
 

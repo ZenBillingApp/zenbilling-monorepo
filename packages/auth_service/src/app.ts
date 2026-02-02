@@ -6,6 +6,7 @@ import { toNodeHandler } from "better-auth/node";
 import { auth, prisma, createHealthRouter, logger } from "@zenbilling/shared";
 import cors from "cors";
 import userRoutes from "./routes/user.routes";
+import organizationRoutes from "./routes/organization.routes";
 
 const app = express();
 const port = process.env.PORT || 3001;
@@ -34,7 +35,10 @@ app.all("/api/auth/*splat", toNodeHandler(auth));
 app.use(express.json());
 
 // Routes utilisateur protégées
-app.use("/api/user", userRoutes);
+app.use("/api/users", userRoutes);
+
+// Routes organisation protégées (pour les appels inter-services)
+app.use("/api/organizations", organizationRoutes);
 
 app.listen(port, () => {
     logger.info(`Auth service listening on port ${port}`);

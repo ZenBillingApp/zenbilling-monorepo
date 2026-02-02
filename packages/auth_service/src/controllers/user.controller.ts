@@ -77,4 +77,32 @@ export class UserController {
             return ApiResponse.error(res, 500, "Erreur interne du serveur");
         }
     }
+
+    /**
+     * Récupère un utilisateur par son ID
+     * Endpoint pour les appels inter-services
+     * Utilise Better Auth via Prisma directement
+     */
+    public static async getUserById(req: Request, res: Response) {
+        try {
+            const { id } = req.params;
+
+            logger.info({ userId: id }, "Récupération utilisateur par ID (inter-service)");
+
+            const user = await UserService.getUserById(id);
+
+            return ApiResponse.success(
+                res,
+                200,
+                "Utilisateur récupéré avec succès",
+                user
+            );
+        } catch (error) {
+            logger.error({ error, userId: req.params.id }, "Erreur récupération utilisateur");
+            if (error instanceof Error && error.message.includes("non trouvé")) {
+                return ApiResponse.error(res, 404, error.message);
+            }
+            return ApiResponse.error(res, 500, "Erreur interne du serveur");
+        }
+    }
 }

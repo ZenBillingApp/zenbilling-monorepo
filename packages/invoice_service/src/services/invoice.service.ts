@@ -16,8 +16,6 @@ import {
     IUpdateInvoiceRequest,
     ICreatePaymentRequest,
     IInvoiceQueryParams,
-    ISendInvoiceWithPaymentLinkRequest,
-    ServiceClients,
 } from "@zenbilling/shared";
 
 export class InvoiceService {
@@ -679,342 +677,78 @@ export class InvoiceService {
         }
     }
 
-    public static async sendInvoiceByEmail(
-        invoiceId: string,
-        organizationId: string,
-        userId: string
-    ): Promise<void> {
-        logger.info(
-            { invoiceId, organizationId, userId },
-            "Début d'envoi de facture par email"
-        );
-        try {
-            // Récupérer la facture avec tous les détails
-            const invoice = await this.getInvoiceWithDetails(
-                invoiceId,
-                organizationId
-            );
-            if (!invoice.customer?.email) {
-                throw new CustomError("Le client n'a pas d'adresse email", 400);
-            }
+    /**
+     * Génère le contenu HTML de l'email pour une facture
+     */
+    public static generateInvoiceEmailHtml(
+        invoice: IInvoice,
+        user: IUser,
+        paymentLink?: string
+    ): string {
+        const customerName = invoice.customer?.business
+            ? invoice.customer?.business?.name
+            : `${invoice.customer?.individual?.first_name} ${invoice.customer?.individual?.last_name}`;
 
-            // Récupérer l'utilisateur qui envoie l'email
-            const user = await prisma.user.findUnique({
-                where: { id: userId },
-            });
-            if (!user) {
-                throw new CustomError("Utilisateur non trouvé", 404);
-            }
-
-            // Générer le PDF de la facture
-            const pdfResponse = await ServiceClients.pdf.post(
-                "/api/pdf/invoice",
-                {
-                    invoice: invoice,
-                    organization: invoice.organization,
-                },
-                {
-                    responseType: "arraybuffer",
-                }
-            );
-
-            if (!pdfResponse.data || pdfResponse.data.byteLength === 0) {
-                throw new CustomError(
-                    "Erreur lors de la génération du PDF",
-                    500
-                );
-            }
-
-            const pdfBuffer = Buffer.from(pdfResponse.data);
-
-            // Préparer le nom du client
-            const customerName = invoice.customer?.business
-                ? invoice.customer?.business?.name
-                : `${invoice.customer?.individual?.first_name} ${invoice.customer?.individual?.last_name}`;
-
-            // Préparer le contenu HTML de l'email
-            const htmlContent = `
-                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-                    <div style="text-align: center; margin-bottom: 30px;">
-                        <h1 style="color: #333; margin-bottom: 10px;">Facture</h1>
-                        <p style="color: #666; font-size: 16px;">Facture n° ${
-                            invoice.invoice_number
-                        }</p>
-                    </div>
-
-                    <div style="background-color: #f8f9fa; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
-                        <p style="margin: 0 0 10px 0;"><strong>Bonjour ${customerName},</strong></p>
-                        <p style="margin: 0 0 15px 0;">Veuillez trouver ci-joint votre facture n° ${
-                            invoice.invoice_number
-                        } d'un montant de <strong>${Number(
-                invoice.amount_including_tax
-            ).toFixed(2)} €</strong>.</p>
-                        <p style="margin: 0 0 10px 0;"><strong>Date d'échéance :</strong> ${new Date(
-                            invoice.due_date
-                        ).toLocaleDateString("fr-FR")}</p>
-                    </div>
-
-                    <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #ddd;">
-                        <p style="margin: 0 0 5px 0;">Cordialement,</p>
-                        <p style="margin: 0; font-weight: bold;">${
-                            user.first_name
-                        } ${user.last_name}</p>
-                        <p style="margin: 5px 0 0 0; color: #666;">${
-                            invoice.organization?.name
-                        }</p>
-                    </div>
+        return `
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+                <div style="text-align: center; margin-bottom: 30px;">
+                    <h1 style="color: #333; margin-bottom: 10px;">Facture</h1>
+                    <p style="color: #666; font-size: 16px;">Facture n° ${invoice.invoice_number}</p>
                 </div>
-            `;
 
-            // Envoyer l'email avec la facture en pièce jointe
-            await ServiceClients.email.post(
-                "/api/email/send-with-attachment",
-                {
-                    to: [invoice.customer.email],
-                    subject: `Facture ${invoice.invoice_number}`,
-                    html: htmlContent,
-                    attachment: pdfBuffer.toString("base64"),
-                    filename: `facture-${invoice.invoice_number}.pdf`,
-                },
-                {
-                    maxBodyLength: Infinity,
-                    maxContentLength: Infinity,
-                }
-            );
+                <div style="background-color: #f8f9fa; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
+                    <p style="margin: 0 0 10px 0;"><strong>Bonjour ${customerName},</strong></p>
+                    <p style="margin: 0 0 15px 0;">Veuillez trouver ci-joint votre facture n° ${invoice.invoice_number} d'un montant de <strong>${Number(invoice.amount_including_tax).toFixed(2)} €</strong>.</p>
+                    <p style="margin: 0 0 10px 0;"><strong>Date d'échéance :</strong> ${new Date(invoice.due_date).toLocaleDateString("fr-FR")}</p>
+                </div>
 
-            // Mettre à jour le statut de la facture
-            if (invoice.status === "pending") {
-                await prisma.invoice.update({
-                    where: { invoice_id: invoiceId },
-                    data: { status: "sent" },
-                });
-            }
+                ${paymentLink ? `
+                    <div style="background-color: #e7f3ff; border: 1px solid #b3d9ff; padding: 20px; border-radius: 8px; margin-bottom: 20px; text-align: center;">
+                        <h3 style="margin: 0 0 15px 0; color: #0066cc;">💳 Paiement en ligne</h3>
+                        <p style="margin: 0 0 15px 0;">Pour votre commodité, vous pouvez régler cette facture directement en ligne :</p>
+                        <a href="${paymentLink}" style="display: inline-block; background-color: #0066cc; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold;">
+                            Payer maintenant
+                        </a>
+                        <p style="margin: 15px 0 0 0; font-size: 12px; color: #666;">Paiement sécurisé via Stripe</p>
+                    </div>
+                ` : ""}
 
-            logger.info(
-                {
-                    invoiceId,
-                    organizationId,
-                    userId,
-                    customerEmail: invoice.customer?.email,
-                },
-                "Facture envoyée par email avec succès"
-            );
-        } catch (error) {
-            logger.error(
-                {
-                    error,
-                    invoiceId,
-                    organizationId,
-                    userId,
-                },
-                "Erreur lors de l'envoi de la facture par email"
-            );
-            if (error instanceof CustomError) {
-                throw error;
-            }
-            throw new CustomError(
-                "Erreur lors de l'envoi de la facture par email",
-                500
-            );
+                <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #ddd;">
+                    <p style="margin: 0 0 5px 0;">Cordialement,</p>
+                    <p style="margin: 0; font-weight: bold;">${user.first_name} ${user.last_name}</p>
+                    <p style="margin: 5px 0 0 0; color: #666;">${invoice.organization?.name}</p>
+                </div>
+            </div>
+        `;
+    }
+
+    /**
+     * Met à jour le statut de la facture après envoi
+     */
+    public static async markInvoiceAsSent(invoiceId: string): Promise<void> {
+        await prisma.invoice.update({
+            where: { invoice_id: invoiceId },
+            data: { status: "sent" },
+        });
+    }
+
+    /**
+     * Valide que la facture peut être envoyée par email
+     */
+    public static validateInvoiceForEmail(invoice: IInvoice): void {
+        if (!invoice.customer?.email) {
+            throw new CustomError("Le client n'a pas d'adresse email", 400);
         }
     }
 
-    public static async sendInvoiceWithPaymentLink(
-        invoiceId: string,
-        organization: IOrganization,
-        userId: string,
-        options: { successUrl?: string; cancelUrl?: string }
-    ): Promise<void> {
-        logger.info(
-            {
-                invoiceId,
-                organizationId: organization.id,
-                userId,
-                options,
-            },
-            "Début d'envoi de facture par email avec lien de paiement"
-        );
-        try {
-            // Récupérer l'utilisateur pour le nom dans l'email
-            const user = await prisma.user.findUnique({
-                where: { id: userId },
-            });
-
-            // Récupérer la facture avec tous les détails
-            const invoice = await this.getInvoiceWithDetails(
-                invoiceId,
-                organization.id
-            );
-            if (!invoice.customer?.email) {
-                throw new CustomError("Le client n'a pas d'adresse email", 400);
-            }
-
-            // Générer le PDF de la facture
-            const pdfResponse = await ServiceClients.pdf.post(
-                "/api/pdf/invoice",
-                {
-                    invoice: invoice,
-                    organization: invoice.organization,
-                },
-                {
-                    responseType: "arraybuffer",
-                }
-            );
-
-            if (!pdfResponse.data || pdfResponse.data.byteLength === 0) {
-                throw new CustomError(
-                    "Erreur lors de la génération du PDF",
-                    500
-                );
-            }
-
-            const pdfBuffer = Buffer.from(pdfResponse.data);
-
-            // Préparer le nom du client
-            const customerName = invoice.customer?.business
-                ? invoice.customer?.business?.name
-                : `${invoice.customer?.individual?.first_name} ${invoice.customer?.individual?.last_name}`;
-
-            let paymentLink = "";
-
-            // Créer le lien de paiement Stripe si demandé
-            if (options.successUrl && options.cancelUrl) {
-                // Vérifier que l'utilisateur a un compte Stripe configuré
-                if (
-                    !organization.stripe_account_id ||
-                    !organization.stripe_onboarded
-                ) {
-                    throw new CustomError(
-                        "Le compte Stripe n'est pas configuré. Veuillez compléter votre configuration Stripe.",
-                        400
-                    );
-                }
-
-                // Créer une session de paiement Stripe
-                const stripeResponse = await ServiceClients.stripe.post(
-                    "/api/stripe/create-checkout-session",
-                    {
-                        amount: Math.round(
-                            Number(invoice.amount_including_tax) * 100
-                        ), // Convertir en centimes
-                        currency: "eur",
-                        description: `Facture ${invoice.invoice_number}`,
-                        connectedAccountId: organization.stripe_account_id,
-                        applicationFeeAmount: Math.round(
-                            Number(invoice.amount_including_tax) * 100 * 0.029
-                        ), // 2.9% de frais
-                        invoiceId: invoiceId,
-                        customerEmail: invoice.customer.email,
-                        successUrl: options.successUrl,
-                        cancelUrl: options.cancelUrl,
-                    }
-                );
-
-                paymentLink = stripeResponse.data.data.url;
-            }
-
-            // Préparer le contenu HTML de l'email
-            const htmlContent = `
-                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-                    <div style="text-align: center; margin-bottom: 30px;">
-                        <h1 style="color: #333; margin-bottom: 10px;">Facture</h1>
-                        <p style="color: #666; font-size: 16px;">Facture n° ${
-                            invoice.invoice_number
-                        }</p>
-                    </div>
-
-                    <div style="background-color: #f8f9fa; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
-                        <p style="margin: 0 0 10px 0;"><strong>Bonjour ${customerName},</strong></p>
-                        <p style="margin: 0 0 15px 0;">Veuillez trouver ci-joint votre facture n° ${
-                            invoice.invoice_number
-                        } d'un montant de <strong>${Number(
-                invoice.amount_including_tax
-            ).toFixed(2)} €</strong>.</p>
-                        <p style="margin: 0 0 10px 0;"><strong>Date d'échéance :</strong> ${new Date(
-                            invoice.due_date
-                        ).toLocaleDateString("fr-FR")}</p>
-                    </div>
-
-                    ${
-                        paymentLink
-                            ? `
-                        <div style="background-color: #e7f3ff; border: 1px solid #b3d9ff; padding: 20px; border-radius: 8px; margin-bottom: 20px; text-align: center;">
-                            <h3 style="margin: 0 0 15px 0; color: #0066cc;">💳 Paiement en ligne</h3>
-                            <p style="margin: 0 0 15px 0;">Pour votre commodité, vous pouvez régler cette facture directement en ligne :</p>
-                            <a href="${paymentLink}" 
-                               style="display: inline-block; background-color: #0066cc; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold;">
-                                Payer maintenant
-                            </a>
-                            <p style="margin: 15px 0 0 0; font-size: 12px; color: #666;">Paiement sécurisé via Stripe</p>
-                        </div>
-                    `
-                            : ""
-                    }
-
-                    <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #ddd;">
-                        <p style="margin: 0 0 5px 0;">Cordialement,</p>
-                        <p style="margin: 0; font-weight: bold;">${
-                            user?.first_name
-                        } ${user?.last_name}</p>
-                        <p style="margin: 5px 0 0 0; color: #666;">${
-                            invoice.organization?.name
-                        }</p>
-                    </div>
-                </div>
-            `;
-
-            // Envoyer l'email avec la facture en pièce jointe
-            await ServiceClients.email.post(
-                "/api/email/send-with-attachment",
-                {
-                    to: [invoice.customer.email],
-                    subject: `Facture ${invoice.invoice_number}${
-                        paymentLink ? " - Paiement en ligne disponible" : ""
-                    }`,
-                    html: htmlContent,
-                    attachment: pdfBuffer.toString("base64"),
-                    filename: `facture-${invoice.invoice_number}.pdf`,
-                },
-                {
-                    maxBodyLength: Infinity,
-                    maxContentLength: Infinity,
-                }
-            );
-
-            // Mettre à jour le statut de la facture
-            if (invoice.status === "pending") {
-                await prisma.invoice.update({
-                    where: { invoice_id: invoiceId },
-                    data: { status: "sent" },
-                });
-            }
-
-            logger.info(
-                {
-                    invoiceId,
-                    organizationId: organization.id,
-                    userId,
-                    customerEmail: invoice.customer?.email,
-                    paymentLinkCreated: !!paymentLink,
-                },
-                "Facture envoyée par email avec lien de paiement avec succès"
-            );
-        } catch (error) {
-            logger.error(
-                {
-                    error,
-                    invoiceId,
-                    organizationId: organization.id,
-                    userId,
-                },
-                "Erreur lors de l'envoi de la facture par email avec lien de paiement"
-            );
-            if (error instanceof CustomError) {
-                throw error;
-            }
+    /**
+     * Valide que l'organisation peut utiliser Stripe
+     */
+    public static validateOrganizationStripe(organization: IOrganization): void {
+        if (!organization.stripe_account_id || !organization.stripe_onboarded) {
             throw new CustomError(
-                "Erreur lors de l'envoi de la facture par email avec lien de paiement",
-                500
+                "Le compte Stripe n'est pas configuré. Veuillez compléter votre configuration Stripe.",
+                400
             );
         }
     }

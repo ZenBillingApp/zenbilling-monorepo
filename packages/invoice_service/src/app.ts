@@ -5,6 +5,7 @@ import express from "express";
 import cors from "cors";
 import { prisma, createHealthRouter, logger } from "@zenbilling/shared";
 import invoiceRoutes from "./routes/invoice.routes";
+import invoiceStatsRoutes from "./routes/invoice.stats.routes";
 
 const app = express();
 const port = process.env.PORT || 3005;
@@ -31,7 +32,11 @@ app.use(
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ limit: "50mb", extended: true }));
 
-app.use("/api/invoice", invoiceRoutes);
+// Routes principales
+app.use("/api/invoices", invoiceRoutes);
+
+// Routes de statistiques (pour appels inter-services)
+app.use("/api/invoices/stats", invoiceStatsRoutes);
 
 app.listen(port, () => {
     logger.info(`Invoice service listening on port ${port}`);

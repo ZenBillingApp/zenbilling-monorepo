@@ -11,7 +11,7 @@ export class AIClient {
 
     constructor() {
         // Utiliser le client AI pré-configuré depuis ServiceClients
-        this.client = ServiceClients.ai;
+        this.client = ServiceClients.getClient("ai_service");
     }
 
     /**

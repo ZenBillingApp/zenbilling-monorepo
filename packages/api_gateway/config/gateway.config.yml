@@ -112,7 +112,7 @@ pipelines:
                   - action:
                         max: 100
                         windowMs: 60000
-                        rateLimitBy: "${req.headers['x-user-id'] || req.ip}"
+                        rateLimitBy: "${req.ip}"
                         headers: true
             - better-auth-jwt:
             - proxy:
@@ -149,7 +149,7 @@ pipelines:
                   - action:
                         max: 100
                         windowMs: 60000
-                        rateLimitBy: "${req.headers['x-user-id'] || req.ip}"
+                        rateLimitBy: "${req.ip}"
                         headers: true
             - better-auth-jwt:
             - proxy:
@@ -171,7 +171,7 @@ pipelines:
                   - action:
                         max: 100
                         windowMs: 60000
-                        rateLimitBy: "${req.headers['x-user-id'] || req.ip}"
+                        rateLimitBy: "${req.ip}"
                         headers: true
             - better-auth-jwt:
             - proxy:
@@ -193,7 +193,7 @@ pipelines:
                   - action:
                         max: 100
                         windowMs: 60000
-                        rateLimitBy: "${req.headers['x-user-id'] || req.ip}"
+                        rateLimitBy: "${req.ip}"
                         headers: true
             - better-auth-jwt:
             - proxy:
@@ -215,7 +215,7 @@ pipelines:
                   - action:
                         max: 100
                         windowMs: 60000
-                        rateLimitBy: "${req.headers['x-user-id'] || req.ip}"
+                        rateLimitBy: "${req.ip}"
                         headers: true
             - better-auth-jwt:
             - proxy:
@@ -237,7 +237,7 @@ pipelines:
                   - action:
                         max: 100
                         windowMs: 60000
-                        rateLimitBy: "${req.headers['x-user-id'] || req.ip}"
+                        rateLimitBy: "${req.ip}"
                         headers: true
             - better-auth-jwt:
             - proxy:

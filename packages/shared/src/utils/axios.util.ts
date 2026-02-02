@@ -14,6 +14,14 @@ import {
     CircuitBreakerConfig,
 } from "./circuitBreaker";
 
+export interface UserContext {
+    userId?: string;
+    sessionId?: string;
+    organizationId?: string;
+    userEmail?: string;
+    userName?: string;
+}
+
 export interface ServiceClientConfig {
     baseURL: string;
     serviceName: string;
@@ -24,6 +32,8 @@ export interface ServiceClientConfig {
     enableCircuitBreaker?: boolean;
     /** Circuit breaker configuration */
     circuitBreakerConfig?: Partial<CircuitBreakerConfig>;
+    /** User context to propagate to the service (optional) */
+    userContext?: UserContext;
 }
 
 /**
@@ -42,6 +52,7 @@ export const createServiceClient = (
         retryDelay = 1000,
         enableCircuitBreaker = true,
         circuitBreakerConfig,
+        userContext,
     } = config;
 
     // Get or create circuit breaker for this service
@@ -71,12 +82,46 @@ export const createServiceClient = (
                 .substr(2, 9)}`;
             config.headers.set("X-Request-ID", requestId);
 
+            // Injecter automatiquement le secret interne pour sécuriser les appels inter-services
+            const internalSecret = process.env.INTERNAL_SHARED_SECRET;
+            if (internalSecret) {
+                config.headers.set("x-internal-secret", internalSecret);
+            } else {
+                logger.warn(
+                    { serviceName },
+                    "INTERNAL_SHARED_SECRET non défini - Les appels inter-services peuvent échouer"
+                );
+            }
+
+            // Propager le contexte utilisateur si fourni
+            if (userContext) {
+                if (userContext.userId) {
+                    config.headers.set("x-user-id", userContext.userId);
+                }
+                if (userContext.sessionId) {
+                    config.headers.set("x-session-id", userContext.sessionId);
+                }
+                if (userContext.organizationId) {
+                    config.headers.set(
+                        "x-organization-id",
+                        userContext.organizationId
+                    );
+                }
+                if (userContext.userEmail) {
+                    config.headers.set("x-user-email", userContext.userEmail);
+                }
+                if (userContext.userName) {
+                    config.headers.set("x-user-name", userContext.userName);
+                }
+            }
+
             logger.debug(
                 {
                     serviceName,
                     method: config.method?.toUpperCase(),
                     url: config.url,
                     requestId,
+                    hasUserContext: !!userContext,
                 },
                 `Appel vers ${serviceName}`
             );
@@ -260,33 +305,101 @@ export const createServiceClient = (
 };
 
 /**
+ * Extrait le contexte utilisateur depuis une requête Express
+ * @param req - Requête Express (avec gatewayUser ou headers bruts)
+ * @returns UserContext extrait
+ */
+const extractUserContext = (req: any): UserContext => {
+    // Priorité à gatewayUser (après passage par authMiddleware)
+    if (req.gatewayUser) {
+        return {
+            userId: req.gatewayUser.id,
+            sessionId: req.gatewayUser.sessionId,
+            organizationId: req.gatewayUser.organizationId,
+        };
+    }
+
+    // Sinon, extraire directement des headers
+    return {
+        userId: req.headers?.["x-user-id"] as string,
+        sessionId: req.headers?.["x-session-id"] as string,
+        organizationId: req.headers?.["x-organization-id"] as string,
+        userEmail: req.headers?.["x-user-email"] as string,
+        userName: req.headers?.["x-user-name"] as string,
+    };
+};
+
+/**
  * Utilitaire pour créer des clients de service pré-configurés
+ *
+ * @example
+ * // Sans contexte utilisateur (appels internes sans auth)
+ * const client = ServiceClients.getClient("email_service");
+ * await client.post("/api/email/send", { to, subject, html });
+ *
+ * @example
+ * // Avec contexte utilisateur (headers injectés automatiquement)
+ * const client = ServiceClients.getClient("invoice_service", req);
+ * const { data } = await client.get("/api/invoices/stats/all");
  */
 export class ServiceClients {
     private static clients: Map<string, AxiosInstance> = new Map();
 
     /**
-     * Obtient ou crée un client pour un service
-     * @param serviceName - Nom du service
-     * @param baseURL - URL de base du service (optionnel si déjà configuré)
-     * @returns Instance axios pour le service
+     * Résout l'URL de base d'un service depuis les variables d'environnement
      */
-    static getClient(serviceName: string, baseURL?: string): AxiosInstance {
+    private static resolveBaseURL(serviceName: string): string {
+        const envKey = `${serviceName.toUpperCase()}_URL`;
+        const baseURL = process.env[envKey];
+
+        if (!baseURL) {
+            throw new CustomError(
+                `Variable d'environnement ${envKey} non définie`,
+                500
+            );
+        }
+
+        return baseURL;
+    }
+
+    /**
+     * Obtient un client pour un service
+     *
+     * @param serviceName - Nom du service (ex: "invoice_service", "email_service")
+     * @param req - Requête Express (optionnel). Si fourni, les headers d'authentification
+     *              (x-user-id, x-session-id, x-organization-id) sont automatiquement injectés
+     * @returns Instance axios configurée
+     *
+     * @example
+     * // Dans un controller - avec propagation du contexte utilisateur
+     * export const getInvoiceStats = async (req: Request, res: Response) => {
+     *     const client = ServiceClients.getClient("invoice_service", req);
+     *     const { data } = await client.get("/api/invoices/stats/all");
+     *     res.json(data);
+     * };
+     *
+     * @example
+     * // Appel interne sans contexte utilisateur (ex: envoi d'email)
+     * const client = ServiceClients.getClient("email_service");
+     * await client.post("/api/email/send", { to, subject, html });
+     */
+    static getClient(serviceName: string, req?: any): AxiosInstance {
         const key = serviceName.toLowerCase();
+        const baseURL = this.resolveBaseURL(serviceName);
 
+        // Si une requête est fournie, créer un client avec contexte utilisateur
+        // (pas de cache car le contexte change à chaque requête)
+        if (req) {
+            const userContext = extractUserContext(req);
+            return createServiceClient({
+                baseURL,
+                serviceName,
+                userContext,
+            });
+        }
+
+        // Sans requête, utiliser le client en cache
         if (!this.clients.has(key)) {
-            if (!baseURL) {
-                const envKey = `${serviceName.toUpperCase()}_URL`;
-                baseURL = process.env[envKey];
-
-                if (!baseURL) {
-                    throw new CustomError(
-                        `Variable d'environnement ${envKey} non définie`,
-                        500
-                    );
-                }
-            }
-
             this.clients.set(
                 key,
                 createServiceClient({
@@ -300,70 +413,7 @@ export class ServiceClients {
     }
 
     /**
-     * Client pour le service d'email
-     */
-    static get email(): AxiosInstance {
-        return this.getClient("email_service", process.env.EMAIL_SERVICE_URL);
-    }
-
-    /**
-     * Client pour le service PDF
-     */
-    static get pdf(): AxiosInstance {
-        return this.getClient("pdf_service", process.env.PDF_SERVICE_URL);
-    }
-
-    /**
-     * Client pour le service Stripe
-     */
-    static get stripe(): AxiosInstance {
-        return this.getClient("stripe_service", process.env.STRIPE_SERVICE_URL);
-    }
-
-    /**
-     * Client pour le service AI
-     */
-    static get ai(): AxiosInstance {
-        return this.getClient("ai_service", process.env.AI_SERVICE_URL);
-    }
-
-    /**
-     * Client pour le service de produits
-     */
-    static get product(): AxiosInstance {
-        return this.getClient("product_service", process.env.PRODUCT_SERVICE_URL);
-    }
-
-    /**
-     * Client pour le service de clients
-     */
-    static get customer(): AxiosInstance {
-        return this.getClient("customer_service", process.env.CUSTOMER_SERVICE_URL);
-    }
-
-    /**
-     * Client pour le service de factures
-     */
-    static get invoice(): AxiosInstance {
-        return this.getClient("invoice_service", process.env.INVOICE_SERVICE_URL);
-    }
-
-    /**
-     * Client pour le service de devis
-     */
-    static get quote(): AxiosInstance {
-        return this.getClient("quote_service", process.env.QUOTE_SERVICE_URL);
-    }
-
-    /**
-     * Client pour le service de dashboard
-     */
-    static get dashboard(): AxiosInstance {
-        return this.getClient("dashboard_service", process.env.DASHBOARD_SERVICE_URL);
-    }
-
-    /**
-     * Réinitialise tous les clients (utile pour les tests)
+     * Réinitialise tous les clients en cache (utile pour les tests)
      */
     static reset(): void {
         this.clients.clear();

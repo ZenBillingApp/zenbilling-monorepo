@@ -1,12 +1,15 @@
 import { Response } from "express";
 import { InvoiceService } from "../services/invoice.service";
-import { AuthRequest, IOrganization } from "@zenbilling/shared";
-import { ApiResponse } from "@zenbilling/shared";
-import { CustomError } from "@zenbilling/shared";
-import { IInvoiceQueryParams } from "@zenbilling/shared";
-import { logger } from "@zenbilling/shared";
-import axios from "axios";
-import { prisma } from "@zenbilling/shared";
+import {
+    AuthRequest,
+    IOrganization,
+    IUser,
+    ApiResponse,
+    CustomError,
+    IInvoiceQueryParams,
+    logger,
+    ServiceClients,
+} from "@zenbilling/shared";
 
 export class InvoiceController {
     public static async createInvoice(req: AuthRequest, res: Response) {
@@ -243,17 +246,15 @@ export class InvoiceController {
                 );
             }
 
-            const pdf = await axios.post(
-                `${process.env.PDF_SERVICE_URL}/api/pdf/invoice`,
+            const pdfClient = ServiceClients.getClient("pdf_service");
+            const pdf = await pdfClient.post(
+                "/api/pdf/invoice",
                 {
                     invoice: invoice,
                     organization: invoice.organization,
                 },
                 {
                     responseType: "arraybuffer",
-                    headers: {
-                        "Content-Type": "application/json",
-                    },
                 },
             );
 
@@ -299,17 +300,66 @@ export class InvoiceController {
         try {
             logger.info({ req: req.params }, "Envoi de facture par email");
 
-            await InvoiceService.sendInvoiceByEmail(
-                req.params.id,
-                req.gatewayUser?.organizationId!,
-                req.gatewayUser?.id!,
+            const invoiceId = req.params.id;
+            const organizationId = req.gatewayUser?.organizationId!;
+            const userId = req.gatewayUser?.id!;
+
+            // 1. Récupérer la facture
+            const invoice = await InvoiceService.getInvoiceWithDetails(
+                invoiceId,
+                organizationId,
             );
 
-            logger.info(
+            // 2. Valider que la facture peut être envoyée
+            InvoiceService.validateInvoiceForEmail(invoice);
+
+            // 3. Récupérer l'utilisateur via Auth Service
+            const authClient = ServiceClients.getClient("auth_service", req);
+            const userResponse = await authClient.get(`/api/users/${userId}`);
+            const user = userResponse.data.data as IUser;
+
+            if (!user) {
+                throw new CustomError("Utilisateur non trouvé", 404);
+            }
+
+            // 4. Générer le PDF via PDF Service
+            const pdfClient = ServiceClients.getClient("pdf_service");
+            const pdfResponse = await pdfClient.post(
+                "/api/pdf/invoice",
+                { invoice, organization: invoice.organization },
+                { responseType: "arraybuffer" },
+            );
+
+            if (!pdfResponse.data || pdfResponse.data.byteLength === 0) {
+                throw new CustomError("Erreur lors de la génération du PDF", 500);
+            }
+
+            const pdfBuffer = Buffer.from(pdfResponse.data);
+
+            // 5. Générer le contenu HTML de l'email
+            const htmlContent = InvoiceService.generateInvoiceEmailHtml(invoice, user);
+
+            // 6. Envoyer l'email via Email Service
+            const emailClient = ServiceClients.getClient("email_service");
+            await emailClient.post(
+                "/api/email/send-with-attachment",
                 {
-                    invoiceId: req.params.id,
-                    userId: req.gatewayUser?.id!,
+                    to: [invoice.customer!.email],
+                    subject: `Facture ${invoice.invoice_number}`,
+                    html: htmlContent,
+                    attachment: pdfBuffer.toString("base64"),
+                    filename: `facture-${invoice.invoice_number}.pdf`,
                 },
+                { maxBodyLength: Infinity, maxContentLength: Infinity },
+            );
+
+            // 7. Mettre à jour le statut si nécessaire
+            if (invoice.status === "pending") {
+                await InvoiceService.markInvoiceAsSent(invoiceId);
+            }
+
+            logger.info(
+                { invoiceId, userId, customerEmail: invoice.customer?.email },
                 "Facture envoyée par email avec succès",
             );
 
@@ -343,14 +393,12 @@ export class InvoiceController {
                 "Envoi de facture par email avec lien de paiement",
             );
 
-            const organization = await prisma.organization.findUnique({
-                where: { id: req.gatewayUser?.organizationId! },
-            });
-
+            const invoiceId = req.params.id;
+            const organizationId = req.gatewayUser?.organizationId!;
+            const userId = req.gatewayUser?.id!;
             const { successUrl, cancelUrl } = req.body;
 
-            // Validation des URLs si lien de paiement demandé
-
+            // Validation des URLs
             if (!successUrl || !cancelUrl) {
                 return ApiResponse.error(
                     res,
@@ -359,7 +407,6 @@ export class InvoiceController {
                 );
             }
 
-            // Validation basique des URLs
             try {
                 new URL(successUrl);
                 new URL(cancelUrl);
@@ -371,25 +418,105 @@ export class InvoiceController {
                 );
             }
 
-            await InvoiceService.sendInvoiceWithPaymentLink(
-                req.params.id,
-                organization as IOrganization,
-                req.gatewayUser?.id!,
-                { successUrl, cancelUrl },
+            // 1. Récupérer l'organisation via Auth Service
+            const authClient = ServiceClients.getClient("auth_service", req);
+            const orgResponse = await authClient.get(
+                `/api/organizations/${organizationId}`,
+            );
+            const organization = orgResponse.data.data as IOrganization;
+
+            // 2. Valider la configuration Stripe
+            InvoiceService.validateOrganizationStripe(organization);
+
+            // 3. Récupérer l'utilisateur via Auth Service
+            const userResponse = await authClient.get(`/api/users/${userId}`);
+            const user = userResponse.data.data as IUser;
+
+            // 4. Récupérer la facture
+            const invoice = await InvoiceService.getInvoiceWithDetails(
+                invoiceId,
+                organizationId,
             );
 
-            const message =
-                "Facture envoyée par email avec lien de paiement avec succès";
+            // 5. Valider que la facture peut être envoyée
+            InvoiceService.validateInvoiceForEmail(invoice);
+
+            // 6. Générer le PDF via PDF Service
+            const pdfClient = ServiceClients.getClient("pdf_service");
+            const pdfResponse = await pdfClient.post(
+                "/api/pdf/invoice",
+                { invoice, organization: invoice.organization },
+                { responseType: "arraybuffer" },
+            );
+
+            if (!pdfResponse.data || pdfResponse.data.byteLength === 0) {
+                throw new CustomError("Erreur lors de la génération du PDF", 500);
+            }
+
+            const pdfBuffer = Buffer.from(pdfResponse.data);
+
+            // 7. Créer la session de paiement Stripe via Stripe Service
+            const stripeClient = ServiceClients.getClient("stripe_service");
+            const stripeResponse = await stripeClient.post(
+                "/api/stripe/create-checkout-session",
+                {
+                    amount: Math.round(Number(invoice.amount_including_tax) * 100),
+                    currency: "eur",
+                    description: `Facture ${invoice.invoice_number}`,
+                    connectedAccountId: organization.stripe_account_id,
+                    applicationFeeAmount: Math.round(
+                        Number(invoice.amount_including_tax) * 100 * 0.029,
+                    ),
+                    invoiceId,
+                    customerEmail: invoice.customer!.email,
+                    successUrl,
+                    cancelUrl,
+                },
+            );
+
+            const paymentLink = stripeResponse.data.data.url;
+
+            // 8. Générer le contenu HTML de l'email avec lien de paiement
+            const htmlContent = InvoiceService.generateInvoiceEmailHtml(
+                invoice,
+                user,
+                paymentLink,
+            );
+
+            // 9. Envoyer l'email via Email Service
+            const emailClient = ServiceClients.getClient("email_service");
+            await emailClient.post(
+                "/api/email/send-with-attachment",
+                {
+                    to: [invoice.customer!.email],
+                    subject: `Facture ${invoice.invoice_number} - Paiement en ligne disponible`,
+                    html: htmlContent,
+                    attachment: pdfBuffer.toString("base64"),
+                    filename: `facture-${invoice.invoice_number}.pdf`,
+                },
+                { maxBodyLength: Infinity, maxContentLength: Infinity },
+            );
+
+            // 10. Mettre à jour le statut si nécessaire
+            if (invoice.status === "pending") {
+                await InvoiceService.markInvoiceAsSent(invoiceId);
+            }
 
             logger.info(
                 {
-                    invoiceId: req.params.id,
-                    userId: req.gatewayUser?.id!,
+                    invoiceId,
+                    userId,
+                    customerEmail: invoice.customer?.email,
+                    paymentLinkCreated: true,
                 },
-                message,
+                "Facture envoyée par email avec lien de paiement avec succès",
             );
 
-            return ApiResponse.success(res, 200, message);
+            return ApiResponse.success(
+                res,
+                200,
+                "Facture envoyée par email avec lien de paiement avec succès",
+            );
         } catch (error) {
             logger.error(
                 { error, invoiceId: req.params.id },

@@ -19,14 +19,36 @@ export async function authMiddleware(
     next: NextFunction
 ): Promise<void> {
     try {
-        // Lire les headers ajoutés par le Gateway
+        // 1. Vérifier le secret partagé pour sécuriser les appels inter-service
+        const internalSecret = req.headers["x-internal-secret"] as string;
+        const expectedSecret = process.env.INTERNAL_SHARED_SECRET;
+
+        if (!internalSecret || internalSecret !== expectedSecret) {
+            logger.warn(
+                {
+                    path: req.path,
+                    ip: req.ip,
+                    hasSecret: !!internalSecret,
+                },
+                "Tentative d'accès sans secret interne valide - Requête bloquée"
+            );
+
+            ApiResponse.error(
+                res,
+                403,
+                "Accès interdit - Secret interne invalide ou manquant"
+            );
+            return;
+        }
+
+        // 2. Lire les headers utilisateur ajoutés par le Gateway ou un autre service
         const userId = req.headers["x-user-id"] as string;
         const sessionId = req.headers["x-session-id"] as string;
         const organizationId = req.headers["x-organization-id"] as
             | string
             | undefined;
 
-        // Vérifier que les headers requis sont présents
+        // 3. Vérifier que les headers requis sont présents
         if (!userId || !sessionId) {
             logger.warn(
                 {
@@ -44,7 +66,7 @@ export async function authMiddleware(
             return;
         }
 
-        // Attacher les informations utilisateur à la requête
+        // 4. Attacher les informations utilisateur à la requête
         (req as GatewayAuthRequest).gatewayUser = {
             id: userId,
             sessionId: sessionId,

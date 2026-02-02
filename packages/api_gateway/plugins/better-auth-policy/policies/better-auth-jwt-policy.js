@@ -60,11 +60,14 @@ module.exports = {
                         payload.activeOrganizationId;
                 }
 
+                req.headers["x-internal-secret"] =
+                    process.env.INTERNAL_SHARED_SECRET || "dev-secret-123";
+
                 next();
             } catch (error) {
                 console.error(
                     "[JWT Policy] Token validation failed:",
-                    error.message
+                    error.message,
                 );
 
                 // Erreurs spécifiques

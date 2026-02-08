@@ -22,12 +22,12 @@ COPY packages/api_gateway/server.js ./packages/api_gateway/
 COPY packages/api_gateway/config/ ./packages/api_gateway/config/
 COPY packages/api_gateway/plugins/ ./packages/api_gateway/plugins/
 
-# Créer un utilisateur non-root pour la sécurité
+# Créer un utilisateur non-root pour la sécurité (USER 1001 évite "unable to find user" en userns)
 RUN groupadd --gid 1001 nodejs && \
     useradd --uid 1001 --gid nodejs --shell /bin/bash --create-home nodejs && \
-    chown -R nodejs:nodejs /app
+    chown -R 1001:1001 /app
 
-USER nodejs
+USER 1001
 
 ENV NODE_ENV=production
 ENV PORT=8080

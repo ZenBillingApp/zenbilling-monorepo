@@ -96,12 +96,12 @@ COPY --from=builder /app/packages/pdf_service/dist ./packages/pdf_service/dist/
 # Copier les templates Handlebars
 COPY packages/pdf_service/src/templates ./packages/pdf_service/dist/templates/
 
-# Créer un utilisateur non-root pour la sécurité
+# Créer un utilisateur non-root pour la sécurité (USER 1001 évite "unable to find user" en userns)
 RUN groupadd --gid 1001 nodejs && \
     useradd --uid 1001 --gid nodejs --shell /bin/bash --create-home nodejs && \
-    chown -R nodejs:nodejs /app
+    chown -R 1001:1001 /app
 
-USER nodejs
+USER 1001
 
 ENV NODE_ENV=production
 ENV PORT=3010

@@ -1,73 +1,86 @@
-# Build stage
-FROM node:20-alpine AS builder
+# =============================================================================
+# Customer Service - Multi-stage Dockerfile optimisé pour NPM Workspaces + Coolify
+# Build context: racine du monorepo
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# Stage 1: Dependencies (optimisation cache)
+# -----------------------------------------------------------------------------
+FROM node:20-slim AS deps
 
 WORKDIR /app
 
-# Copy root package files for workspace setup
-COPY package*.json ./
-COPY lerna.json ./
+# Installer OpenSSL pour Prisma (requis sur slim)
+RUN apt-get update && apt-get install -y openssl --no-install-recommends && rm -rf /var/lib/apt/lists/*
 
-# Copy shared package
-COPY packages/shared/package*.json ./packages/shared/
+# Copier uniquement les package.json pour optimiser le cache Docker
+COPY package.json package-lock.json lerna.json ./
+COPY packages/shared/package.json ./packages/shared/
+COPY packages/customer_service/package.json ./packages/customer_service/
+
+# Installer toutes les dépendances (dev inclus pour le build)
+RUN npm ci --workspaces --include-workspace-root
+
+# -----------------------------------------------------------------------------
+# Stage 2: Builder (compilation TypeScript + génération Prisma)
+# -----------------------------------------------------------------------------
+FROM deps AS builder
+
+WORKDIR /app
+
+# Copier le schéma Prisma et générer le client
 COPY packages/shared/prisma ./packages/shared/prisma/
+RUN npm run prisma:generate --workspace=@zenbilling/shared
+
+# Copier les sources shared et compiler
 COPY packages/shared/src ./packages/shared/src/
 COPY packages/shared/tsconfig.json ./packages/shared/
+RUN npm run build --workspace=@zenbilling/shared
 
-# Copy customer_service package
-COPY packages/customer_service/package*.json ./packages/customer_service/
+# Copier les sources customer_service et compiler
 COPY packages/customer_service/src ./packages/customer_service/src/
 COPY packages/customer_service/tsconfig.json ./packages/customer_service/
+RUN npm run build --workspace=customer_service
 
-# Install dependencies
-RUN npm install
-
-# Build shared package first
-WORKDIR /app/packages/shared
-RUN npm run prisma:generate
-RUN npm run build
-
-# Build the customer service
-WORKDIR /app/packages/customer_service
-RUN npm run build
-
-# Production stage
-FROM node:20-alpine AS production
+# -----------------------------------------------------------------------------
+# Stage 3: Production (image runtime minimale)
+# -----------------------------------------------------------------------------
+FROM node:20-slim AS production
 
 WORKDIR /app
 
-# Install curl for healthcheck
-RUN apk add --no-cache curl
+# Installer OpenSSL pour Prisma runtime + curl pour healthcheck
+RUN apt-get update && apt-get install -y openssl curl --no-install-recommends && rm -rf /var/lib/apt/lists/*
 
-# Copy root package files and install workspaces
-COPY package*.json ./
-COPY lerna.json ./
-COPY packages/shared/package*.json ./packages/shared/
-COPY packages/customer_service/package*.json ./packages/customer_service/
+# Copier uniquement les fichiers package
+COPY package.json package-lock.json lerna.json ./
+COPY packages/shared/package.json ./packages/shared/
+COPY packages/customer_service/package.json ./packages/customer_service/
 
-# Install only production dependencies for workspaces
-RUN npm ci --only=production --workspaces && npm cache clean --force
+# Installer les dépendances de production uniquement
+RUN npm ci --workspaces --include-workspace-root --omit=dev && npm cache clean --force
 
-# Copy built service
-COPY --from=builder /app/packages/customer_service/dist ./packages/customer_service/dist
+# Copier les artefacts compilés depuis builder
+COPY --from=builder /app/packages/shared/dist ./packages/shared/dist/
+COPY --from=builder /app/packages/shared/prisma ./packages/shared/prisma/
+COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma/
+COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma/
+COPY --from=builder /app/packages/customer_service/dist ./packages/customer_service/dist/
 
-# Copy built shared package (entire directory)
-COPY --from=builder /app/packages/shared ./packages/shared
-
-# Copy the entire generated Prisma client from builder
-COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
-
-# Create non-root user
-RUN addgroup -g 1001 -S nodejs && \
-    adduser -S nodejs -u 1001 && \
+# Créer un utilisateur non-root pour la sécurité
+RUN groupadd --gid 1001 nodejs && \
+    useradd --uid 1001 --gid nodejs --shell /bin/bash --create-home nodejs && \
     chown -R nodejs:nodejs /app
 
 USER nodejs
 
+ENV NODE_ENV=production
+ENV PORT=3009
+
 EXPOSE 3009
 
 # Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
-  CMD curl -f http://localhost:3009/health || exit 1
+HEALTHCHECK --interval=30s --timeout=10s --start-period=15s --retries=3 \
+    CMD curl -f http://localhost:3009/health || exit 1
 
-WORKDIR /app/packages/customer_service
-CMD ["node", "dist/app.js"]
+CMD ["npm", "start", "--workspace=customer_service"]

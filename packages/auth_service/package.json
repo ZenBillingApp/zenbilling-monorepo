@@ -7,13 +7,13 @@
   "type": "commonjs",
   "main": "src/app.ts",
   "scripts": {
-    "start": "ts-node src/app.ts",
+    "start": "node dist/app.js",
     "build": "tsc",
     "dev": "ts-node-dev --respawn --transpile-only src/app.ts",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "prisma:studio": "prisma studio",
-    "serve": "node dist/index.js"
+    "serve": "node dist/app.js"
   },
   "dependencies": {
     "@zenbilling/shared": "1.0.0",

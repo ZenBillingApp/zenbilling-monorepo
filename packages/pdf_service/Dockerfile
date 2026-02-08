@@ -1,88 +1,115 @@
-# Build stage
-FROM node:20-alpine AS builder
+# =============================================================================
+# PDF Service - Multi-stage Dockerfile avec Puppeteer/Chromium pour Coolify
+# Build context: racine du monorepo
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# Stage 1: Dependencies (optimisation cache)
+# -----------------------------------------------------------------------------
+FROM node:20-slim AS deps
 
 WORKDIR /app
 
-# Copy root package files for workspace setup
-COPY package*.json ./
-COPY lerna.json ./
+# Installer OpenSSL pour Prisma (requis sur slim)
+RUN apt-get update && apt-get install -y openssl --no-install-recommends && rm -rf /var/lib/apt/lists/*
 
-# Copy shared package
-COPY packages/shared/package*.json ./packages/shared/
+# Copier uniquement les package.json pour optimiser le cache Docker
+COPY package.json package-lock.json lerna.json ./
+COPY packages/shared/package.json ./packages/shared/
+COPY packages/pdf_service/package.json ./packages/pdf_service/
+
+# Installer toutes les dépendances (dev inclus pour le build)
+RUN npm ci --workspaces --include-workspace-root
+
+# -----------------------------------------------------------------------------
+# Stage 2: Builder (compilation TypeScript + génération Prisma)
+# -----------------------------------------------------------------------------
+FROM deps AS builder
+
+WORKDIR /app
+
+# Copier le schéma Prisma et générer le client
 COPY packages/shared/prisma ./packages/shared/prisma/
+RUN npm run prisma:generate --workspace=@zenbilling/shared
+
+# Copier les sources shared et compiler
 COPY packages/shared/src ./packages/shared/src/
 COPY packages/shared/tsconfig.json ./packages/shared/
+RUN npm run build --workspace=@zenbilling/shared
 
-# Copy pdf_service package
-COPY packages/pdf_service/package*.json ./packages/pdf_service/
+# Copier les sources pdf_service et compiler
 COPY packages/pdf_service/src ./packages/pdf_service/src/
 COPY packages/pdf_service/tsconfig.json ./packages/pdf_service/
+RUN npm run build --workspace=pdf_service
 
-# Install dependencies
-RUN npm install
-
-# Build shared package first
-WORKDIR /app/packages/shared
-RUN npm run prisma:generate
-RUN npm run build
-
-# Build the pdf service
-WORKDIR /app/packages/pdf_service
-RUN npm run build
-
-# Production stage
-FROM node:20-alpine
+# -----------------------------------------------------------------------------
+# Stage 3: Production (image runtime avec Chromium pour Puppeteer)
+# -----------------------------------------------------------------------------
+FROM node:20-slim AS production
 
 WORKDIR /app
 
-# Install dependencies for Puppeteer on Alpine
-RUN apk add --no-cache \
+# Installer les dépendances système pour Chromium/Puppeteer
+RUN apt-get update && apt-get install -y \
+    openssl \
     curl \
     chromium \
-    nss \
-    freetype \
-    freetype-dev \
-    harfbuzz \
-    ca-certificates \
-    ttf-freefont \
-    && rm -rf /var/cache/apk/*
+    fonts-liberation \
+    libappindicator3-1 \
+    libasound2 \
+    libatk-bridge2.0-0 \
+    libatk1.0-0 \
+    libcups2 \
+    libdbus-1-3 \
+    libdrm2 \
+    libgbm1 \
+    libgtk-3-0 \
+    libnspr4 \
+    libnss3 \
+    libx11-xcb1 \
+    libxcomposite1 \
+    libxdamage1 \
+    libxrandr2 \
+    xdg-utils \
+    --no-install-recommends \
+    && rm -rf /var/lib/apt/lists/*
 
-# Tell Puppeteer to use the installed Chromium
-ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium-browser
+# Configurer Puppeteer pour utiliser Chromium installé
+ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
+ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
 
-# Copy root package files and install workspaces
-COPY package*.json ./
-COPY lerna.json ./
-COPY packages/shared/package*.json ./packages/shared/
-COPY packages/pdf_service/package*.json ./packages/pdf_service/
+# Copier uniquement les fichiers package
+COPY package.json package-lock.json lerna.json ./
+COPY packages/shared/package.json ./packages/shared/
+COPY packages/pdf_service/package.json ./packages/pdf_service/
 
-# Install only production dependencies for workspaces
-RUN npm ci --only=production --workspaces && npm cache clean --force
+# Installer les dépendances de production uniquement
+RUN npm ci --workspaces --include-workspace-root --omit=dev && npm cache clean --force
 
-# Copy built service
-COPY --from=builder /app/packages/pdf_service/dist ./packages/pdf_service/dist
+# Copier les artefacts compilés depuis builder
+COPY --from=builder /app/packages/shared/dist ./packages/shared/dist/
+COPY --from=builder /app/packages/shared/prisma ./packages/shared/prisma/
+COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma/
+COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma/
+COPY --from=builder /app/packages/pdf_service/dist ./packages/pdf_service/dist/
 
-# Copy templates directory
-COPY --from=builder /app/packages/pdf_service/src/templates ./packages/pdf_service/dist/templates
+# Copier les templates Handlebars
+COPY packages/pdf_service/src/templates ./packages/pdf_service/dist/templates/
 
-# Copy built shared package (entire directory)
-COPY --from=builder /app/packages/shared ./packages/shared
-
-# Copy the entire generated Prisma client from builder
-COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
-
-# Create non-root user
-RUN addgroup -g 1001 -S nodejs && \
-    adduser -S nodejs -u 1001 && \
+# Créer un utilisateur non-root pour la sécurité
+RUN groupadd --gid 1001 nodejs && \
+    useradd --uid 1001 --gid nodejs --shell /bin/bash --create-home nodejs && \
     chown -R nodejs:nodejs /app
 
 USER nodejs
 
-EXPOSE 3007
+ENV NODE_ENV=production
+ENV PORT=3010
+
+EXPOSE 3010
 
 # Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
-  CMD curl -f http://localhost:3007/health || exit 1
+HEALTHCHECK --interval=30s --timeout=10s --start-period=20s --retries=3 \
+    CMD curl -f http://localhost:3010/health || exit 1
 
-WORKDIR /app/packages/pdf_service
-CMD ["node", "dist/app.js"]
+CMD ["npm", "start", "--workspace=pdf_service"]

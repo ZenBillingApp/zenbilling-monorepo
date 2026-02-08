@@ -1,35 +1,41 @@
-# Production image for Express Gateway
-FROM node:20-alpine AS production
+# =============================================================================
+# API Gateway - Dockerfile optimisé pour Express Gateway + Coolify
+# Build context: racine du monorepo
+# =============================================================================
+
+FROM node:20-slim AS production
 
 WORKDIR /app
 
-# Install curl for healthcheck
-RUN apk add --no-cache curl
+# Installer curl pour healthcheck
+RUN apt-get update && apt-get install -y curl --no-install-recommends && rm -rf /var/lib/apt/lists/*
 
-# Copy root package files and install workspaces
-COPY package*.json ./
-COPY lerna.json ./
-COPY packages/api_gateway/package*.json ./packages/api_gateway/
+# Copier les fichiers package pour installation des workspaces
+COPY package.json package-lock.json lerna.json ./
+COPY packages/api_gateway/package.json ./packages/api_gateway/
 
-# Install only production dependencies for workspaces
-RUN npm ci --only=production --workspaces && npm cache clean --force
+# Installer les dépendances de production uniquement
+RUN npm ci --workspaces --include-workspace-root --omit=dev && npm cache clean --force
 
-# Copy application files
+# Copier les fichiers de l'application Gateway
 COPY packages/api_gateway/server.js ./packages/api_gateway/
 COPY packages/api_gateway/config/ ./packages/api_gateway/config/
+COPY packages/api_gateway/plugins/ ./packages/api_gateway/plugins/
 
-# Create non-root user for security
-RUN addgroup -g 1001 -S nodejs && \
-    adduser -S nodejs -u 1001 && \
+# Créer un utilisateur non-root pour la sécurité
+RUN groupadd --gid 1001 nodejs && \
+    useradd --uid 1001 --gid nodejs --shell /bin/bash --create-home nodejs && \
     chown -R nodejs:nodejs /app
 
 USER nodejs
+
+ENV NODE_ENV=production
+ENV PORT=8080
 
 EXPOSE 8080
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
-  CMD curl -f http://localhost:8080/health || exit 1
+    CMD curl -f http://localhost:8080/health || exit 1
 
-WORKDIR /app/packages/api_gateway
-CMD ["node", "server.js"]
+CMD ["npm", "start", "--workspace=api_gateway"]

@@ -4,6 +4,7 @@ import {
     logger,
     ServiceClients,
     IOrganization,
+    prisma,
 } from "@zenbilling/shared";
 import stripe from "../libs/stripe";
 import Stripe from "stripe";

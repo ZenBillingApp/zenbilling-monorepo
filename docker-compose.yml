@@ -8,356 +8,356 @@
 # =============================================================================
 
 services:
-  # ===========================================================================
-  # API Gateway - Point d'entrée principal
-  # ===========================================================================
-  api-gateway:
-    build:
-      context: .
-      dockerfile: packages/api_gateway/Dockerfile
-    container_name: zenbilling-api-gateway
-    restart: unless-stopped
-    ports:
-      - "8080:8080"
-    environment:
-      - NODE_ENV=production
-      - PORT=8080
-      # URLs des services internes (noms des conteneurs)
-      - AUTH_SERVICE_URL=http://auth-service:3001
-      - CUSTOMER_SERVICE_URL=http://customer-service:3009
-      - PRODUCT_SERVICE_URL=http://product-service:3008
-      - INVOICE_SERVICE_URL=http://invoice-service:3005
-      - QUOTE_SERVICE_URL=http://quote-service:3006
-      - EMAIL_SERVICE_URL=http://email-service:3007
-      - PDF_SERVICE_URL=http://pdf-service:3010
-      - AI_SERVICE_URL=http://ai-service:3011
-      - STRIPE_SERVICE_URL=http://stripe-service:3003
-      - DASHBOARD_SERVICE_URL=http://dashboard-service:3004
-      # Better Auth (validation JWT)
-      - BETTER_AUTH_URL=http://auth-service:3001
-      - BETTER_AUTH_SECRET=${BETTER_AUTH_SECRET}
-      - CLIENT_URL=${CLIENT_URL}
-    networks:
-      - backend-network
-    depends_on:
-      auth-service:
-        condition: service_healthy
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 10s
+    # ===========================================================================
+    # API Gateway - Point d'entrée principal
+    # ===========================================================================
+    api-gateway:
+        build:
+            context: .
+            dockerfile: packages/api_gateway/Dockerfile
+        container_name: zenbilling-api-gateway
+        restart: unless-stopped
+        ports:
+            - "8080:8080"
+        environment:
+            - NODE_ENV=production
+            - PORT=8080
+            # URLs des services internes (noms des conteneurs)
+            - AUTH_SERVICE_URL=http://auth-service:3001
+            - CUSTOMER_SERVICE_URL=http://customer-service:3009
+            - PRODUCT_SERVICE_URL=http://product-service:3008
+            - INVOICE_SERVICE_URL=http://invoice-service:3005
+            - QUOTE_SERVICE_URL=http://quote-service:3006
+            - EMAIL_SERVICE_URL=http://email-service:3007
+            - PDF_SERVICE_URL=http://pdf-service:3010
+            - AI_SERVICE_URL=http://ai-service:3011
+            - STRIPE_SERVICE_URL=http://stripe-service:3003
+            - DASHBOARD_SERVICE_URL=http://dashboard-service:3004
+            # Better Auth (validation JWT)
+            - BETTER_AUTH_URL=http://auth-service:3001
+            - BETTER_AUTH_SECRET=${BETTER_AUTH_SECRET}
+            - CLIENT_URL=${CLIENT_URL}
+        networks:
+            - backend-network
+        depends_on:
+            auth-service:
+                condition: service_healthy
+        healthcheck:
+            test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+            interval: 30s
+            timeout: 10s
+            retries: 3
+            start_period: 10s
 
-  # ===========================================================================
-  # Auth Service - Authentification Better-Auth + Migrations Prisma
-  # ===========================================================================
-  auth-service:
-    build:
-      context: .
-      dockerfile: packages/auth_service/Dockerfile
-    container_name: zenbilling-auth-service
-    restart: unless-stopped
-    environment:
-      - NODE_ENV=production
-      - PORT=3001
-      - DATABASE_URL=${DATABASE_URL}
-      # Better Auth
-      - BETTER_AUTH_SECRET=${BETTER_AUTH_SECRET}
-      - BETTER_AUTH_URL=${BETTER_AUTH_URL:-http://auth-service:3001}
-      - CLIENT_URL=${CLIENT_URL}
-      - API_GATEWAY_URL=${API_GATEWAY_URL:-http://api-gateway:8080}
-      - COOKIE_DOMAIN=${COOKIE_DOMAIN}
-      # Google OAuth
-      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
-      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
-      # Inter-service
-      - INTERNAL_SHARED_SECRET=${INTERNAL_SHARED_SECRET}
-    networks:
-      - backend-network
-    # Exécuter les migrations Prisma avant de démarrer le service
-    command: >
-      sh -c "
-        echo '🔄 Exécution des migrations Prisma...' &&
-        npx prisma migrate deploy --schema=./packages/shared/prisma/schema.prisma &&
-        echo '✅ Migrations terminées. Démarrage du service...' &&
-        npm start --workspace=auth-service
-      "
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3001/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
-      start_period: 30s
+    # ===========================================================================
+    # Auth Service - Authentification Better-Auth + Migrations Prisma
+    # ===========================================================================
+    auth-service:
+        build:
+            context: .
+            dockerfile: packages/auth_service/Dockerfile
+        container_name: zenbilling-auth-service
+        restart: unless-stopped
+        environment:
+            - NODE_ENV=production
+            - PORT=3001
+            - DATABASE_URL=${DATABASE_URL}
+            # Better Auth
+            - BETTER_AUTH_SECRET=${BETTER_AUTH_SECRET}
+            - BETTER_AUTH_URL=${BETTER_AUTH_URL:-http://auth-service:3001}
+            - CLIENT_URL=${CLIENT_URL}
+            - API_GATEWAY_URL=${API_GATEWAY_URL:-http://api-gateway:8080}
+            - COOKIE_DOMAIN=${COOKIE_DOMAIN}
+            # Google OAuth
+            - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
+            - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
+            # Inter-service
+            - INTERNAL_SHARED_SECRET=${INTERNAL_SHARED_SECRET}
+        networks:
+            - backend-network
+        # Exécuter les migrations Prisma avant de démarrer le service
+        command: >
+            sh -c "
+              echo '🔄 Exécution des migrations Prisma...' &&
+              npx prisma migrate deploy --schema=./packages/shared/prisma/schema.prisma &&
+              echo '✅ Migrations terminées. Démarrage du service...' &&
+              npm start --workspace=auth_service
+            "
+        healthcheck:
+            test: ["CMD", "curl", "-f", "http://localhost:3001/health"]
+            interval: 30s
+            timeout: 10s
+            retries: 5
+            start_period: 30s
 
-  # ===========================================================================
-  # Customer Service - Gestion des clients
-  # ===========================================================================
-  customer-service:
-    build:
-      context: .
-      dockerfile: packages/customer_service/Dockerfile
-    container_name: zenbilling-customer-service
-    restart: unless-stopped
-    environment:
-      - NODE_ENV=production
-      - PORT=3009
-      - DATABASE_URL=${DATABASE_URL}
-      - INTERNAL_SHARED_SECRET=${INTERNAL_SHARED_SECRET}
-    networks:
-      - backend-network
-    depends_on:
-      auth-service:
-        condition: service_healthy
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3009/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 15s
+    # ===========================================================================
+    # Customer Service - Gestion des clients
+    # ===========================================================================
+    customer-service:
+        build:
+            context: .
+            dockerfile: packages/customer_service/Dockerfile
+        container_name: zenbilling-customer-service
+        restart: unless-stopped
+        environment:
+            - NODE_ENV=production
+            - PORT=3009
+            - DATABASE_URL=${DATABASE_URL}
+            - INTERNAL_SHARED_SECRET=${INTERNAL_SHARED_SECRET}
+        networks:
+            - backend-network
+        depends_on:
+            auth-service:
+                condition: service_healthy
+        healthcheck:
+            test: ["CMD", "curl", "-f", "http://localhost:3009/health"]
+            interval: 30s
+            timeout: 10s
+            retries: 3
+            start_period: 15s
 
-  # ===========================================================================
-  # Product Service - Catalogue produits
-  # ===========================================================================
-  product-service:
-    build:
-      context: .
-      dockerfile: packages/product_service/Dockerfile
-    container_name: zenbilling-product-service
-    restart: unless-stopped
-    environment:
-      - NODE_ENV=production
-      - PORT=3008
-      - DATABASE_URL=${DATABASE_URL}
-      - INTERNAL_SHARED_SECRET=${INTERNAL_SHARED_SECRET}
-      - AI_SERVICE_URL=http://ai-service:3011
-    networks:
-      - backend-network
-    depends_on:
-      auth-service:
-        condition: service_healthy
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3008/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 15s
+    # ===========================================================================
+    # Product Service - Catalogue produits
+    # ===========================================================================
+    product-service:
+        build:
+            context: .
+            dockerfile: packages/product_service/Dockerfile
+        container_name: zenbilling-product-service
+        restart: unless-stopped
+        environment:
+            - NODE_ENV=production
+            - PORT=3008
+            - DATABASE_URL=${DATABASE_URL}
+            - INTERNAL_SHARED_SECRET=${INTERNAL_SHARED_SECRET}
+            - AI_SERVICE_URL=http://ai-service:3011
+        networks:
+            - backend-network
+        depends_on:
+            auth-service:
+                condition: service_healthy
+        healthcheck:
+            test: ["CMD", "curl", "-f", "http://localhost:3008/health"]
+            interval: 30s
+            timeout: 10s
+            retries: 3
+            start_period: 15s
 
-  # ===========================================================================
-  # Invoice Service - Facturation
-  # ===========================================================================
-  invoice-service:
-    build:
-      context: .
-      dockerfile: packages/invoice_service/Dockerfile
-    container_name: zenbilling-invoice-service
-    restart: unless-stopped
-    environment:
-      - NODE_ENV=production
-      - PORT=3005
-      - DATABASE_URL=${DATABASE_URL}
-      - INTERNAL_SHARED_SECRET=${INTERNAL_SHARED_SECRET}
-      - CUSTOMER_SERVICE_URL=http://customer-service:3009
-      - PRODUCT_SERVICE_URL=http://product-service:3008
-      - EMAIL_SERVICE_URL=http://email-service:3007
-      - PDF_SERVICE_URL=http://pdf-service:3010
-    networks:
-      - backend-network
-    depends_on:
-      auth-service:
-        condition: service_healthy
-      customer-service:
-        condition: service_healthy
-      product-service:
-        condition: service_healthy
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3005/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 15s
+    # ===========================================================================
+    # Invoice Service - Facturation
+    # ===========================================================================
+    invoice-service:
+        build:
+            context: .
+            dockerfile: packages/invoice_service/Dockerfile
+        container_name: zenbilling-invoice-service
+        restart: unless-stopped
+        environment:
+            - NODE_ENV=production
+            - PORT=3005
+            - DATABASE_URL=${DATABASE_URL}
+            - INTERNAL_SHARED_SECRET=${INTERNAL_SHARED_SECRET}
+            - CUSTOMER_SERVICE_URL=http://customer-service:3009
+            - PRODUCT_SERVICE_URL=http://product-service:3008
+            - EMAIL_SERVICE_URL=http://email-service:3007
+            - PDF_SERVICE_URL=http://pdf-service:3010
+        networks:
+            - backend-network
+        depends_on:
+            auth-service:
+                condition: service_healthy
+            customer-service:
+                condition: service_healthy
+            product-service:
+                condition: service_healthy
+        healthcheck:
+            test: ["CMD", "curl", "-f", "http://localhost:3005/health"]
+            interval: 30s
+            timeout: 10s
+            retries: 3
+            start_period: 15s
 
-  # ===========================================================================
-  # Quote Service - Devis
-  # ===========================================================================
-  quote-service:
-    build:
-      context: .
-      dockerfile: packages/quote_service/Dockerfile
-    container_name: zenbilling-quote-service
-    restart: unless-stopped
-    environment:
-      - NODE_ENV=production
-      - PORT=3006
-      - DATABASE_URL=${DATABASE_URL}
-      - INTERNAL_SHARED_SECRET=${INTERNAL_SHARED_SECRET}
-      - CUSTOMER_SERVICE_URL=http://customer-service:3009
-      - PRODUCT_SERVICE_URL=http://product-service:3008
-      - INVOICE_SERVICE_URL=http://invoice-service:3005
-    networks:
-      - backend-network
-    depends_on:
-      auth-service:
-        condition: service_healthy
-      customer-service:
-        condition: service_healthy
-      product-service:
-        condition: service_healthy
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3006/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 15s
+    # ===========================================================================
+    # Quote Service - Devis
+    # ===========================================================================
+    quote-service:
+        build:
+            context: .
+            dockerfile: packages/quote_service/Dockerfile
+        container_name: zenbilling-quote-service
+        restart: unless-stopped
+        environment:
+            - NODE_ENV=production
+            - PORT=3006
+            - DATABASE_URL=${DATABASE_URL}
+            - INTERNAL_SHARED_SECRET=${INTERNAL_SHARED_SECRET}
+            - CUSTOMER_SERVICE_URL=http://customer-service:3009
+            - PRODUCT_SERVICE_URL=http://product-service:3008
+            - INVOICE_SERVICE_URL=http://invoice-service:3005
+        networks:
+            - backend-network
+        depends_on:
+            auth-service:
+                condition: service_healthy
+            customer-service:
+                condition: service_healthy
+            product-service:
+                condition: service_healthy
+        healthcheck:
+            test: ["CMD", "curl", "-f", "http://localhost:3006/health"]
+            interval: 30s
+            timeout: 10s
+            retries: 3
+            start_period: 15s
 
-  # ===========================================================================
-  # Email Service - Notifications par email (Brevo)
-  # ===========================================================================
-  email-service:
-    build:
-      context: .
-      dockerfile: packages/email_service/Dockerfile
-    container_name: zenbilling-email-service
-    restart: unless-stopped
-    environment:
-      - NODE_ENV=production
-      - PORT=3007
-      - DATABASE_URL=${DATABASE_URL}
-      - INTERNAL_SHARED_SECRET=${INTERNAL_SHARED_SECRET}
-      - BREVO_API_KEY=${BREVO_API_KEY}
-    networks:
-      - backend-network
-    depends_on:
-      auth-service:
-        condition: service_healthy
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3007/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 15s
+    # ===========================================================================
+    # Email Service - Notifications par email (Brevo)
+    # ===========================================================================
+    email-service:
+        build:
+            context: .
+            dockerfile: packages/email_service/Dockerfile
+        container_name: zenbilling-email-service
+        restart: unless-stopped
+        environment:
+            - NODE_ENV=production
+            - PORT=3007
+            - DATABASE_URL=${DATABASE_URL}
+            - INTERNAL_SHARED_SECRET=${INTERNAL_SHARED_SECRET}
+            - BREVO_API_KEY=${BREVO_API_KEY}
+        networks:
+            - backend-network
+        depends_on:
+            auth-service:
+                condition: service_healthy
+        healthcheck:
+            test: ["CMD", "curl", "-f", "http://localhost:3007/health"]
+            interval: 30s
+            timeout: 10s
+            retries: 3
+            start_period: 15s
 
-  # ===========================================================================
-  # PDF Service - Génération de PDFs (Puppeteer)
-  # ===========================================================================
-  pdf-service:
-    build:
-      context: .
-      dockerfile: packages/pdf_service/Dockerfile
-    container_name: zenbilling-pdf-service
-    restart: unless-stopped
-    environment:
-      - NODE_ENV=production
-      - PORT=3010
-      - DATABASE_URL=${DATABASE_URL}
-      - INTERNAL_SHARED_SECRET=${INTERNAL_SHARED_SECRET}
-      - PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
-    networks:
-      - backend-network
-    depends_on:
-      auth-service:
-        condition: service_healthy
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3010/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 20s
+    # ===========================================================================
+    # PDF Service - Génération de PDFs (Puppeteer)
+    # ===========================================================================
+    pdf-service:
+        build:
+            context: .
+            dockerfile: packages/pdf_service/Dockerfile
+        container_name: zenbilling-pdf-service
+        restart: unless-stopped
+        environment:
+            - NODE_ENV=production
+            - PORT=3010
+            - DATABASE_URL=${DATABASE_URL}
+            - INTERNAL_SHARED_SECRET=${INTERNAL_SHARED_SECRET}
+            - PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
+        networks:
+            - backend-network
+        depends_on:
+            auth-service:
+                condition: service_healthy
+        healthcheck:
+            test: ["CMD", "curl", "-f", "http://localhost:3010/health"]
+            interval: 30s
+            timeout: 10s
+            retries: 3
+            start_period: 20s
 
-  # ===========================================================================
-  # AI Service - Génération de descriptions (OpenAI)
-  # ===========================================================================
-  ai-service:
-    build:
-      context: .
-      dockerfile: packages/ai_service/Dockerfile
-    container_name: zenbilling-ai-service
-    restart: unless-stopped
-    environment:
-      - NODE_ENV=production
-      - PORT=3011
-      - DATABASE_URL=${DATABASE_URL}
-      - INTERNAL_SHARED_SECRET=${INTERNAL_SHARED_SECRET}
-      - OPENAI_API_KEY=${OPENAI_API_KEY}
-      - OPENAI_MODEL=${OPENAI_MODEL:-gpt-3.5-turbo}
-      - OPENAI_MAX_TOKENS=${OPENAI_MAX_TOKENS:-500}
-      - OPENAI_TEMPERATURE=${OPENAI_TEMPERATURE:-0.7}
-    networks:
-      - backend-network
-    depends_on:
-      auth-service:
-        condition: service_healthy
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3011/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 15s
+    # ===========================================================================
+    # AI Service - Génération de descriptions (OpenAI)
+    # ===========================================================================
+    ai-service:
+        build:
+            context: .
+            dockerfile: packages/ai_service/Dockerfile
+        container_name: zenbilling-ai-service
+        restart: unless-stopped
+        environment:
+            - NODE_ENV=production
+            - PORT=3011
+            - DATABASE_URL=${DATABASE_URL}
+            - INTERNAL_SHARED_SECRET=${INTERNAL_SHARED_SECRET}
+            - OPENAI_API_KEY=${OPENAI_API_KEY}
+            - OPENAI_MODEL=${OPENAI_MODEL:-gpt-3.5-turbo}
+            - OPENAI_MAX_TOKENS=${OPENAI_MAX_TOKENS:-500}
+            - OPENAI_TEMPERATURE=${OPENAI_TEMPERATURE:-0.7}
+        networks:
+            - backend-network
+        depends_on:
+            auth-service:
+                condition: service_healthy
+        healthcheck:
+            test: ["CMD", "curl", "-f", "http://localhost:3011/health"]
+            interval: 30s
+            timeout: 10s
+            retries: 3
+            start_period: 15s
 
-  # ===========================================================================
-  # Stripe Service - Paiements (Stripe Connect)
-  # ===========================================================================
-  stripe-service:
-    build:
-      context: .
-      dockerfile: packages/stripe_service/Dockerfile
-    container_name: zenbilling-stripe-service
-    restart: unless-stopped
-    environment:
-      - NODE_ENV=production
-      - PORT=3003
-      - DATABASE_URL=${DATABASE_URL}
-      - INTERNAL_SHARED_SECRET=${INTERNAL_SHARED_SECRET}
-      - STRIPE_SECRET_KEY=${STRIPE_SECRET_KEY}
-      - STRIPE_PUBLISHABLE_KEY=${STRIPE_PUBLISHABLE_KEY}
-      - STRIPE_WEBHOOK_SECRET=${STRIPE_WEBHOOK_SECRET}
-    networks:
-      - backend-network
-    depends_on:
-      auth-service:
-        condition: service_healthy
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3003/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 15s
+    # ===========================================================================
+    # Stripe Service - Paiements (Stripe Connect)
+    # ===========================================================================
+    stripe-service:
+        build:
+            context: .
+            dockerfile: packages/stripe_service/Dockerfile
+        container_name: zenbilling-stripe-service
+        restart: unless-stopped
+        environment:
+            - NODE_ENV=production
+            - PORT=3003
+            - DATABASE_URL=${DATABASE_URL}
+            - INTERNAL_SHARED_SECRET=${INTERNAL_SHARED_SECRET}
+            - STRIPE_SECRET_KEY=${STRIPE_SECRET_KEY}
+            - STRIPE_PUBLISHABLE_KEY=${STRIPE_PUBLISHABLE_KEY}
+            - STRIPE_WEBHOOK_SECRET=${STRIPE_WEBHOOK_SECRET}
+        networks:
+            - backend-network
+        depends_on:
+            auth-service:
+                condition: service_healthy
+        healthcheck:
+            test: ["CMD", "curl", "-f", "http://localhost:3003/health"]
+            interval: 30s
+            timeout: 10s
+            retries: 3
+            start_period: 15s
 
-  # ===========================================================================
-  # Dashboard Service - Analytics et statistiques
-  # ===========================================================================
-  dashboard-service:
-    build:
-      context: .
-      dockerfile: packages/dashboard_service/Dockerfile
-    container_name: zenbilling-dashboard-service
-    restart: unless-stopped
-    environment:
-      - NODE_ENV=production
-      - PORT=3004
-      - DATABASE_URL=${DATABASE_URL}
-      - INTERNAL_SHARED_SECRET=${INTERNAL_SHARED_SECRET}
-      - INVOICE_SERVICE_URL=http://invoice-service:3005
-      - QUOTE_SERVICE_URL=http://quote-service:3006
-      - CUSTOMER_SERVICE_URL=http://customer-service:3009
-    networks:
-      - backend-network
-    depends_on:
-      auth-service:
-        condition: service_healthy
-      invoice-service:
-        condition: service_healthy
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3004/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 15s
+    # ===========================================================================
+    # Dashboard Service - Analytics et statistiques
+    # ===========================================================================
+    dashboard-service:
+        build:
+            context: .
+            dockerfile: packages/dashboard_service/Dockerfile
+        container_name: zenbilling-dashboard-service
+        restart: unless-stopped
+        environment:
+            - NODE_ENV=production
+            - PORT=3004
+            - DATABASE_URL=${DATABASE_URL}
+            - INTERNAL_SHARED_SECRET=${INTERNAL_SHARED_SECRET}
+            - INVOICE_SERVICE_URL=http://invoice-service:3005
+            - QUOTE_SERVICE_URL=http://quote-service:3006
+            - CUSTOMER_SERVICE_URL=http://customer-service:3009
+        networks:
+            - backend-network
+        depends_on:
+            auth-service:
+                condition: service_healthy
+            invoice-service:
+                condition: service_healthy
+        healthcheck:
+            test: ["CMD", "curl", "-f", "http://localhost:3004/health"]
+            interval: 30s
+            timeout: 10s
+            retries: 3
+            start_period: 15s
 
 # =============================================================================
 # Réseau interne pour communication inter-services
 # =============================================================================
 networks:
-  backend-network:
-    driver: bridge
-    name: zenbilling-network
+    backend-network:
+        driver: bridge
+        name: zenbilling-network

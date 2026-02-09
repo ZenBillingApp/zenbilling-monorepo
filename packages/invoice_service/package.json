@@ -36,14 +36,5 @@
     "ts-jest": "^29.1.1",
     "ts-node": "^10.9.2",
     "typescript": "^5.9.2"
-  },
-  "scripts": {
-    "start": "ts-node src/app.ts",
-    "build": "tsc",
-    "dev": "ts-node-dev --respawn --transpile-only src/app.ts",
-    "serve": "node dist/index.js",
-    "test": "jest",
-    "test:watch": "jest --watch",
-    "test:coverage": "jest --coverage"
   }
 }

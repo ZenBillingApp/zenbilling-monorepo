@@ -18,12 +18,13 @@ export class AIProductService {
      * Génère une description de produit personnalisée pour les factures/devis français
      */
     async generateProductDescription(
-        request: GenerateDescriptionRequest
+        request: GenerateDescriptionRequest,
     ): Promise<GenerateDescriptionResponse> {
         try {
-            logger.info("Génération de description AI pour produit:", {
-                productName: request.productName,
-            });
+            logger.info(
+                { productName: request.productName },
+                "Génération de description AI pour produit:",
+            );
 
             let prompt = `Génère une description professionnelle pour le produit : "${request.productName}"`;
 
@@ -56,16 +57,20 @@ export class AIProductService {
                 productName: request.productName,
             };
 
-            logger.info("Description AI générée avec succès:", {
-                productName: request.productName,
-                descriptionLength: description.length,
-            });
+            logger.info(
+                {
+                    productName: request.productName,
+                    descriptionLength: description.length,
+                },
+                "Description AI générée avec succès:",
+            );
 
             return response;
         } catch (error) {
             logger.error(
+                { error },
                 "Erreur lors de la génération de description AI:",
-                error
+                error,
             );
             throw error;
         }
@@ -75,15 +80,15 @@ export class AIProductService {
      * Génère plusieurs suggestions de descriptions pour un produit
      */
     async generateProductDescriptionSuggestions(
-        request: GenerateDescriptionSuggestionsRequest
+        request: GenerateDescriptionSuggestionsRequest,
     ): Promise<GenerateDescriptionSuggestionsResponse> {
         try {
             const count = Math.min(request.count || 3, 5); // Maximum 5 suggestions
 
-            logger.info("Génération de suggestions AI pour produit:", {
-                productName: request.productName,
-                count,
-            });
+            logger.info(
+                { productName: request.productName, count },
+                "Génération de suggestions AI pour produit:",
+            );
 
             let prompt = `Produit : "${request.productName}"`;
 
@@ -109,16 +114,20 @@ export class AIProductService {
                 count: suggestions.length,
             };
 
-            logger.info("Suggestions AI générées avec succès:", {
-                productName: request.productName,
-                suggestionsCount: suggestions.length,
-            });
+            logger.info(
+                {
+                    productName: request.productName,
+                    suggestionsCount: suggestions.length,
+                },
+                "Suggestions AI générées avec succès:",
+            );
 
             return response;
         } catch (error) {
             logger.error(
+                { error },
                 "Erreur lors de la génération de suggestions AI:",
-                error
+                error,
             );
             throw error;
         }
@@ -130,12 +139,16 @@ export class AIProductService {
     async improveProductDescription(
         productName: string,
         currentDescription: string,
-        improvements?: string
+        improvements?: string,
     ): Promise<string> {
         try {
-            logger.info("Amélioration de description AI pour produit:", {
-                productName,
-            });
+            logger.info(
+                {
+                    productName,
+                    currentDescriptionLength: currentDescription.length,
+                },
+                "Amélioration de description AI pour produit:",
+            );
 
             const instructions = improvements
                 ? `Améliore cette description de produit selon ces directives : ${improvements}`
@@ -143,20 +156,24 @@ export class AIProductService {
 
             const improvedDescription = await this.aiClient.improveText(
                 currentDescription,
-                instructions
+                instructions,
             );
 
-            logger.info("Description AI améliorée avec succès:", {
-                productName,
-                originalLength: currentDescription.length,
-                improvedLength: improvedDescription.length,
-            });
+            logger.info(
+                {
+                    productName,
+                    originalLength: currentDescription.length,
+                    improvedLength: improvedDescription.length,
+                },
+                "Description AI améliorée avec succès:",
+            );
 
             return improvedDescription;
         } catch (error) {
             logger.error(
+                { error },
                 "Erreur lors de l'amélioration de description AI:",
-                error
+                error,
             );
             throw error;
         }
@@ -167,12 +184,13 @@ export class AIProductService {
      */
     async generateProductKeywords(
         productName: string,
-        description?: string
+        description?: string,
     ): Promise<string[]> {
         try {
-            logger.info("Génération de mots-clés AI pour produit:", {
-                productName,
-            });
+            logger.info(
+                { productName },
+                "Génération de mots-clés AI pour produit:",
+            );
 
             let prompt = `Génère 5-8 mots-clés pertinents pour le produit : "${productName}"`;
 
@@ -200,16 +218,17 @@ export class AIProductService {
                 .filter((k) => k.length > 0)
                 .slice(0, 8); // Maximum 8 mots-clés
 
-            logger.info("Mots-clés AI générés avec succès:", {
-                productName,
-                keywordsCount: keywords.length,
-            });
+            logger.info(
+                { productName, keywordsCount: keywords.length },
+                "Mots-clés AI générés avec succès:",
+            );
 
             return keywords;
         } catch (error) {
             logger.error(
+                { error },
                 "Erreur lors de la génération de mots-clés AI:",
-                error
+                error,
             );
             throw error;
         }
@@ -222,7 +241,7 @@ export class AIProductService {
         try {
             return await this.aiClient.healthCheck();
         } catch (error) {
-            logger.warn("Service AI non disponible:", error);
+            logger.error({ error }, "Service AI non disponible:");
             return false;
         }
     }

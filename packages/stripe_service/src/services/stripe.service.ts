@@ -24,7 +24,10 @@ export class StripeService {
 
             return account;
         } catch (error) {
-            logger.error("Error creating Stripe Connect account:", error);
+            logger.error(
+                { error },
+                "Erreur lors de la création du compte Stripe Connect:",
+            );
             throw error;
         }
     }
@@ -38,7 +41,7 @@ export class StripeService {
     async createAccountLink(
         accountId: string,
         refreshUrl: string,
-        returnUrl: string
+        returnUrl: string,
     ) {
         try {
             const accountLink = await stripe.accountLinks.create({
@@ -50,7 +53,10 @@ export class StripeService {
 
             return accountLink;
         } catch (error) {
-            logger.error("Error creating account link:", error);
+            logger.error(
+                { error },
+                "Erreur lors de la création du lien d'intégration Stripe:",
+            );
             throw error;
         }
     }
@@ -64,7 +70,10 @@ export class StripeService {
             const account = await stripe.accounts.retrieve(accountId);
             return account;
         } catch (error) {
-            logger.error("Error retrieving Stripe Connect account:", error);
+            logger.error(
+                { error },
+                "Erreur lors de la récupération des détails du compte Stripe Connect:",
+            );
             throw error;
         }
     }
@@ -82,7 +91,7 @@ export class StripeService {
         currency: string = "eur",
         description: string,
         connectedAccountId: string,
-        applicationFeeAmount: number
+        applicationFeeAmount: number,
     ) {
         try {
             const paymentIntent = await stripe.paymentIntents.create(
@@ -94,12 +103,15 @@ export class StripeService {
                 },
                 {
                     stripeAccount: connectedAccountId,
-                }
+                },
             );
 
             return paymentIntent;
         } catch (error) {
-            logger.error("Error creating payment intent:", error);
+            logger.error(
+                { error },
+                "Erreur lors de la création du paiement Stripe:",
+            );
             throw error;
         }
     }
@@ -115,7 +127,7 @@ export class StripeService {
         amount: number,
         currency: string = "eur",
         destination: string,
-        description: string
+        description: string,
     ) {
         try {
             const transfer = await stripe.transfers.create({
@@ -127,7 +139,10 @@ export class StripeService {
 
             return transfer;
         } catch (error) {
-            logger.error("Error creating transfer:", error);
+            logger.error(
+                { error },
+                "Erreur lors de la création du transfert Stripe:",
+            );
             throw error;
         }
     }
@@ -153,7 +168,7 @@ export class StripeService {
         invoiceId: string,
         customerEmail: string,
         successUrl: string,
-        cancelUrl: string
+        cancelUrl: string,
     ) {
         try {
             const session = await stripe.checkout.sessions.create(
@@ -187,12 +202,15 @@ export class StripeService {
                 },
                 {
                     stripeAccount: connectedAccountId,
-                }
+                },
             );
 
             return session;
         } catch (error) {
-            logger.error("Error creating checkout session:", error);
+            logger.error(
+                { error },
+                "Erreur lors de la création de la session de paiement Stripe:",
+            );
             throw error;
         }
     }
@@ -207,7 +225,10 @@ export class StripeService {
             const loginLink = await stripe.accounts.createLoginLink(accountId);
             return loginLink;
         } catch (error) {
-            logger.error("Error creating Stripe login link:", error);
+            logger.error(
+                { error },
+                "Erreur lors de la création du lien de connexion Stripe:",
+            );
             throw error;
         }
     }

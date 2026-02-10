@@ -36,7 +36,7 @@ export const createConnectAccount = async (req: AuthRequest, res: Response) => {
             return ApiResponse.error(
                 res,
                 400,
-                "L'utilisateur a déjà un compte Stripe Connect"
+                "L'utilisateur a déjà un compte Stripe Connect",
             );
         }
 
@@ -45,7 +45,7 @@ export const createConnectAccount = async (req: AuthRequest, res: Response) => {
             user.Company?.name || `${user.first_name} ${user.last_name}`;
         const account = await stripeService.createConnectAccount(
             user.email,
-            businessName
+            businessName,
         );
 
         // Mettre à jour l'utilisateur avec l'ID du compte Stripe
@@ -60,18 +60,18 @@ export const createConnectAccount = async (req: AuthRequest, res: Response) => {
             res,
             201,
             "Compte Stripe Connect créé avec succès",
-            response
+            response,
         );
     } catch (error) {
         console.log(error);
         logger.error(
+            { error },
             "Erreur lors de la création du compte Stripe Connect:",
-            error
         );
         return ApiResponse.error(
             res,
             500,
-            "Erreur lors de la création du compte Stripe Connect"
+            "Erreur lors de la création du compte Stripe Connect",
         );
     }
 };
@@ -95,7 +95,7 @@ export const createAccountLink = async (req: AuthRequest, res: Response) => {
             return ApiResponse.error(
                 res,
                 400,
-                "L'utilisateur n'a pas de compte Stripe Connect"
+                "L'utilisateur n'a pas de compte Stripe Connect",
             );
         }
 
@@ -103,7 +103,7 @@ export const createAccountLink = async (req: AuthRequest, res: Response) => {
         const accountLink = await stripeService.createAccountLink(
             user.stripe_account_id,
             refreshUrl,
-            returnUrl
+            returnUrl,
         );
 
         const response: AccountLinkResponse = { url: accountLink.url };
@@ -112,14 +112,14 @@ export const createAccountLink = async (req: AuthRequest, res: Response) => {
             res,
             200,
             "Lien d'onboarding créé avec succès",
-            response
+            response,
         );
     } catch (error) {
-        logger.error("Erreur lors de la création du lien Stripe:", error);
+        logger.error({ error }, "Erreur lors de la création du lien Stripe:");
         return ApiResponse.error(
             res,
             500,
-            "Erreur lors de la création du lien Stripe"
+            "Erreur lors de la création du lien Stripe",
         );
     }
 };
@@ -143,13 +143,13 @@ export const getAccountStatus = async (req: AuthRequest, res: Response) => {
             return ApiResponse.error(
                 res,
                 400,
-                "L'utilisateur n'a pas de compte Stripe Connect"
+                "L'utilisateur n'a pas de compte Stripe Connect",
             );
         }
 
         // Récupérer les détails du compte
         const account = await stripeService.retrieveConnectAccount(
-            user.stripe_account_id
+            user.stripe_account_id,
         );
 
         // Vérifier si l'onboarding est terminé
@@ -179,17 +179,18 @@ export const getAccountStatus = async (req: AuthRequest, res: Response) => {
             res,
             200,
             "Statut du compte Stripe récupéré avec succès",
-            response
+            response,
         );
     } catch (error) {
         logger.error(
+            { error },
             "Erreur lors de la récupération du statut du compte Stripe:",
-            error
+            error,
         );
         return ApiResponse.error(
             res,
             500,
-            "Erreur lors de la récupération du statut du compte Stripe"
+            "Erreur lors de la récupération du statut du compte Stripe",
         );
     }
 };
@@ -205,7 +206,7 @@ export const createPayment = async (req: AuthRequest, res: Response) => {
             return ApiResponse.error(
                 res,
                 400,
-                "Tous les champs sont requis (amount, description, invoiceId)"
+                "Tous les champs sont requis (amount, description, invoiceId)",
             );
         }
 
@@ -223,7 +224,7 @@ export const createPayment = async (req: AuthRequest, res: Response) => {
             return ApiResponse.error(
                 res,
                 400,
-                "L'utilisateur n'a pas de compte Stripe Connect configuré"
+                "L'utilisateur n'a pas de compte Stripe Connect configuré",
             );
         }
 
@@ -236,7 +237,7 @@ export const createPayment = async (req: AuthRequest, res: Response) => {
             "eur",
             description,
             user.stripe_account_id,
-            applicationFeeAmount
+            applicationFeeAmount,
         );
 
         const response: PaymentResponse = {
@@ -248,19 +249,22 @@ export const createPayment = async (req: AuthRequest, res: Response) => {
             res,
             200,
             "Paiement créé avec succès",
-            response
+            response,
         );
     } catch (error) {
-        logger.error("Erreur lors de la création du paiement:", error);
+        logger.error({ error }, "Erreur lors de la crération du paiement:");
         return ApiResponse.error(
             res,
             500,
-            "Erreur lors de la création du paiement"
+            "Erreur lors de la création du paiement",
         );
     }
 };
 
-export const createCheckoutSession = async (req: AuthRequest, res: Response) => {
+export const createCheckoutSession = async (
+    req: AuthRequest,
+    res: Response,
+) => {
     try {
         const {
             amount,
@@ -271,15 +275,23 @@ export const createCheckoutSession = async (req: AuthRequest, res: Response) => 
             invoiceId,
             customerEmail,
             successUrl,
-            cancelUrl
+            cancelUrl,
         } = req.body;
 
         // Vérifier que tous les champs nécessaires sont présents
-        if (!amount || !description || !connectedAccountId || !invoiceId || !customerEmail || !successUrl || !cancelUrl) {
+        if (
+            !amount ||
+            !description ||
+            !connectedAccountId ||
+            !invoiceId ||
+            !customerEmail ||
+            !successUrl ||
+            !cancelUrl
+        ) {
             return ApiResponse.error(
                 res,
                 400,
-                "Tous les champs sont requis (amount, description, connectedAccountId, invoiceId, customerEmail, successUrl, cancelUrl)"
+                "Tous les champs sont requis (amount, description, connectedAccountId, invoiceId, customerEmail, successUrl, cancelUrl)",
             );
         }
 
@@ -293,7 +305,7 @@ export const createCheckoutSession = async (req: AuthRequest, res: Response) => 
             invoiceId,
             customerEmail,
             successUrl,
-            cancelUrl
+            cancelUrl,
         );
 
         return ApiResponse.success(
@@ -302,15 +314,19 @@ export const createCheckoutSession = async (req: AuthRequest, res: Response) => 
             "Session de paiement créée avec succès",
             {
                 sessionId: session.id,
-                url: session.url
-            }
+                url: session.url,
+            },
         );
     } catch (error) {
-        logger.error("Erreur lors de la création de la session de paiement:", error);
+        logger.error(
+            { error },
+            "Erreur lors de la création de la session de paiement:",
+            error,
+        );
         return ApiResponse.error(
             res,
             500,
-            "Erreur lors de la création de la session de paiement"
+            "Erreur lors de la création de la session de paiement",
         );
     }
 };
@@ -478,7 +494,7 @@ export const createDashboardLink = async (req: AuthRequest, res: Response) => {
             return ApiResponse.error(
                 res,
                 400,
-                "L'utilisateur n'a pas de compte Stripe Connect"
+                "L'utilisateur n'a pas de compte Stripe Connect",
             );
         }
 
@@ -487,13 +503,13 @@ export const createDashboardLink = async (req: AuthRequest, res: Response) => {
             return ApiResponse.error(
                 res,
                 400,
-                "Le compte Stripe Connect n'est pas encore complètement configuré"
+                "Le compte Stripe Connect n'est pas encore complètement configuré",
             );
         }
 
         // Générer le lien de connexion au dashboard Stripe
         const loginLink = await stripeService.createLoginLink(
-            user.stripe_account_id
+            user.stripe_account_id,
         );
 
         const response: DashboardLinkResponse = { url: loginLink.url };
@@ -502,17 +518,18 @@ export const createDashboardLink = async (req: AuthRequest, res: Response) => {
             res,
             200,
             "Lien vers le dashboard Stripe généré avec succès",
-            response
+            response,
         );
     } catch (error) {
         logger.error(
+            { error },
             "Erreur lors de la génération du lien vers le dashboard Stripe:",
-            error
+            error,
         );
         return ApiResponse.error(
             res,
             500,
-            "Erreur lors de la génération du lien vers le dashboard Stripe"
+            "Erreur lors de la génération du lien vers le dashboard Stripe",
         );
     }
 };
@@ -535,7 +552,7 @@ export const skipStripeSetup = async (req: AuthRequest, res: Response) => {
             return ApiResponse.error(
                 res,
                 400,
-                "L'utilisateur n'est pas à l'étape de configuration Stripe"
+                "L'utilisateur n'est pas à l'étape de configuration Stripe",
             );
         }
 
@@ -556,17 +573,17 @@ export const skipStripeSetup = async (req: AuthRequest, res: Response) => {
             res,
             200,
             "Configuration Stripe reportée, onboarding terminé",
-            response
+            response,
         );
     } catch (error) {
         logger.error(
+            { error },
             "Erreur lors du report de la configuration Stripe:",
-            error
         );
         return ApiResponse.error(
             res,
             500,
-            "Erreur lors du report de la configuration Stripe"
+            "Erreur lors du report de la configuration Stripe",
         );
     }
 };

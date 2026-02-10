@@ -14,7 +14,7 @@ const port = process.env.PORT || 3011; // Port unique pour le service AI
 app.use(
     helmet({
         contentSecurityPolicy: false, // Désactivé pour l'API
-    })
+    }),
 );
 
 // Configure CORS middleware
@@ -23,15 +23,15 @@ app.use(
         origin: [process.env.CLIENT_URL!, process.env.API_GATEWAY_URL!],
         methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
         credentials: true,
-    })
+    }),
 );
 
 // Logging des requêtes
 app.use((req, res, next) => {
-    logger.info(`${req.method} ${req.path}`, {
-        ip: req.ip,
-        userAgent: req.get("User-Agent"),
-    });
+    logger.info(
+        { ip: req.ip, userAgent: req.get("User-Agent") },
+        `${req.method} ${req.path}`,
+    );
     next();
 });
 
@@ -58,7 +58,7 @@ app.use(
         error: any,
         _req: express.Request,
         res: express.Response,
-        _next: express.NextFunction
+        _next: express.NextFunction,
     ) => {
         logger.error("Erreur non gérée:", error);
         res.status(500).json({
@@ -69,7 +69,7 @@ app.use(
                     ? error.message
                     : undefined,
         });
-    }
+    },
 );
 
 app.listen(port, () => {

@@ -30,31 +30,31 @@ export class AIClient {
                 logger.info(
                     `AI Service Request: ${config.method?.toUpperCase()} ${
                         config.url
-                    }`
+                    }`,
                 );
                 return config;
             },
             (error) => {
                 logger.error("AI Service Request Error:", error);
                 return Promise.reject(error);
-            }
+            },
         );
 
         // Intercepteur pour logger les réponses
         this.client.interceptors.response.use(
             (response) => {
                 logger.info(
-                    `AI Service Response: ${response.status} ${response.config.url}`
+                    `AI Service Response: ${response.status} ${response.config.url}`,
                 );
                 return response;
             },
             (error) => {
                 logger.error(
                     "AI Service Response Error:",
-                    error.response?.data || error.message
+                    error.response?.data || error.message,
                 );
                 return Promise.reject(error);
-            }
+            },
         );
     }
 
@@ -69,20 +69,20 @@ export class AIClient {
             if (!response.data.success) {
                 throw new Error(
                     response.data.message ||
-                        "Erreur lors de la génération de texte"
+                        "Erreur lors de la génération de texte",
                 );
             }
 
             return response.data.data;
         } catch (error) {
-            logger.error("Erreur lors de la génération de texte:", error);
+            logger.error({ error }, "Erreur lors de la génération de texte:");
             if (axios.isAxiosError(error)) {
                 if (error.code === "ECONNREFUSED") {
                     throw new Error("Service AI non disponible");
                 }
                 if (error.response?.status === 429) {
                     throw new Error(
-                        "Limite de requêtes atteinte. Veuillez réessayer plus tard."
+                        "Limite de requêtes atteinte. Veuillez réessayer plus tard.",
                     );
                 }
                 if (error.response?.data?.message) {
@@ -97,7 +97,7 @@ export class AIClient {
      * Génère des suggestions multiples via le service AI
      */
     async generateSuggestions(
-        request: AISuggestionsRequest
+        request: AISuggestionsRequest,
     ): Promise<string[]> {
         try {
             const response: AxiosResponse<
@@ -111,20 +111,23 @@ export class AIClient {
             if (!response.data.success) {
                 throw new Error(
                     response.data.message ||
-                        "Erreur lors de la génération de suggestions"
+                        "Erreur lors de la génération de suggestions",
                 );
             }
 
             return response.data.data.suggestions;
         } catch (error) {
-            logger.error("Erreur lors de la génération de suggestions:", error);
+            logger.error(
+                { error },
+                "Erreur lors de la génération de suggestions:",
+            );
             if (axios.isAxiosError(error)) {
                 if (error.code === "ECONNREFUSED") {
                     throw new Error("Service AI non disponible");
                 }
                 if (error.response?.status === 429) {
                     throw new Error(
-                        "Limite de requêtes atteinte. Veuillez réessayer plus tard."
+                        "Limite de requêtes atteinte. Veuillez réessayer plus tard.",
                     );
                 }
                 if (error.response?.data?.message) {
@@ -150,20 +153,20 @@ export class AIClient {
             if (!response.data.success) {
                 throw new Error(
                     response.data.message ||
-                        "Erreur lors de l'amélioration du texte"
+                        "Erreur lors de l'amélioration du texte",
                 );
             }
 
             return response.data.data.improvedText;
         } catch (error) {
-            logger.error("Erreur lors de l'amélioration du texte:", error);
+            logger.error({ error }, "Erreur lors de l'amélioration du texte:");
             if (axios.isAxiosError(error)) {
                 if (error.code === "ECONNREFUSED") {
                     throw new Error("Service AI non disponible");
                 }
                 if (error.response?.status === 429) {
                     throw new Error(
-                        "Limite de requêtes atteinte. Veuillez réessayer plus tard."
+                        "Limite de requêtes atteinte. Veuillez réessayer plus tard.",
                     );
                 }
                 if (error.response?.data?.message) {
@@ -182,7 +185,7 @@ export class AIClient {
             const response = await this.client.get("/api/ai/health");
             return response.status === 200 && response.data.success;
         } catch (error) {
-            logger.warn("Service AI health check failed:", error);
+            logger.warn({ error }, "Service AI health check failed:");
             return false;
         }
     }

@@ -8,10 +8,10 @@ export class PdfController {
             const { invoice, company } = req.body;
 
             if (!invoice || !company) {
-                logger.error("Données manquantes pour la génération du PDF", {
-                    invoice: !!invoice,
-                    company: !!company,
-                });
+                logger.error(
+                    { invoice: !!invoice, company: !!company },
+                    "Données manquantes pour la génération du PDF",
+                );
                 return res.status(400).json({
                     error: "Les données de facture et d'entreprise sont requises",
                 });
@@ -19,12 +19,12 @@ export class PdfController {
 
             logger.info(
                 { invoice_id: invoice.invoice_id },
-                "Génération du PDF de facture"
+                "Génération du PDF de facture",
             );
 
             const pdfBuffer = await PdfService.generateInvoicePdf(
                 invoice,
-                company
+                company,
             );
 
             // Configurer les en-têtes pour le PDF
@@ -36,14 +36,14 @@ export class PdfController {
                     invoice_id: invoice.invoice_id,
                     buffer_size: pdfBuffer.length,
                 },
-                "PDF généré avec succès"
+                "PDF généré avec succès",
             );
 
             return res.send(pdfBuffer);
         } catch (error) {
             logger.error(
                 { error },
-                "Erreur lors de la génération du PDF de facture"
+                "Erreur lors de la génération du PDF de facture",
             );
 
             if (error instanceof Error) {
@@ -64,10 +64,10 @@ export class PdfController {
             const { quote, company } = req.body;
 
             if (!quote || !company) {
-                logger.error("Données manquantes pour la génération du PDF", {
-                    quote: !!quote,
-                    company: !!company,
-                });
+                logger.error(
+                    { quote: !!quote, company: !!company },
+                    "Données manquantes pour la génération du PDF",
+                );
                 return res.status(400).json({
                     error: "Les données de devis et d'entreprise sont requises",
                 });
@@ -75,7 +75,7 @@ export class PdfController {
 
             logger.info(
                 { quote_id: quote.quote_id },
-                "Génération du PDF de devis"
+                "Génération du PDF de devis",
             );
 
             const pdfBuffer = await PdfService.generateQuotePdf(quote, company);
@@ -89,14 +89,14 @@ export class PdfController {
                     quote_id: quote.quote_id,
                     buffer_size: pdfBuffer.length,
                 },
-                "PDF généré avec succès"
+                "PDF généré avec succès",
             );
 
             return res.send(pdfBuffer);
         } catch (error) {
             logger.error(
                 { error },
-                "Erreur lors de la génération du PDF de devis"
+                "Erreur lors de la génération du PDF de devis",
             );
 
             if (error instanceof Error) {

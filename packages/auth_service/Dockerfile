@@ -1,28 +1,35 @@
-# Build stage
+# ============================================
+# Stage 1: Build
+# ============================================
 FROM node:20-alpine AS builder
 
 WORKDIR /app
 
-# Copy root package files for workspace setup
-COPY package*.json ./
-COPY lerna.json ./
+# Copy root workspace config (cached layer)
+COPY package*.json lerna.json ./
 
-# Copy all packages for workspace resolution
-COPY packages/ ./packages/
+# Copy only the package.json files needed for dependency resolution
+COPY packages/shared/package*.json ./packages/shared/
+COPY packages/auth_service/package*.json ./packages/auth_service/
 
-# Install all dependencies using workspaces
-RUN npm install
+# Install all dependencies (dev included for build)
+RUN npm ci
 
-# Build shared package first
+# Copy source files
+COPY packages/shared/ ./packages/shared/
+COPY packages/auth_service/ ./packages/auth_service/
+
+# Build shared package first (Prisma + TypeScript)
 WORKDIR /app/packages/shared
-RUN npm run prisma:generate
-RUN npm run build
+RUN npm run prisma:generate && npm run build
 
 # Build the auth service
 WORKDIR /app/packages/auth_service
 RUN npm run build
 
-# Production stage
+# ============================================
+# Stage 2: Production
+# ============================================
 FROM node:20-alpine AS production
 
 WORKDIR /app
@@ -30,22 +37,23 @@ WORKDIR /app
 # Install curl for healthcheck
 RUN apk add --no-cache curl
 
-# Copy root package files and install workspaces
-COPY package*.json ./
-COPY lerna.json ./
+# Copy workspace config + package.json for prod install
+COPY package*.json lerna.json ./
 COPY packages/shared/package*.json ./packages/shared/
 COPY packages/auth_service/package*.json ./packages/auth_service/
 
-# Install only production dependencies for workspaces
-RUN npm ci --only=production --workspaces && npm cache clean --force
+# Install production dependencies only
+RUN npm ci --omit=dev && npm cache clean --force
 
-# Copy built service
+# Copy built shared package
+COPY --from=builder /app/packages/shared/dist ./packages/shared/dist
+COPY --from=builder /app/packages/shared/prisma ./packages/shared/prisma
+COPY --from=builder /app/packages/shared/package.json ./packages/shared/package.json
+
+# Copy built auth service
 COPY --from=builder /app/packages/auth_service/dist ./packages/auth_service/dist
 
-# Copy built shared package (entire directory)
-COPY --from=builder /app/packages/shared ./packages/shared
-
-# Copy the entire generated Prisma client from builder
+# Copy Prisma generated client
 COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
 
 # Create non-root user
@@ -57,8 +65,7 @@ USER nodejs
 
 EXPOSE 3001
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
+HEALTHCHECK --interval=30s --timeout=10s --start-period=15s --retries=3 \
   CMD curl -f http://localhost:3001/health || exit 1
 
 WORKDIR /app/packages/auth_service

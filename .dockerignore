@@ -1,0 +1,59 @@
+# =============================================================
+# ZenBilling - Docker Build Context Exclusions
+# =============================================================
+
+# Dependencies (reinstalled in Docker)
+node_modules
+**/node_modules
+
+# Build outputs (rebuilt in Docker)
+**/dist
+
+# Git
+.git
+.gitignore
+
+# Environment files (secrets - injected via docker-compose)
+.env
+.env.*
+!.env.example
+!.env.production.example
+**/.env
+**/.env.*
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Docker (avoid recursive context)
+docker-compose*.yml
+.dockerignore
+
+# CI/CD
+.github
+
+# Documentation
+*.md
+LICENSE
+
+# Tests
+**/__tests__
+**/*.test.ts
+**/*.spec.ts
+**/coverage
+**/jest.config.*
+
+# Logs
+**/*.log
+**/logs
+
+# Temporary
+**/tmp
+**/temp

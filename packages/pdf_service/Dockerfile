@@ -1,80 +1,73 @@
-# Build stage
+# ============================================
+# Stage 1: Build
+# ============================================
 FROM node:20-alpine AS builder
 
 WORKDIR /app
 
-# Copy root package files for workspace setup
-COPY package*.json ./
-COPY lerna.json ./
+COPY package*.json lerna.json ./
+COPY packages/shared/package*.json ./packages/shared/
+COPY packages/pdf_service/package*.json ./packages/pdf_service/
 
-# Copy all packages for workspace resolution
-COPY packages/ ./packages/
+RUN npm ci
 
-# Install all dependencies using workspaces
-RUN npm install
+COPY packages/shared/ ./packages/shared/
+COPY packages/pdf_service/ ./packages/pdf_service/
 
-# Build shared package first
 WORKDIR /app/packages/shared
-RUN npm run prisma:generate
-RUN npm run build
+RUN npm run prisma:generate && npm run build
 
-# Build the pdf service
 WORKDIR /app/packages/pdf_service
 RUN npm run build
 
-# Production stage
-FROM node:20-alpine
+# ============================================
+# Stage 2: Production (requires Chromium for Puppeteer)
+# ============================================
+FROM node:20-alpine AS production
 
 WORKDIR /app
 
-# Install dependencies for Puppeteer on Alpine
+# Install Chromium and dependencies for Puppeteer PDF generation
 RUN apk add --no-cache \
     curl \
     chromium \
     nss \
     freetype \
-    freetype-dev \
     harfbuzz \
     ca-certificates \
-    ttf-freefont \
-    && rm -rf /var/cache/apk/*
+    ttf-freefont
 
-# Tell Puppeteer to use the installed Chromium
+# Tell Puppeteer to use system Chromium
 ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium-browser
+ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
 
-# Copy root package files and install workspaces
-COPY package*.json ./
-COPY lerna.json ./
+COPY package*.json lerna.json ./
 COPY packages/shared/package*.json ./packages/shared/
 COPY packages/pdf_service/package*.json ./packages/pdf_service/
 
-# Install only production dependencies for workspaces
-RUN npm ci --only=production --workspaces && npm cache clean --force
+RUN npm ci --omit=dev && npm cache clean --force
 
-# Copy built service
+COPY --from=builder /app/packages/shared/dist ./packages/shared/dist
+COPY --from=builder /app/packages/shared/prisma ./packages/shared/prisma
+COPY --from=builder /app/packages/shared/package.json ./packages/shared/package.json
 COPY --from=builder /app/packages/pdf_service/dist ./packages/pdf_service/dist
 
-# Copy templates directory
+# Copy Handlebars templates for PDF generation
 COPY --from=builder /app/packages/pdf_service/src/templates ./packages/pdf_service/dist/templates
 
-# Copy built shared package (entire directory)
-COPY --from=builder /app/packages/shared ./packages/shared
-
-# Copy the entire generated Prisma client from builder
 COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
 
-# Create non-root user
 RUN addgroup -g 1001 -S nodejs && \
     adduser -S nodejs -u 1001 && \
     chown -R nodejs:nodejs /app
 
 USER nodejs
 
-EXPOSE 3007
+# Fixed: was incorrectly set to 3007 (email_service port)
+EXPOSE 3010
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
-  CMD curl -f http://localhost:3007/health || exit 1
+HEALTHCHECK --interval=30s --timeout=10s --start-period=20s --retries=3 \
+  CMD curl -f http://localhost:3010/health || exit 1
 
 WORKDIR /app/packages/pdf_service
 CMD ["node", "dist/app.js"]

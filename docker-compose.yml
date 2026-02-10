@@ -1,377 +1,287 @@
+# =============================================================
+# ZenBilling - Docker Compose Production
+# =============================================================
+# Prerequis : PostgreSQL externe accessible via DATABASE_URL
+# Usage:
+#   docker compose up -d                    # Start all services
+#   docker compose logs -f auth_service     # Follow logs
+#   docker compose down                     # Stop all
+# =============================================================
+
 services:
-    # Base de données PostgreSQL
-    postgres:
-        image: postgres:15-alpine
-        environment:
-            POSTGRES_DB: zenbilling
-            POSTGRES_USER: zenbilling
-            POSTGRES_PASSWORD: zenbilling_password
-        ports:
-            - "5432:5432"
-        volumes:
-            - postgres_data:/var/lib/postgresql/data
-        healthcheck:
-            test: ["CMD-SHELL", "pg_isready -U zenbilling"]
-            interval: 10s
-            timeout: 5s
-            retries: 5
 
-    # Redis pour les sessions et cache
-    redis:
-        image: redis:7-alpine
-        ports:
-            - "6379:6379"
-        volumes:
-            - redis_data:/data
-        healthcheck:
-            test: ["CMD", "redis-cli", "ping"]
-            interval: 10s
-            timeout: 3s
-            retries: 5
+  # ===========================================================
+  # PRISMA MIGRATIONS (run once against external DB, then exit)
+  # ===========================================================
 
-    # API Gateway
-    api_gateway:
-        build:
-            context: .
-            dockerfile: ./packages/api_gateway/Dockerfile
-        ports:
-            - "8080:8080"
-        environment:
-            - NODE_ENV=production
-        depends_on:
-            - auth_service
-            - company_service
-            - stripe_service
-        healthcheck:
-            test:
-                [
-                    "CMD",
-                    "wget",
-                    "--no-verbose",
-                    "--tries=1",
-                    "--spider",
-                    "http://localhost:8080/health",
-                ]
-            interval: 30s
-            timeout: 10s
-            retries: 3
+  prisma-migrate:
+    build:
+      context: .
+      dockerfile: packages/auth_service/Dockerfile
+      target: builder
+    container_name: zenbilling-migrate
+    working_dir: /app/packages/shared
+    command: npx prisma migrate deploy --schema=./prisma/schema.prisma
+    environment:
+      DATABASE_URL: ${DATABASE_URL}
+    networks:
+      - zenbilling-net
+    restart: "no"
 
-    # Auth Service
-    auth_service:
-        build:
-            context: .
-            dockerfile: ./packages/auth_service/Dockerfile
-        ports:
-            - "3001:3001"
-        environment:
-            - NODE_ENV=production
-            - DATABASE_URL=postgresql://zenbilling:zenbilling_password@postgres:5432/zenbilling
-            - BETTER_AUTH_SECRET=your-auth-secret-key-here
-            - BETTER_AUTH_URL=http://localhost:3001
-            - CLIENT_URL=http://localhost:3000
-            - CLIENT_URL_2=http://localhost:8080
-            - PORT=3001
-        depends_on:
-            postgres:
-                condition: service_healthy
-        healthcheck:
-            test:
-                [
-                    "CMD",
-                    "wget",
-                    "--no-verbose",
-                    "--tries=1",
-                    "--spider",
-                    "http://localhost:3001/health",
-                ]
-            interval: 30s
-            timeout: 10s
-            retries: 3
+  # ===========================================================
+  # API GATEWAY
+  # ===========================================================
 
-    # Company Service
-    company_service:
-        build:
-            context: .
-            dockerfile: ./packages/company_service/Dockerfile
-        ports:
-            - "3002:3002"
-        environment:
-            - NODE_ENV=production
-            - DATABASE_URL=postgresql://zenbilling:zenbilling_password@postgres:5432/zenbilling
-            - PORT=3002
-        depends_on:
-            postgres:
-                condition: service_healthy
-        healthcheck:
-            test:
-                [
-                    "CMD",
-                    "wget",
-                    "--no-verbose",
-                    "--tries=1",
-                    "--spider",
-                    "http://localhost:3002/health",
-                ]
-            interval: 30s
-            timeout: 10s
-            retries: 3
+  api_gateway:
+    build:
+      context: .
+      dockerfile: packages/api_gateway/Dockerfile
+    container_name: zenbilling-gateway
+    restart: always
+    ports:
+      - "${PORT_API_GATEWAY:-8080}:8080"
+    environment:
+      PORT: 8080
+      NODE_ENV: production
+      AUTH_SERVICE_URL: http://auth_service:3001
+      COMPANY_SERVICE_URL: http://company_service:3002
+      STRIPE_SERVICE_URL: http://stripe_service:3003
+      DASHBOARD_SERVICE_URL: http://dashboard_service:3004
+      INVOICE_SERVICE_URL: http://invoice_service:3005
+      QUOTE_SERVICE_URL: http://quote_service:3006
+      PRODUCT_SERVICE_URL: http://product_service:3008
+      CUSTOMER_SERVICE_URL: http://customer_service:3009
+      AI_SERVICE_URL: http://ai_service:3011
+    depends_on:
+      auth_service:
+        condition: service_healthy
+    networks:
+      - zenbilling-net
 
-    # Stripe Service
-    stripe_service:
-        build:
-            context: .
-            dockerfile: ./packages/stripe_service/Dockerfile
-        ports:
-            - "3003:3003"
-        environment:
-            - NODE_ENV=production
-            - DATABASE_URL=postgresql://zenbilling:zenbilling_password@postgres:5432/zenbilling
-            - STRIPE_SECRET_KEY=${STRIPE_SECRET_KEY}
-            - STRIPE_WEBHOOK_SECRET=${STRIPE_WEBHOOK_SECRET}
-            - PORT=3003
-        depends_on:
-            postgres:
-                condition: service_healthy
-        healthcheck:
-            test:
-                [
-                    "CMD",
-                    "wget",
-                    "--no-verbose",
-                    "--tries=1",
-                    "--spider",
-                    "http://localhost:3003/health",
-                ]
-            interval: 30s
-            timeout: 10s
-            retries: 3
+  # ===========================================================
+  # BACKEND SERVICES
+  # ===========================================================
 
-    # Dashboard Service
-    dashboard_service:
-        build:
-            context: .
-            dockerfile: ./packages/dashboard_service/Dockerfile
-        ports:
-            - "3004:3004"
-        environment:
-            - NODE_ENV=production
-            - DATABASE_URL=postgresql://zenbilling:zenbilling_password@postgres:5432/zenbilling
-            - PORT=3004
-        depends_on:
-            postgres:
-                condition: service_healthy
-        healthcheck:
-            test:
-                [
-                    "CMD",
-                    "wget",
-                    "--no-verbose",
-                    "--tries=1",
-                    "--spider",
-                    "http://localhost:3004/health",
-                ]
-            interval: 30s
-            timeout: 10s
-            retries: 3
+  auth_service:
+    build:
+      context: .
+      dockerfile: packages/auth_service/Dockerfile
+    container_name: zenbilling-auth
+    restart: always
+    environment:
+      PORT: 3001
+      NODE_ENV: production
+      DATABASE_URL: ${DATABASE_URL}
+      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET}
+      BETTER_AUTH_URL: ${BETTER_AUTH_URL}
+      CLIENT_URL: ${CLIENT_URL}
+      API_GATEWAY_URL: ${API_GATEWAY_URL}
+      COOKIE_DOMAIN: ${COOKIE_DOMAIN}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
+      INTERNAL_SHARED_SECRET: ${INTERNAL_SHARED_SECRET}
+    depends_on:
+      prisma-migrate:
+        condition: service_completed_successfully
+    networks:
+      - zenbilling-net
 
-    # Invoice Service
-    invoice_service:
-        build:
-            context: .
-            dockerfile: ./packages/invoice_service/Dockerfile
-        ports:
-            - "3005:3005"
-        environment:
-            - NODE_ENV=production
-            - DATABASE_URL=postgresql://zenbilling:zenbilling_password@postgres:5432/zenbilling
-            - PORT=3005
-        depends_on:
-            postgres:
-                condition: service_healthy
-        healthcheck:
-            test:
-                [
-                    "CMD",
-                    "wget",
-                    "--no-verbose",
-                    "--tries=1",
-                    "--spider",
-                    "http://localhost:3005/health",
-                ]
-            interval: 30s
-            timeout: 10s
-            retries: 3
+  company_service:
+    build:
+      context: .
+      dockerfile: packages/company_service/Dockerfile
+    container_name: zenbilling-company
+    restart: always
+    environment:
+      PORT: 3002
+      NODE_ENV: production
+      DATABASE_URL: ${DATABASE_URL}
+      INTERNAL_SHARED_SECRET: ${INTERNAL_SHARED_SECRET}
+      AUTH_SERVICE_URL: http://auth_service:3001
+    depends_on:
+      prisma-migrate:
+        condition: service_completed_successfully
+    networks:
+      - zenbilling-net
 
-    # Quote Service
-    quote_service:
-        build:
-            context: .
-            dockerfile: ./packages/quote_service/Dockerfile
-        ports:
-            - "3006:3006"
-        environment:
-            - NODE_ENV=production
-            - DATABASE_URL=postgresql://zenbilling:zenbilling_password@postgres:5432/zenbilling
-            - PORT=3006
-        depends_on:
-            postgres:
-                condition: service_healthy
-        healthcheck:
-            test:
-                [
-                    "CMD",
-                    "wget",
-                    "--no-verbose",
-                    "--tries=1",
-                    "--spider",
-                    "http://localhost:3006/health",
-                ]
-            interval: 30s
-            timeout: 10s
-            retries: 3
+  stripe_service:
+    build:
+      context: .
+      dockerfile: packages/stripe_service/Dockerfile
+    container_name: zenbilling-stripe
+    restart: always
+    environment:
+      PORT: 3003
+      NODE_ENV: production
+      DATABASE_URL: ${DATABASE_URL}
+      STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY}
+      STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET}
+      INTERNAL_SHARED_SECRET: ${INTERNAL_SHARED_SECRET}
+      AUTH_SERVICE_URL: http://auth_service:3001
+    depends_on:
+      prisma-migrate:
+        condition: service_completed_successfully
+    networks:
+      - zenbilling-net
 
-    # Email Service
-    email_service:
-        build:
-            context: .
-            dockerfile: ./packages/email_service/Dockerfile
-        ports:
-            - "3007:3007"
-        environment:
-            - NODE_ENV=production
-            - DATABASE_URL=postgresql://zenbilling:zenbilling_password@postgres:5432/zenbilling
-            - BREVO_API_KEY=${BREVO_API_KEY}
-            - PORT=3007
-        depends_on:
-            postgres:
-                condition: service_healthy
-        healthcheck:
-            test:
-                [
-                    "CMD",
-                    "wget",
-                    "--no-verbose",
-                    "--tries=1",
-                    "--spider",
-                    "http://localhost:3007/health",
-                ]
-            interval: 30s
-            timeout: 10s
-            retries: 3
+  dashboard_service:
+    build:
+      context: .
+      dockerfile: packages/dashboard_service/Dockerfile
+    container_name: zenbilling-dashboard
+    restart: always
+    environment:
+      PORT: 3004
+      NODE_ENV: production
+      DATABASE_URL: ${DATABASE_URL}
+      INTERNAL_SHARED_SECRET: ${INTERNAL_SHARED_SECRET}
+      AUTH_SERVICE_URL: http://auth_service:3001
+    depends_on:
+      prisma-migrate:
+        condition: service_completed_successfully
+    networks:
+      - zenbilling-net
 
-    # Product Service
-    product_service:
-        build:
-            context: .
-            dockerfile: ./packages/product_service/Dockerfile
-        ports:
-            - "3008:3008"
-        environment:
-            - NODE_ENV=production
-            - DATABASE_URL=postgresql://zenbilling:zenbilling_password@postgres:5432/zenbilling
-            - PORT=3008
-        depends_on:
-            postgres:
-                condition: service_healthy
-        healthcheck:
-            test:
-                [
-                    "CMD",
-                    "wget",
-                    "--no-verbose",
-                    "--tries=1",
-                    "--spider",
-                    "http://localhost:3008/health",
-                ]
-            interval: 30s
-            timeout: 10s
-            retries: 3
+  invoice_service:
+    build:
+      context: .
+      dockerfile: packages/invoice_service/Dockerfile
+    container_name: zenbilling-invoice
+    restart: always
+    environment:
+      PORT: 3005
+      NODE_ENV: production
+      DATABASE_URL: ${DATABASE_URL}
+      INTERNAL_SHARED_SECRET: ${INTERNAL_SHARED_SECRET}
+      AUTH_SERVICE_URL: http://auth_service:3001
+      PDF_SERVICE_URL: http://pdf_service:3010
+      EMAIL_SERVICE_URL: http://email_service:3007
+    depends_on:
+      prisma-migrate:
+        condition: service_completed_successfully
+    networks:
+      - zenbilling-net
 
-    # Customer Service
-    customer_service:
-        build:
-            context: .
-            dockerfile: ./packages/customer_service/Dockerfile
-        ports:
-            - "3009:3009"
-        environment:
-            - NODE_ENV=production
-            - DATABASE_URL=postgresql://zenbilling:zenbilling_password@postgres:5432/zenbilling
-            - PORT=3009
-        depends_on:
-            postgres:
-                condition: service_healthy
-        healthcheck:
-            test:
-                [
-                    "CMD",
-                    "wget",
-                    "--no-verbose",
-                    "--tries=1",
-                    "--spider",
-                    "http://localhost:3009/health",
-                ]
-            interval: 30s
-            timeout: 10s
-            retries: 3
+  quote_service:
+    build:
+      context: .
+      dockerfile: packages/quote_service/Dockerfile
+    container_name: zenbilling-quote
+    restart: always
+    environment:
+      PORT: 3006
+      NODE_ENV: production
+      DATABASE_URL: ${DATABASE_URL}
+      INTERNAL_SHARED_SECRET: ${INTERNAL_SHARED_SECRET}
+      AUTH_SERVICE_URL: http://auth_service:3001
+      PDF_SERVICE_URL: http://pdf_service:3010
+      EMAIL_SERVICE_URL: http://email_service:3007
+    depends_on:
+      prisma-migrate:
+        condition: service_completed_successfully
+    networks:
+      - zenbilling-net
 
-    # PDF Service
-    pdf_service:
-        build:
-            context: .
-            dockerfile: ./packages/pdf_service/Dockerfile
-        ports:
-            - "3010:3010"
-        environment:
-            - NODE_ENV=production
-            - DATABASE_URL=postgresql://zenbilling:zenbilling_password@postgres:5432/zenbilling
-            - PORT=3010
-        depends_on:
-            postgres:
-                condition: service_healthy
-        healthcheck:
-            test:
-                [
-                    "CMD",
-                    "wget",
-                    "--no-verbose",
-                    "--tries=1",
-                    "--spider",
-                    "http://localhost:3010/health",
-                ]
-            interval: 30s
-            timeout: 10s
-            retries: 3
+  email_service:
+    build:
+      context: .
+      dockerfile: packages/email_service/Dockerfile
+    container_name: zenbilling-email
+    restart: always
+    environment:
+      PORT: 3007
+      NODE_ENV: production
+      DATABASE_URL: ${DATABASE_URL}
+      BREVO_API_KEY: ${BREVO_API_KEY}
+      INTERNAL_SHARED_SECRET: ${INTERNAL_SHARED_SECRET}
+      AUTH_SERVICE_URL: http://auth_service:3001
+    depends_on:
+      prisma-migrate:
+        condition: service_completed_successfully
+    networks:
+      - zenbilling-net
 
-    # AI Service
-    ai_service:
-        build:
-            context: .
-            dockerfile: ./packages/ai_service/Dockerfile
-        ports:
-            - "3011:3011"
-        environment:
-            - NODE_ENV=production
-            - DATABASE_URL=postgresql://zenbilling:zenbilling_password@postgres:5432/zenbilling
-            - OPENAI_API_KEY=${OPENAI_API_KEY}
-            - PORT=3011
-        depends_on:
-            postgres:
-                condition: service_healthy
-        healthcheck:
-            test:
-                [
-                    "CMD",
-                    "wget",
-                    "--no-verbose",
-                    "--tries=1",
-                    "--spider",
-                    "http://localhost:3011/health",
-                ]
-            interval: 30s
-            timeout: 10s
-            retries: 3
+  product_service:
+    build:
+      context: .
+      dockerfile: packages/product_service/Dockerfile
+    container_name: zenbilling-product
+    restart: always
+    environment:
+      PORT: 3008
+      NODE_ENV: production
+      DATABASE_URL: ${DATABASE_URL}
+      INTERNAL_SHARED_SECRET: ${INTERNAL_SHARED_SECRET}
+      AUTH_SERVICE_URL: http://auth_service:3001
+      AI_SERVICE_URL: http://ai_service:3011
+    depends_on:
+      prisma-migrate:
+        condition: service_completed_successfully
+    networks:
+      - zenbilling-net
 
-volumes:
-    postgres_data:
-    redis_data:
+  customer_service:
+    build:
+      context: .
+      dockerfile: packages/customer_service/Dockerfile
+    container_name: zenbilling-customer
+    restart: always
+    environment:
+      PORT: 3009
+      NODE_ENV: production
+      DATABASE_URL: ${DATABASE_URL}
+      INTERNAL_SHARED_SECRET: ${INTERNAL_SHARED_SECRET}
+      AUTH_SERVICE_URL: http://auth_service:3001
+    depends_on:
+      prisma-migrate:
+        condition: service_completed_successfully
+    networks:
+      - zenbilling-net
+
+  pdf_service:
+    build:
+      context: .
+      dockerfile: packages/pdf_service/Dockerfile
+    container_name: zenbilling-pdf
+    restart: always
+    environment:
+      PORT: 3010
+      NODE_ENV: production
+      DATABASE_URL: ${DATABASE_URL}
+      PUPPETEER_EXECUTABLE_PATH: /usr/bin/chromium-browser
+      INTERNAL_SHARED_SECRET: ${INTERNAL_SHARED_SECRET}
+      AUTH_SERVICE_URL: http://auth_service:3001
+    depends_on:
+      prisma-migrate:
+        condition: service_completed_successfully
+    networks:
+      - zenbilling-net
+
+  ai_service:
+    build:
+      context: .
+      dockerfile: packages/ai_service/Dockerfile
+    container_name: zenbilling-ai
+    restart: always
+    environment:
+      PORT: 3011
+      NODE_ENV: production
+      DATABASE_URL: ${DATABASE_URL}
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      OPENAI_MODEL: ${OPENAI_MODEL:-gpt-3.5-turbo}
+      OPENAI_MAX_TOKENS: ${OPENAI_MAX_TOKENS:-500}
+      OPENAI_TEMPERATURE: ${OPENAI_TEMPERATURE:-0.7}
+      INTERNAL_SHARED_SECRET: ${INTERNAL_SHARED_SECRET}
+      AUTH_SERVICE_URL: http://auth_service:3001
+    depends_on:
+      prisma-migrate:
+        condition: service_completed_successfully
+    networks:
+      - zenbilling-net
+
+# ===========================================================
+# NETWORKS
+# ===========================================================
+networks:
+  zenbilling-net:
+    driver: bridge

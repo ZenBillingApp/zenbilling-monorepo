@@ -17,6 +17,11 @@ app.use(
     })
 );
 
+// Health check endpoint for Docker
+app.get("/health", (_req, res) => {
+    res.status(200).json({ status: "ok" });
+});
+
 // Parse JSON bodies with increased limit for PDF processing
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ limit: "50mb", extended: true }));

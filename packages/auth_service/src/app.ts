@@ -18,6 +18,11 @@ const corsOptions = {
 
 app.use(cors(corsOptions));
 
+// Health check endpoint for Docker
+app.get("/health", (_req, res) => {
+    res.status(200).json({ status: "ok" });
+});
+
 // Routes d'authentification Better Auth
 app.all("/api/auth/*splat", toNodeHandler(auth));
 

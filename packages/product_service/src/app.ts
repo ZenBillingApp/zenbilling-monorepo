@@ -17,6 +17,11 @@ app.use(
     })
 );
 
+// Health check endpoint for Docker
+app.get("/health", (_req, res) => {
+    res.status(200).json({ status: "ok" });
+});
+
 // Parse JSON bodies
 app.use(express.json());
 

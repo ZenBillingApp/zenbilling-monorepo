@@ -42,6 +42,11 @@ app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 // Routes
 app.use("/api/ai", aiRoutes);
 
+// Health check endpoint for Docker
+app.get("/health", (_req, res) => {
+    res.status(200).json({ status: "ok" });
+});
+
 // Route racine pour vérifier le statut
 app.get("/", (_req, res) => {
     res.json({

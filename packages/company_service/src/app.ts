@@ -23,6 +23,11 @@ app.use(
 // Middleware pour sécuriser les requêtes
 app.use(helmet());
 
+// Health check endpoint for Docker
+app.get("/health", (_req, res) => {
+    res.status(200).json({ status: "ok" });
+});
+
 // Parse JSON bodies
 app.use(express.json());
 

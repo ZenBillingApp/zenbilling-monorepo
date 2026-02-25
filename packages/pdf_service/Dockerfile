@@ -1,4 +1,9 @@
 # ============================================
+# PDF Service (requires Chromium for Puppeteer)
+# ============================================
+# syntax=docker/dockerfile:1
+
+# ============================================
 # Stage 1: Build
 # ============================================
 FROM node:20-alpine AS builder
@@ -9,7 +14,7 @@ COPY package*.json lerna.json ./
 COPY packages/shared/package*.json ./packages/shared/
 COPY packages/pdf_service/package*.json ./packages/pdf_service/
 
-RUN npm ci
+RUN --mount=type=cache,target=/root/.npm npm ci
 
 COPY packages/shared/ ./packages/shared/
 COPY packages/pdf_service/ ./packages/pdf_service/
@@ -21,7 +26,7 @@ WORKDIR /app/packages/pdf_service
 RUN npm run build
 
 # ============================================
-# Stage 2: Production (requires Chromium for Puppeteer)
+# Stage 2: Production (requires Chromium)
 # ============================================
 FROM node:20-alpine AS production
 
@@ -29,7 +34,6 @@ WORKDIR /app
 
 # Install Chromium and dependencies for Puppeteer PDF generation
 RUN apk add --no-cache \
-    curl \
     chromium \
     nss \
     freetype \
@@ -45,7 +49,7 @@ COPY package*.json lerna.json ./
 COPY packages/shared/package*.json ./packages/shared/
 COPY packages/pdf_service/package*.json ./packages/pdf_service/
 
-RUN npm ci --omit=dev && npm cache clean --force
+RUN --mount=type=cache,target=/root/.npm npm ci --omit=dev
 
 COPY --from=builder /app/packages/shared/dist ./packages/shared/dist
 COPY --from=builder /app/packages/shared/prisma ./packages/shared/prisma
@@ -63,11 +67,10 @@ RUN addgroup -g 1001 -S nodejs && \
 
 USER nodejs
 
-# Fixed: was incorrectly set to 3007 (email_service port)
 EXPOSE 3010
 
 HEALTHCHECK --interval=30s --timeout=10s --start-period=20s --retries=3 \
-  CMD curl -f http://localhost:3010/health || exit 1
+  CMD wget -qO- http://localhost:3010/health || exit 1
 
 WORKDIR /app/packages/pdf_service
 CMD ["node", "dist/app.js"]

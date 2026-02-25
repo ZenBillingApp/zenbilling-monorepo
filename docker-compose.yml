@@ -16,11 +16,8 @@ services:
     prisma-migrate:
         build:
             context: .
-            dockerfile: packages/auth_service/Dockerfile
-            target: builder
+            dockerfile: Dockerfile.migrate
         container_name: zenbilling-migrate
-        working_dir: /app/packages/shared
-        command: npx prisma migrate deploy --schema=./prisma/schema.prisma
         environment:
             DATABASE_URL: ${DATABASE_URL}
         networks:
@@ -64,7 +61,10 @@ services:
     auth_service:
         build:
             context: .
-            dockerfile: packages/auth_service/Dockerfile
+            dockerfile: Dockerfile.service
+            args:
+                SERVICE_NAME: auth_service
+                SERVICE_PORT: "3001"
         container_name: zenbilling-auth
         restart: always
         environment:
@@ -88,7 +88,10 @@ services:
     company_service:
         build:
             context: .
-            dockerfile: packages/company_service/Dockerfile
+            dockerfile: Dockerfile.service
+            args:
+                SERVICE_NAME: company_service
+                SERVICE_PORT: "3002"
         container_name: zenbilling-company
         restart: always
         environment:
@@ -106,7 +109,10 @@ services:
     stripe_service:
         build:
             context: .
-            dockerfile: packages/stripe_service/Dockerfile
+            dockerfile: Dockerfile.service
+            args:
+                SERVICE_NAME: stripe_service
+                SERVICE_PORT: "3003"
         container_name: zenbilling-stripe
         restart: always
         environment:
@@ -126,7 +132,10 @@ services:
     dashboard_service:
         build:
             context: .
-            dockerfile: packages/dashboard_service/Dockerfile
+            dockerfile: Dockerfile.service
+            args:
+                SERVICE_NAME: dashboard_service
+                SERVICE_PORT: "3004"
         container_name: zenbilling-dashboard
         restart: always
         environment:
@@ -144,7 +153,10 @@ services:
     invoice_service:
         build:
             context: .
-            dockerfile: packages/invoice_service/Dockerfile
+            dockerfile: Dockerfile.service
+            args:
+                SERVICE_NAME: invoice_service
+                SERVICE_PORT: "3005"
         container_name: zenbilling-invoice
         restart: always
         environment:
@@ -164,7 +176,10 @@ services:
     quote_service:
         build:
             context: .
-            dockerfile: packages/quote_service/Dockerfile
+            dockerfile: Dockerfile.service
+            args:
+                SERVICE_NAME: quote_service
+                SERVICE_PORT: "3006"
         container_name: zenbilling-quote
         restart: always
         environment:
@@ -184,7 +199,10 @@ services:
     email_service:
         build:
             context: .
-            dockerfile: packages/email_service/Dockerfile
+            dockerfile: Dockerfile.service
+            args:
+                SERVICE_NAME: email_service
+                SERVICE_PORT: "3007"
         container_name: zenbilling-email
         restart: always
         environment:
@@ -203,7 +221,10 @@ services:
     product_service:
         build:
             context: .
-            dockerfile: packages/product_service/Dockerfile
+            dockerfile: Dockerfile.service
+            args:
+                SERVICE_NAME: product_service
+                SERVICE_PORT: "3008"
         container_name: zenbilling-product
         restart: always
         environment:
@@ -222,7 +243,10 @@ services:
     customer_service:
         build:
             context: .
-            dockerfile: packages/customer_service/Dockerfile
+            dockerfile: Dockerfile.service
+            args:
+                SERVICE_NAME: customer_service
+                SERVICE_PORT: "3009"
         container_name: zenbilling-customer
         restart: always
         environment:
@@ -259,7 +283,10 @@ services:
     ai_service:
         build:
             context: .
-            dockerfile: packages/ai_service/Dockerfile
+            dockerfile: Dockerfile.service
+            args:
+                SERVICE_NAME: ai_service
+                SERVICE_PORT: "3011"
         container_name: zenbilling-ai
         restart: always
         environment:

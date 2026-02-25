@@ -1,18 +1,18 @@
 # ============================================
 # API Gateway - No build step (plain JS)
 # ============================================
+# syntax=docker/dockerfile:1
+
 FROM node:20-alpine AS production
 
 WORKDIR /app
-
-RUN apk add --no-cache curl
 
 # Copy workspace config + gateway package.json
 COPY package*.json lerna.json ./
 COPY packages/api_gateway/package*.json ./packages/api_gateway/
 
-# Install production dependencies only
-RUN npm ci --omit=dev && npm cache clean --force
+# Install production dependencies only with BuildKit cache
+RUN --mount=type=cache,target=/root/.npm npm ci --omit=dev
 
 # Copy gateway application files
 COPY packages/api_gateway/server.js ./packages/api_gateway/
@@ -28,7 +28,7 @@ USER nodejs
 EXPOSE 8080
 
 HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
-  CMD curl -f http://localhost:8080/health || exit 1
+  CMD wget -qO- http://localhost:8080/health || exit 1
 
 WORKDIR /app/packages/api_gateway
 CMD ["node", "server.js"]

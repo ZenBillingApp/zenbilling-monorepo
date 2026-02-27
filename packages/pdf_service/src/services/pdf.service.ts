@@ -211,6 +211,12 @@ export class PdfService {
             const pdfBuffer = await page.pdf({
                 format: "A4",
                 printBackground: true,
+                margin: {
+                    top: "20mm",
+                    right: "15mm",
+                    bottom: "25mm",
+                    left: "15mm",
+                },
                 displayHeaderFooter: true,
                 headerTemplate: "<span></span>",
                 footerTemplate: `
@@ -329,6 +335,12 @@ export class PdfService {
             const pdfBuffer = await page.pdf({
                 format: "A4",
                 printBackground: true,
+                margin: {
+                    top: "20mm",
+                    right: "15mm",
+                    bottom: "25mm",
+                    left: "15mm",
+                },
                 displayHeaderFooter: true,
                 headerTemplate: "<span></span>",
                 footerTemplate: `

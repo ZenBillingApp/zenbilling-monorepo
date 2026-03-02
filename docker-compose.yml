@@ -167,6 +167,7 @@ services:
             AUTH_SERVICE_URL: http://auth_service:3001
             PDF_SERVICE_URL: http://pdf_service:3010
             EMAIL_SERVICE_URL: http://email_service:3007
+            STRIPE_SERVICE_URL: http://stripe_service:3003
         depends_on:
             prisma-migrate:
                 condition: service_completed_successfully
